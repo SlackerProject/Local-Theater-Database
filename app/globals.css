@@ -1,47 +1,156 @@
 @import "tailwindcss";
 
-/* Design tokens */
+/* Design v2 tokens: a quiet black-and-white frame (see design-reference-v2/DESIGN.md).
+   Show color comes only from production palettes, applied inline. */
 @theme inline {
-  --color-background: #f7f5f0;
-  --color-surface: #ffffff;
-  --color-ink: #18140f;
-  --color-muted: #5e574c;
-  --color-rule: #e3ded3;
-  --color-accent: #8e1b2c;
-  --color-marquee: #f2c230;
-  /* Supporting shades from the design reference */
-  --color-field: #cfc8ba;        /* input and secondary button borders */
-  --color-chip: #ede7da;         /* "In database" pill, empty headshot */
-  --color-panel: #fcfbf8;        /* dashed "new record" panels */
-  --color-tabs: #f0ece3;         /* Cast / Crew switch */
-  --color-marquee-tint: #fef8e6; /* "Did you mean…?" panel */
-  --font-sans: var(--font-instrument-sans);
-  --font-serif: var(--font-dm-serif-display);
+  --color-page: #ffffff;
+  --color-ink: #141414;
+  --color-muted: #5e5e5e;
+  --color-rule: #e5e5e5;
+  --color-soft: #f5f5f4;
+  --color-field: #cfcfcf;
+  --font-sans: var(--font-schibsted-grotesk);
 }
 
-body {
-  background: var(--color-background);
-  color: var(--color-ink);
-  font-family: var(--font-sans), "Helvetica Neue", system-ui, sans-serif;
-  line-height: 1.5;
+/* Base styles live in the base layer: unlayered rules would override every
+   utility class (e.g. a link's color would beat .btn-primary's white text). */
+@layer base {
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* Links in body text: ink with an underline. Lists and nav opt out with link-quiet */
+  a {
+    color: inherit;
+    text-underline-offset: 3px;
+  }
 }
 
-/* Section labels: "1 · THE SHOW" */
-@utility eyebrow {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+@utility link-quiet {
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-/* Text inputs: 1.5px warm border, ink border while focused */
+/* Text inputs: 48px, 1.5px field border, 8px radius, 16px text (no phone zoom);
+   focus is a 2px ink border. Width and height are set where used. */
 @utility field {
   border: 1.5px solid var(--color-field);
-  background: var(--color-surface);
+  border-radius: 8px;
+  background: var(--color-page);
   color: var(--color-ink);
   font: inherit;
+  font-size: 16px;
   &:focus {
     outline: none;
     border: 2px solid var(--color-ink);
   }
+}
+
+/* Primary action: ink with white text */
+@utility btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-ink);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  &:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+}
+
+/* Secondary action: 1.5px ink outline */
+@utility btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1.5px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* Text-style action ("+ Add a performance"): ink, underlined, 44px target */
+@utility btn-text {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Section heading: 22px / 800 */
+@utility heading {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+/* Sidebar heading: 15px / 800 */
+@utility subheading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* Big page titles */
+@utility display {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+}
+
+/* "New show" / "New person" and similar tags */
+@utility tag {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-soft);
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* Callouts ("Did you mean…?", notices, problems): soft with an ink left edge */
+@utility callout {
+  padding: 14px 16px;
+  border-left: 3px solid var(--color-ink);
+  background: var(--color-soft);
 }

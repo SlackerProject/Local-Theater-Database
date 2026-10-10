@@ -93,11 +93,11 @@ export function TypeAhead({
   }
 
   const inputClass =
-    size === "large" ? "field h-12 rounded-[10px] px-3.5" : "field h-11 rounded-lg px-3";
+    size === "large" ? "field h-12 px-3.5" : "field h-12 px-3";
 
   return (
     <div className={`flex flex-col ${size === "large" ? "gap-1.5" : "gap-1"}`}>
-      <label htmlFor={id} className={size === "large" ? "font-semibold" : "text-sm font-semibold"}>
+      <label htmlFor={id} className={size === "large" ? "font-semibold" : "text-[15px] font-semibold"}>
         {label}
       </label>
       <input
@@ -130,7 +130,7 @@ export function TypeAhead({
           id={listId}
           role="listbox"
           aria-label={`Matching ${kind === "people" ? "people" : noun + "s"}`}
-          className="overflow-hidden rounded-[10px] border border-rule"
+          className="overflow-hidden rounded-lg border border-rule shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
         >
           {matches.map((m, i) => (
             <div
@@ -142,7 +142,7 @@ export function TypeAhead({
               onClick={() => choose(i)}
               onMouseEnter={() => setActive(i)}
               className={`flex min-h-[52px] cursor-pointer items-center justify-between gap-3 border-b border-rule px-3.5 py-2 ${
-                i === active ? "bg-background" : ""
+                i === active ? "bg-soft" : ""
               }`}
             >
               <span>
@@ -159,8 +159,8 @@ export function TypeAhead({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => choose(matches.length)}
             onMouseEnter={() => setActive(matches.length)}
-            className={`flex min-h-[52px] cursor-pointer items-center px-3.5 py-2 font-semibold text-accent ${
-              active === matches.length ? "bg-background" : ""
+            className={`flex min-h-[52px] cursor-pointer items-center px-3.5 py-2 font-semibold underline underline-offset-[3px] ${
+              active === matches.length ? "bg-soft" : ""
             }`}
           >
             + Add “{trimmed}” as a new {noun}
@@ -173,13 +173,13 @@ export function TypeAhead({
 
 export function InDatabasePill() {
   return (
-    <span className="flex-none rounded-full bg-chip px-2.5 py-[3px] text-xs font-bold">In database</span>
+    <span className="flex-none rounded border border-rule px-2 py-0.5 text-[13px] font-bold text-muted">In database</span>
   );
 }
 
 export function NewPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex-none rounded-full bg-marquee px-2.5 py-[3px] text-xs font-bold text-ink">{children}</span>
+    <span className="tag">{children}</span>
   );
 }
 
@@ -192,7 +192,7 @@ export function PickedLine({ match, onChange }: { match: Match; onChange: () => 
       <button
         type="button"
         onClick={onChange}
-        className="inline-flex min-h-11 cursor-pointer items-center border-0 bg-transparent p-0 font-semibold text-accent"
+        className="btn-text"
       >
         Change
       </button>

@@ -16,7 +16,7 @@ export default function SignUpPage({ searchParams }: PageProps<"/signup">) {
         footer={
           <>
             Already have an account?{" "}
-            <Link href="/signin" className="font-semibold text-accent no-underline">
+            <Link href="/signin" className="font-semibold text-ink">
               Sign in
             </Link>
           </>

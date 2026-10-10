@@ -16,7 +16,7 @@ export default function SignInPage({ searchParams }: PageProps<"/signin">) {
         footer={
           <>
             New here?{" "}
-            <Link href="/signup" className="font-semibold text-accent no-underline">
+            <Link href="/signup" className="font-semibold text-ink">
               Create an account
             </Link>
           </>
@@ -37,7 +37,7 @@ async function SignInFields({ searchParams }: Pick<PageProps<"/signin">, "search
   return (
     <>
       {confirmFailed && (
-        <p role="alert" className="m-0 rounded-[10px] border-[1.5px] border-marquee bg-marquee-tint p-3 text-sm">
+        <p role="alert" className="callout m-0 text-[15px]">
           That confirmation link didn’t work. It may have expired or already been used. Try signing in.
         </p>
       )}

@@ -24,24 +24,22 @@ const LOCATION_FIELDS = [
 ] as const;
 
 // inputBase has no width, so rows can size each box; input fills its cell
-const inputBase = "field box-border h-10 min-w-0 rounded-lg px-2.5 text-[15px]";
+const inputBase = "field box-border h-12 min-w-0 px-3";
 const input = `${inputBase} w-full`;
-const pillAccent =
-  "inline-flex h-12 cursor-pointer items-center rounded-full border-0 bg-accent px-6 font-semibold text-white disabled:cursor-wait disabled:opacity-70";
-const pillLight =
-  "inline-flex h-12 cursor-pointer items-center rounded-full border-[1.5px] border-field bg-surface px-6 font-semibold text-ink disabled:cursor-wait disabled:opacity-70";
+const pillAccent = "btn-primary";
+const pillLight = "btn-secondary";
 
 function Tag({ isNew }: { isNew: boolean }) {
   return isNew ? (
-    <span className="flex-none rounded-full bg-marquee px-2.5 py-[3px] text-xs font-bold">New</span>
+    <span className="tag">New</span>
   ) : (
-    <span className="flex-none rounded-full bg-chip px-2.5 py-[3px] text-xs font-bold">In database</span>
+    <span className="flex-none rounded border border-rule px-2 py-0.5 text-[13px] font-bold text-muted">In database</span>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex min-w-0 flex-col gap-1 text-sm font-semibold">
+    <label className="flex min-w-0 flex-col gap-1 text-[15px] font-semibold">
       {label}
       {children}
     </label>
@@ -50,13 +48,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Include({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label className="flex h-10 w-10 flex-none cursor-pointer items-center justify-center" title={checked ? "Included" : "Left out"}>
+    <label className="flex h-12 w-11 flex-none cursor-pointer items-center justify-center" title={checked ? "Included" : "Left out"}>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         aria-label={label}
-        className="h-5 w-5 accent-accent"
+        className="h-5 w-5 accent-ink"
       />
     </label>
   );
@@ -152,10 +150,10 @@ export function ReviewCard({
   }
 
   return (
-    <article className="flex flex-col gap-5 rounded-[14px] border border-rule bg-surface p-5 sm:p-6">
+    <article className="flex flex-col gap-6 border-t-2 border-ink pt-5">
       <div className="flex flex-col gap-1">
-        {addTo && <span className="eyebrow text-accent">Additions to a live production</span>}
-        <h2 className="m-0 font-serif text-[28px] font-normal leading-[1.1]">{title}</h2>
+        {addTo && <span className="tag self-start">Additions to a live production</span>}
+        <h2 className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</h2>
         <span className="text-sm text-muted">
           Submitted by {submittedBy} on {submittedAt}. Correct anything that’s wrong, untick anything you can’t approve.
         </span>
@@ -181,6 +179,9 @@ export function ReviewCard({
                     <input className={input} value={show.new.subtitle ?? ""} onChange={(e) => setShow({ new: { ...show.new, subtitle: e.target.value } })} />
                   </Field>
                 </div>
+                <Field label="Authors">
+                  <input className={input} value={show.new.authors ?? ""} onChange={(e) => setShow({ new: { ...show.new, authors: e.target.value } })} />
+                </Field>
               </>
             ) : (
               <span>{show.label}</span>
@@ -228,7 +229,7 @@ export function ReviewCard({
       {/* Location: optional, can be left out */}
       {location && (
         <section className="flex flex-col gap-2">
-          <h3 className="eyebrow m-0">Location</h3>
+          <h3 className="subheading">Location</h3>
           <div className={`flex items-start gap-2 ${location.include ? "" : "opacity-55"}`}>
             <Include checked={location.include} onChange={(include) => setLocation({ ...location, include })} label="Include the location" />
             {newLocation ? (
@@ -244,7 +245,7 @@ export function ReviewCard({
                 ))}
               </div>
             ) : "label" in location.value && (
-              <span className="flex h-10 items-center gap-2">{location.value.label} <Tag isNew={false} /></span>
+              <span className="flex h-12 items-center gap-2">{location.value.label} <Tag isNew={false} /></span>
             )}
           </div>
         </section>
@@ -253,7 +254,7 @@ export function ReviewCard({
       {/* Performances */}
       {performances.length > 0 && (
         <section className="flex flex-col gap-1">
-          <h3 className="eyebrow m-0">Performances ({performances.filter((p) => p.include).length} of {performances.length})</h3>
+          <h3 className="subheading">Performances ({performances.filter((p) => p.include).length} of {performances.length})</h3>
           {performances.map((p, i) => {
             const set = (patch: Partial<BundlePerformance>) =>
               setPerformances((ps) => ps.map((x, j) => (j === i ? { ...x, value: { ...x.value, ...patch } } : x)));
@@ -264,8 +265,8 @@ export function ReviewCard({
                   onChange={(include) => setPerformances((ps) => ps.map((x, j) => (j === i ? { ...x, include } : x)))}
                   label={`Include the performance on ${p.value.date}`}
                 />
-                <input className={`${inputBase} w-[150px] flex-none`} type="date" aria-label="Date" value={p.value.date} onChange={(e) => set({ date: e.target.value })} />
-                <input className={`${inputBase} w-[135px] flex-none`} type="time" aria-label="Time" value={p.value.time} onChange={(e) => set({ time: e.target.value })} />
+                <input className={`${inputBase} w-[160px] flex-none`} type="date" aria-label="Date" value={p.value.date} onChange={(e) => set({ date: e.target.value })} />
+                <input className={`${inputBase} w-[140px] flex-none`} type="time" aria-label="Time" value={p.value.time} onChange={(e) => set({ time: e.target.value })} />
                 <input className={`${inputBase} flex-[1_1_120px]`} aria-label="Label" placeholder="Label" value={p.value.label ?? ""} onChange={(e) => set({ label: e.target.value })} />
               </div>
             );
@@ -276,7 +277,7 @@ export function ReviewCard({
       {/* Cast and crew */}
       {credits.length > 0 && (
         <section className="flex flex-col gap-1">
-          <h3 className="eyebrow m-0">Cast and crew ({credits.filter((c) => c.include).length} of {credits.length})</h3>
+          <h3 className="subheading">Cast and crew ({credits.filter((c) => c.include).length} of {credits.length})</h3>
           {credits.map((c, i) => {
             const p = person(c.value.person_key);
             return (
@@ -286,7 +287,7 @@ export function ReviewCard({
                   onChange={(include) => setCredits((cs) => cs.map((x, j) => (j === i ? { ...x, include } : x)))}
                   label={`Include ${c.value.role}`}
                 />
-                <span className="w-10 flex-none text-sm text-muted">{c.value.kind === "cast" ? "Cast" : "Crew"}</span>
+                <span className="w-11 flex-none text-sm text-muted">{c.value.kind === "cast" ? "Cast" : "Crew"}</span>
                 <input
                   className={`${inputBase} flex-[1_1_140px] font-semibold`}
                   aria-label="Role"
@@ -316,7 +317,7 @@ export function ReviewCard({
       )}
 
       {problems.length > 0 && (
-        <div role="alert" className="rounded-[10px] border-[1.5px] border-marquee bg-marquee-tint p-3.5 text-sm">
+        <div role="alert" className="callout text-[15px]">
           <strong>Can’t approve yet:</strong>
           <ul className="m-0 mt-1 pl-5">
             {problems.map((p) => <li key={p}>{p}</li>)}

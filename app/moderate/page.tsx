@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Bundle } from "@/lib/submission";
-import { MarqueeBand, SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ReviewCard } from "./ReviewCard";
 
 export const metadata: Metadata = { title: "Moderation queue · Local Theater Database" };
@@ -14,9 +14,8 @@ export default function ModeratePage({ searchParams }: PageProps<"/moderate">) {
   return (
     <>
       <SiteHeader />
-      <MarqueeBand>Moderation</MarqueeBand>
-      <main className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-6 px-4 pb-16 pt-8 sm:px-8">
-        <h1 className="m-0 font-serif text-[36px] font-normal leading-[1.05] sm:text-[44px]">Pending submissions</h1>
+      <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8 md:pt-12">
+        <h1 className="display text-[40px] md:text-[56px]">Pending submissions</h1>
         <Suspense fallback={<p className="text-muted">Loading the queue…</p>}>
           <Queue searchParams={searchParams} />
         </Suspense>
@@ -48,14 +47,14 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
         <Banner>
           Approved and published.{" "}
           {params.approved && (
-            <Link href={`/production/${params.approved}`} className="font-semibold text-accent no-underline">
+            <Link href={`/production/${params.approved}`} className="font-semibold">
               View the production page
             </Link>
           )}
         </Banner>
       )}
       {params.rejected && <Banner>Submission rejected and sent back to the contributor.</Banner>}
-      {error && <p className="text-accent">Couldn’t load the queue: {error.message}</p>}
+      {error && <p className="callout m-0">Couldn’t load the queue: {error.message}</p>}
       {!proposals?.length && !error && <p className="m-0 text-muted">Nothing waiting for review. 🎭</p>}
 
       {proposals?.map((p) => (
@@ -77,7 +76,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
 
 function Banner({ children }: { children: React.ReactNode }) {
   return (
-    <p role="status" className="m-0 rounded-[10px] border-[1.5px] border-marquee bg-marquee-tint p-3">
+    <p role="status" className="callout m-0">
       {children}
     </p>
   );

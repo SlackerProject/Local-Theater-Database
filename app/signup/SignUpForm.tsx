@@ -9,7 +9,7 @@ export function SignUpForm({ next }: { next: string }) {
 
   if (state.checkEmail) {
     return (
-      <div role="status" className="flex flex-col gap-2 rounded-[10px] border-[1.5px] border-marquee bg-marquee-tint p-4">
+      <div role="status" className="callout flex flex-col gap-2">
         <strong>Check your email</strong>
         <span className="text-[15px] text-muted">
           We sent a confirmation link to <strong className="text-ink">{state.checkEmail}</strong>. Click it to finish
@@ -50,7 +50,7 @@ export function SignUpForm({ next }: { next: string }) {
           type="checkbox"
           name="age_confirmed"
           required
-          className="mt-0.5 h-5 w-5 flex-none accent-accent"
+          className="mt-0.5 h-5 w-5 flex-none accent-ink"
         />
         <span>
           I am <strong>18 or older</strong>. <span className="text-muted">Required. Members must be adults.</span>

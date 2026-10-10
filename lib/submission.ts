@@ -41,7 +41,7 @@ export type FormState = {
   resubmissionOf?: string;
   // editing: the "new record" details panel is open (false once Done is pressed).
   // Optional on show and organization because drafts saved before it existed lack it.
-  show: { query: string; choice: Choice; type: ShowType | ""; subtitle: string; editing?: boolean };
+  show: { query: string; choice: Choice; type: ShowType | ""; subtitle: string; authors?: string; editing?: boolean };
   organization: { query: string; choice: Choice; town: string; website: string; editing?: boolean };
   location: { query: string; choice: Choice; address: string; town: string; editing: boolean };
   year: string;
@@ -80,7 +80,7 @@ export function emptyCredit(kind: "cast" | "crew", id = newId()): CreditRow {
 // Bundles: the shapes approve_submission() expects
 // ---------------------------------------------------------------------
 export type Ref<New> = { id: string; label: string } | { new: New };
-export type NewShow = { title: string; type: ShowType; subtitle?: string };
+export type NewShow = { title: string; type: ShowType; subtitle?: string; authors?: string };
 export type NewOrganization = { name: string; town?: string; website_url?: string };
 export type NewLocation = { name: string; street_address?: string; town?: string };
 export type BundlePerformance = { date: string; time: string; label?: string };
@@ -161,7 +161,12 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
       if (!s.show.type) problems.push("Choose what kind of show it is (musical, play…).");
       else
         show = {
-          new: { title: clean(s.show.query), type: s.show.type, ...(clean(s.show.subtitle) && { subtitle: clean(s.show.subtitle) }) },
+          new: {
+            title: clean(s.show.query),
+            type: s.show.type,
+            ...(clean(s.show.subtitle) && { subtitle: clean(s.show.subtitle) }),
+            ...(clean(s.show.authors ?? "") && { authors: clean(s.show.authors ?? "") }),
+          },
         };
     } else {
       problems.push("Pick the show, or add it as a new one.");
@@ -422,7 +427,7 @@ export function bundleToFormState(b: Bundle, defaultYear: string, liveHasLocatio
     const { show, organization: org, production } = b;
     form.show =
       "new" in show
-        ? { query: show.new.title, choice: { kind: "new" }, type: show.new.type, subtitle: show.new.subtitle ?? "", editing: true }
+        ? { query: show.new.title, choice: { kind: "new" }, type: show.new.type, subtitle: show.new.subtitle ?? "", authors: show.new.authors ?? "", editing: true }
         : { query: show.label, choice: { kind: "existing", match: matchFrom(show) }, type: "", subtitle: "" };
     form.organization =
       "new" in org

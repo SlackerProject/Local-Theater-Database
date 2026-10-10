@@ -1,23 +1,48 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getCurrentUser, hasRole } from "@/lib/auth";
-import { signOut } from "@/app/auth-actions";
+import { HeaderNav } from "./HeaderNav";
 
 export const SITE_NAME = "Local Theater Database";
 
-const pill =
-  "inline-flex h-11 items-center rounded-full px-[18px] text-[15px] font-medium no-underline";
-
-export function SiteHeader() {
+// Search is the primary way in, so it's in the header on every page:
+// beside the wordmark on desktop, full width on its own row on phones.
+function SearchField({ id, className, defaultValue }: { id: string; className: string; defaultValue?: string }) {
   return (
-    <header className="border-b border-rule bg-surface">
-      <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-8">
-        <Link href="/" className="font-serif text-[26px] text-ink no-underline">
-          {SITE_NAME}
-        </Link>
-        <Suspense fallback={<div className="h-11" />}>
-          <UserNav />
-        </Suspense>
+    <form action="/search" role="search" className={`items-center gap-2.5 rounded-[10px] bg-soft px-4 ${className}`}>
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5E5E5E" strokeWidth="2" strokeLinecap="round">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.5-3.5" />
+      </svg>
+      <label htmlFor={id} className="sr-only">
+        Search
+      </label>
+      <input
+        id={id}
+        name="q"
+        type="search"
+        defaultValue={defaultValue}
+        placeholder="Search a name, show, or company"
+        className="h-full min-w-0 flex-1 border-0 bg-transparent text-base outline-none"
+      />
+    </form>
+  );
+}
+
+export function SiteHeader({ query }: { query?: string } = {}) {
+  return (
+    <header className="relative border-b border-rule bg-page">
+      <div className="mx-auto max-w-[1180px] px-4 py-2.5 md:px-8 md:py-3">
+        <div className="flex items-center gap-7">
+          <Link href="/" className="link-quiet whitespace-nowrap text-xl font-extrabold tracking-[-0.02em] md:text-[22px]">
+            {SITE_NAME}
+          </Link>
+          <SearchField id="q" defaultValue={query} className="hidden h-12 max-w-[560px] flex-1 md:flex" />
+          <Suspense fallback={<div className="ml-auto h-11 w-11" />}>
+            <UserNav />
+          </Suspense>
+        </div>
+        <SearchField id="q-m" defaultValue={query} className="mt-2.5 flex h-[46px] md:hidden" />
       </div>
     </header>
   );
@@ -26,60 +51,18 @@ export function SiteHeader() {
 async function UserNav() {
   const user = await getCurrentUser();
   return (
-    <nav
-      aria-label="Main"
-      className="flex flex-wrap items-center gap-x-[22px] gap-y-1 text-[15px] font-medium"
-    >
-      {user ? (
-        <>
-          <Link href="/add" className="text-ink no-underline">
-            Add a production
-          </Link>
-          <Link href="/submissions" className="text-ink no-underline">
-            Your submissions
-          </Link>
-          {hasRole(user, "moderator") && (
-            <Link href="/moderate" className="text-ink no-underline">
-              Moderate
-            </Link>
-          )}
-          <span className="text-muted">{user.displayName}</span>
-          <form action={signOut}>
-            <button type="submit" className={`${pill} cursor-pointer border-[1.5px] border-field bg-surface text-ink`}>
-              Sign out
-            </button>
-          </form>
-        </>
-      ) : (
-        <>
-          <Link href="/signup" className="text-ink no-underline">
-            Join
-          </Link>
-          <Link href="/signin" className={`${pill} bg-ink text-white`}>
-            Sign in
-          </Link>
-        </>
-      )}
-    </nav>
+    <HeaderNav
+      user={user ? { displayName: user.displayName, isModerator: hasRole(user, "moderator") } : null}
+    />
   );
 }
 
-export function SiteFooter({ children }: { children?: React.ReactNode }) {
+export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-rule bg-surface">
-      <div className="mx-auto flex max-w-[1120px] flex-wrap justify-between gap-x-4 gap-y-2 px-4 py-5 text-sm text-muted sm:px-8">
-        <span>Community-built. Anyone can add or correct a page.</span>
-        {children}
+    <footer className="mt-auto border-t border-rule">
+      <div className="mx-auto max-w-[1180px] px-4 py-6 text-sm text-muted md:px-8">
+        Community-built. Anyone can add or correct a page.
       </div>
     </footer>
-  );
-}
-
-// The yellow marquee band under the header: "PERSON", "PRODUCTION"
-export function MarqueeBand({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="bg-marquee">
-      <div className="eyebrow mx-auto max-w-[1120px] px-4 py-2.5 sm:px-8">{children}</div>
-    </div>
   );
 }

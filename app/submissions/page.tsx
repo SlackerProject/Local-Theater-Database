@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isEmptyLeftOut, type Bundle, type BundlePerson, type LeftOut } from "@/lib/submission";
-import { MarqueeBand, SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { reopenSubmission } from "./actions";
 
 export const metadata: Metadata = { title: "Your submissions · Local Theater Database" };
@@ -14,9 +14,8 @@ export default function SubmissionsPage() {
   return (
     <>
       <SiteHeader />
-      <MarqueeBand>Your submissions</MarqueeBand>
-      <main className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-6 px-4 pb-16 pt-8 sm:px-8">
-        <h1 className="m-0 font-serif text-[36px] font-normal leading-[1.05] sm:text-[44px]">Your submissions</h1>
+      <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-6 px-4 pb-16 pt-8 md:px-8 md:pt-12">
+        <h1 className="display text-[40px] md:text-[56px]">Your submissions</h1>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
           <Submissions />
         </Suspense>
@@ -72,15 +71,15 @@ async function Submissions() {
         You’ve earned <strong className="text-ink">{points?.points ?? 0} points</strong> for approved contributions.
       </p>
       {draft && (
-        <p className="m-0 rounded-[10px] border-[1.5px] border-marquee bg-marquee-tint p-3 text-[15px]">
+        <p className="callout m-0 text-[15px]">
           You have a saved draft.{" "}
-          <Link href="/add" className="font-semibold text-accent no-underline">Continue it</Link>. Note that “Fix and
+          <Link href="/add" className="font-semibold">Continue it</Link>. Note that “Fix and
           resubmit” below replaces that draft.
         </p>
       )}
       {!proposals?.length && (
         <p className="m-0 text-muted">
-          Nothing yet. <Link href="/add" className="font-semibold text-accent no-underline">Add a production</Link>.
+          Nothing yet. <Link href="/add" className="font-semibold">Add a production</Link>.
         </p>
       )}
 
@@ -92,21 +91,21 @@ async function Submissions() {
         const canReopen = !resubmitted.has(p.id) && (p.status === "rejected" || partly);
         const status =
           p.status === "pending"
-            ? { label: "Waiting for review", tone: "bg-chip" }
+            ? { label: "Waiting for review", tone: "bg-soft text-ink" }
             : p.status === "rejected"
-              ? { label: "Not approved", tone: "bg-accent/15 text-accent" }
+              ? { label: "Not approved", tone: "bg-ink text-white" }
               : partly
-                ? { label: "Partly approved", tone: "bg-marquee" }
-                : { label: "Approved", tone: "bg-marquee" };
+                ? { label: "Partly approved", tone: "bg-soft text-ink" }
+                : { label: "Approved", tone: "bg-soft text-ink" };
         const slug = p.entity_id ? slugFor.get(p.entity_id) : undefined;
 
         return (
-          <article key={p.id} className="flex flex-col gap-3 rounded-[14px] border border-rule bg-surface p-5 sm:p-6">
+          <article key={p.id} className="flex flex-col gap-3 border-t border-rule pt-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="m-0 font-serif text-[26px] font-normal leading-[1.1]">
+              <h2 className="m-0 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em]">
                 {(p.status === "approved" ? approved : submitted).production.display_title}
               </h2>
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${status.tone}`}>{status.label}</span>
+              <span className={`rounded px-2 py-0.5 text-[13px] font-bold ${status.tone}`}>{status.label}</span>
             </div>
             <span className="text-sm text-muted">
               Submitted {new Date(p.created_at).toLocaleDateString("en-US", { timeZone: "America/New_York", dateStyle: "medium" })}
@@ -114,20 +113,20 @@ async function Submissions() {
             </span>
 
             {p.review_note && (
-              <p className="m-0 rounded-[10px] border border-rule bg-background p-3 text-[15px]">
+              <p className="callout m-0 text-[15px]">
                 <strong>Moderator’s note:</strong> {p.review_note}
               </p>
             )}
 
             {slug && (
-              <Link href={`/production/${slug}`} className="font-semibold text-accent no-underline">
+              <Link href={`/production/${slug}`} className="font-semibold">
                 View the production page
               </Link>
             )}
 
             {partly && leftOut && (
               <div className="flex flex-col gap-1">
-                <h3 className="eyebrow m-0">Not approved yet</h3>
+                <h3 className="subheading">Not approved yet</h3>
                 <ul className="m-0 flex list-none flex-col p-0 text-[15px]">
                   {leftOut.location && (
                     <li className="border-b border-rule py-1.5">
@@ -154,7 +153,7 @@ async function Submissions() {
                 <input type="hidden" name="id" value={p.id} />
                 <button
                   type="submit"
-                  className="inline-flex h-11 cursor-pointer items-center rounded-full border-0 bg-ink px-[18px] text-sm font-semibold text-white"
+                  className="btn-primary"
                 >
                   {partly ? "Fix and resubmit these" : "Fix and resubmit"}
                 </button>

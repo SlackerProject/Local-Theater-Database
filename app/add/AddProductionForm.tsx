@@ -24,17 +24,15 @@ import { NewPill, PickedLine, TypeAhead, lookup } from "./TypeAhead";
 // ---------------------------------------------------------------------
 // Small presentational pieces shared by the sections
 // ---------------------------------------------------------------------
-const card = "flex flex-col gap-4 rounded-[14px] border border-rule bg-surface p-5 sm:p-6";
-const smallField = "field box-border h-11 w-full min-w-0 rounded-lg px-3";
-const largeField = "field box-border h-12 w-full min-w-0 rounded-[10px] px-3.5";
-const linkButton =
-  "inline-flex min-h-11 cursor-pointer items-center border-0 bg-transparent p-0 font-semibold text-accent";
-const pillDark =
-  "inline-flex h-11 cursor-pointer items-center justify-center rounded-full border-0 bg-ink px-[18px] text-sm font-semibold text-white";
-const pillLight =
-  "inline-flex h-11 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-field bg-surface px-[18px] text-sm font-semibold text-ink";
+// Section groups: a heading and a rule, not a bordered box (design v2)
+const card = "flex flex-col gap-4 border-t border-rule pt-7";
+const smallField = "field box-border h-12 w-full min-w-0 px-3";
+const largeField = "field box-border h-12 w-full min-w-0 px-3.5";
+const linkButton = "btn-text";
+const pillDark = "btn-primary";
+const pillLight = "btn-secondary";
 
-// Dashed "not in the database yet" panel. With onDone it gets a Done button
+// "Not in the database yet" panel. With onDone it gets a Done button
 // that folds it into a NewSummary line; doneHint explains why Done is disabled.
 function NewPanel({
   badge,
@@ -50,7 +48,7 @@ function NewPanel({
   doneHint?: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[10px] border-[1.5px] border-dashed border-field bg-panel p-4">
+    <div className="flex flex-col gap-3 border-l-[3px] border-rule py-1 pl-4">
       <div className="flex flex-wrap items-center gap-2.5">
         <NewPill>{badge}</NewPill>
         <span className="text-sm text-muted">{note}</span>
@@ -60,7 +58,7 @@ function NewPanel({
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            className={`${pillLight} disabled:cursor-not-allowed disabled:opacity-50`}
+            className={pillLight}
             disabled={!!doneHint}
             onClick={onDone}
           >
@@ -106,7 +104,7 @@ function SmallInput({
   const id = useId();
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-semibold">
+      <label htmlFor={id} className="text-[15px] font-semibold">
         {label} {optional && <span className="font-normal text-muted">(optional)</span>}
       </label>
       <input
@@ -282,9 +280,9 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
 
   if (submitted) {
     return (
-      <div className={`${card} max-w-[640px]`} role="status">
-        <h2 className="eyebrow m-0">Submitted</h2>
-        <p className="m-0 font-serif text-[28px] leading-[1.1]">{title}</p>
+      <div className="callout flex max-w-[640px] flex-col gap-4" role="status">
+        <h2 className="heading">Submitted</h2>
+        <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</p>
         <p className="m-0 text-muted">
           Thanks! A moderator will review your submission. Once it’s approved, the production and everyone in it go
           live, and you earn points.
@@ -310,11 +308,11 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
       <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-5">
         {live && (
           <section
-            className="flex flex-col gap-4 rounded-[14px] border-[1.5px] border-marquee bg-marquee-tint p-5 sm:p-6"
+            className="callout flex flex-col gap-3"
             aria-labelledby="s-live"
           >
-            <h2 id="s-live" className="eyebrow m-0">Adding to a live production</h2>
-            <p className="m-0 font-serif text-[28px] leading-[1.1]">{live.label}</p>
+            <h2 id="s-live" className="heading">Adding to a live production</h2>
+            <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{live.label}</p>
             <p className="m-0 text-[15px] text-muted">
               These are the items a moderator didn’t approve last time. Fix what’s needed and submit them again;
               once approved they’re added to this production.
@@ -325,7 +323,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
         {/* 1 · The show */}
         {!live && (
         <section className={card} aria-labelledby="s-show">
-          <h2 id="s-show" className="eyebrow m-0">1 · The show</h2>
+          <h2 id="s-show" className="heading">1 · The show</h2>
           <div className="flex flex-col gap-1.5">
             <TypeAhead
               kind="shows"
@@ -366,7 +364,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
               >
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
                   <div className="flex min-w-0 flex-col gap-1">
-                    <label htmlFor="f-show-type" className="text-sm font-semibold">Type</label>
+                    <label htmlFor="f-show-type" className="text-[15px] font-semibold">Type</label>
                     <select
                       id="f-show-type"
                       value={state.show.type}
@@ -387,6 +385,13 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                     onChange={(subtitle) => update((s) => ({ ...s, show: { ...s.show, subtitle } }))}
                   />
                 </div>
+                <SmallInput
+                  label="Authors"
+                  optional
+                  placeholder="e.g. Book by Allan Knee · Music by Jason Howland"
+                  value={state.show.authors ?? ""}
+                  onChange={(authors) => update((s) => ({ ...s, show: { ...s.show, authors } }))}
+                />
               </NewPanel>
             )}
           </div>
@@ -396,7 +401,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
         {/* 2 · Company and location */}
         {!live?.hasLocation && (
         <section className={card} aria-labelledby="s-org">
-          <h2 id="s-org" className="eyebrow m-0">{live ? "Location" : "2 · Company and location"}</h2>
+          <h2 id="s-org" className="heading">{live ? "Location" : "2 · Company and location"}</h2>
           {!live && (
           <div className="flex flex-col gap-1.5">
             <TypeAhead
@@ -524,7 +529,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
 
         {/* 3 · When */}
         <section className={card} aria-labelledby="s-when">
-          <h2 id="s-when" className="eyebrow m-0">{live ? "Performances" : "3 · When"}</h2>
+          <h2 id="s-when" className="heading">{live ? "Performances" : "3 · When"}</h2>
           {!live && (
           <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
@@ -579,7 +584,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
             </datalist>
             {state.performances.map((p) =>
               p.editing ? (
-                <div key={p.id} className="flex flex-col gap-2.5 rounded-[10px] border border-rule p-3.5">
+                <div key={p.id} className="flex flex-col gap-2.5 border-b border-rule py-3.5">
                   <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5">
                     <SmallInput label="Date" type="date" value={p.date} onChange={(date) => setPerformance(p.id, { date })} />
                     <SmallInput label="Time" type="time" value={p.time} onChange={(time) => setPerformance(p.id, { time })} />
@@ -608,7 +613,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                   </div>
                 </div>
               ) : (
-                <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-rule py-2 pl-3.5 pr-2">
+                <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-rule py-1">
                   <button
                     type="button"
                     onClick={() => setPerformance(p.id, { editing: true })}
@@ -618,7 +623,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                     {formatPerformance(p)}
                   </button>
                   {p.label && (
-                    <span className="text-xs font-bold uppercase tracking-[0.08em] text-accent">{p.label}</span>
+                    <span className="text-sm font-semibold text-muted">{p.label}</span>
                   )}
                   <button
                     type="button"
@@ -626,7 +631,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                     onClick={() => update((s) => ({ ...s, performances: s.performances.filter((x) => x.id !== p.id) }))}
                     className="flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
                   >
-                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5E574C" strokeWidth="2" strokeLinecap="round">
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5E5E5E" strokeWidth="2" strokeLinecap="round">
                       <path d="M6 6l12 12M18 6L6 18" />
                     </svg>
                   </button>
@@ -647,8 +652,8 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
         {/* 4 · Cast and crew */}
         <section className={card} aria-labelledby="s-credits">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="s-credits" className="eyebrow m-0">{live ? "Cast and crew" : "4 · Cast and crew"}</h2>
-            <div role="tablist" aria-label="Credit type" className="inline-flex rounded-full bg-tabs p-1">
+            <h2 id="s-credits" className="heading">{live ? "Cast and crew" : "4 · Cast and crew"}</h2>
+            <div role="tablist" aria-label="Credit type" className="inline-flex rounded-lg bg-soft p-1">
               {(["cast", "crew"] as const).map((k) => (
                 <button
                   key={k}
@@ -659,7 +664,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                     setTab(k);
                     setPasteOpen(false);
                   }}
-                  className={`h-10 min-w-[88px] cursor-pointer rounded-full border-0 px-[18px] text-sm font-semibold ${
+                  className={`h-10 min-w-[88px] cursor-pointer rounded-md border-0 px-[18px] text-[15px] font-semibold ${
                     tab === k ? "bg-ink text-white" : "bg-transparent text-ink"
                   }`}
                 >
@@ -683,7 +688,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
           ))}
 
           {pasteOpen && (
-            <div className="flex flex-col gap-2.5 rounded-[10px] border-[1.5px] border-dashed border-field bg-panel p-4">
+            <div className="flex flex-col gap-2.5 border-l-[3px] border-rule py-1 pl-4">
               <label htmlFor="f-paste" className="font-semibold">
                 Paste the {tab} list, one per line
               </label>
@@ -695,7 +700,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                 rows={6}
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
-                className="field rounded-lg p-3"
+                className="field p-3"
               />
               <div className="flex flex-wrap gap-2.5">
                 <button type="button" className={pillDark} onClick={addPastedRows}>
@@ -726,10 +731,10 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
       {/* Your submission */}
       <aside
         aria-labelledby="s-summary"
-        className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 rounded-[14px] border border-rule bg-surface p-5 sm:p-6 lg:sticky lg:top-6"
+        className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 border-t-2 border-ink pt-4 lg:sticky lg:top-6"
       >
-        <h2 id="s-summary" className="eyebrow m-0">Your submission</h2>
-        <p className="m-0 font-serif text-[28px] leading-[1.1]">{title}</p>
+        <h2 id="s-summary" className="subheading">Your submission</h2>
+        <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</p>
         <dl className="m-0 flex flex-col">
           <SummaryRow term="Show" value={summary.show} />
           <SummaryRow term="Production" value={summary.production} />
@@ -743,7 +748,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
           A moderator reviews new submissions before they go live. You’ll earn points when it’s approved.
         </p>
         {problems.length > 0 && (
-          <div role="alert" className="flex flex-col gap-1.5 rounded-[10px] border-[1.5px] border-marquee bg-marquee-tint p-3.5 text-sm">
+          <div role="alert" className="callout flex flex-col gap-1.5 text-[15px]">
             <strong>Almost there:</strong>
             <ul className="m-0 flex flex-col gap-1 pl-5">
               {problems.map((p) => (
@@ -761,7 +766,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
           type="button"
           disabled={pending}
           onClick={onSubmit}
-          className="h-[52px] cursor-pointer rounded-full border-0 bg-accent font-semibold text-white disabled:cursor-wait disabled:opacity-70"
+          className="btn-primary w-full"
         >
           {pending ? "Working…" : "Submit for review"}
         </button>
@@ -769,7 +774,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
           type="button"
           disabled={pending}
           onClick={onSaveDraft}
-          className="h-12 cursor-pointer rounded-full border-[1.5px] border-field bg-surface font-semibold text-ink disabled:cursor-wait disabled:opacity-70"
+          className="btn-secondary w-full"
         >
           Save draft
         </button>
@@ -809,21 +814,21 @@ function CreditRowEditor({
   const choice: Choice = row.choice;
 
   return (
-    <div className="relative flex flex-col gap-2.5 rounded-xl border border-rule p-4 sm:pr-12">
+    <div className="relative flex flex-col gap-2.5 border-b border-rule py-4 sm:pr-12">
       {/* On phones the button sits beside the short "Role" label instead of taking a column */}
       <button
         type="button"
         aria-label={`Remove this ${row.kind} row`}
         onClick={onRemove}
-        className="absolute right-0 top-0 flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent sm:right-1 sm:top-1"
+        className="absolute right-0 top-2 flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
       >
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E574C" strokeWidth="2" strokeLinecap="round">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E5E5E" strokeWidth="2" strokeLinecap="round">
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>
       </button>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
         <div className="flex min-w-0 flex-col gap-1">
-          <label htmlFor={roleId} className="text-sm font-semibold">Role</label>
+          <label htmlFor={roleId} className="text-[15px] font-semibold">Role</label>
           <input
             id={roleId}
             type="text"
@@ -860,7 +865,7 @@ function CreditRowEditor({
               type="checkbox"
               checked={row.adultConfirmed}
               onChange={(e) => onChange({ adultConfirmed: e.target.checked })}
-              className="mt-0.5 h-5 w-5 flex-none accent-accent"
+              className="mt-0.5 h-5 w-5 flex-none accent-ink"
             />
             <span>
               I confirm this person is <strong>18 or older</strong>.{" "}
@@ -871,7 +876,7 @@ function CreditRowEditor({
       )}
 
       {choice.kind === "suggest" && (
-        <div className="flex flex-col gap-2.5 rounded-[10px] border-[1.5px] border-marquee bg-marquee-tint p-3.5">
+        <div className="callout flex flex-col gap-2.5">
           <span className="font-semibold">Did you mean {choice.match.label}?</span>
           <span className="text-sm text-muted">
             Already in the database with {choice.match.detail.charAt(0).toLowerCase() + choice.match.detail.slice(1)}.

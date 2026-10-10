@@ -872,6 +872,11 @@ export type Database = {
       productions: {
         Row: {
           closing_date: string | null
+          color_accent: string | null
+          color_ground: string | null
+          color_ground_2: string | null
+          color_ink: string | null
+          color_soft: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -890,6 +895,11 @@ export type Database = {
         }
         Insert: {
           closing_date?: string | null
+          color_accent?: string | null
+          color_ground?: string | null
+          color_ground_2?: string | null
+          color_ink?: string | null
+          color_soft?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -908,6 +918,11 @@ export type Database = {
         }
         Update: {
           closing_date?: string | null
+          color_accent?: string | null
+          color_ground?: string | null
+          color_ground_2?: string | null
+          color_ink?: string | null
+          color_soft?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null

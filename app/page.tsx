@@ -2,38 +2,31 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { PosterTile } from "@/components/PosterTile";
 
 export default function Home() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-10 px-4 py-10 sm:px-8 sm:py-14">
-        <section className="overflow-hidden rounded-[14px] border border-rule bg-surface">
-          <div className="h-2 bg-marquee" />
-          <div className="flex flex-col gap-6 px-6 py-10 sm:px-10">
-            <div className="flex flex-col gap-3">
-              <p className="eyebrow m-0 text-accent">Local Theater Database</p>
-              <h1 className="m-0 font-serif text-4xl font-normal leading-tight sm:text-5xl">
-                Every local stage, every show.
-              </h1>
-            </div>
-            <Suspense fallback={<p className="m-0 text-muted">Checking the database…</p>}>
-              <ShowCount />
-            </Suspense>
-            <div>
-              <Link
-                href="/add"
-                className="inline-flex h-12 items-center rounded-full bg-accent px-6 font-semibold text-white no-underline"
-              >
-                Add a production
-              </Link>
-            </div>
+      <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-12 px-4 pb-16 pt-10 md:px-8 md:pt-16">
+        <section className="flex flex-col gap-5">
+          <h1 className="display max-w-[900px] text-[42px] md:text-[72px]">Every local stage, every show.</h1>
+          <Suspense fallback={<p className="m-0 text-lg text-muted">Counting shows…</p>}>
+            <ShowCount />
+          </Suspense>
+          <div className="flex flex-wrap gap-2.5">
+            <Link href="/add" className="btn-primary">
+              Add a production
+            </Link>
+            <Link href="/shows" className="btn-secondary">
+              Browse shows
+            </Link>
           </div>
         </section>
 
-        <section className="flex flex-col">
-          <h2 className="m-0 border-b-2 border-ink pb-2 font-serif text-[34px] font-normal">Recently added</h2>
-          <Suspense fallback={<p className="text-muted">Loading…</p>}>
+        <section className="flex flex-col gap-4">
+          <h2 className="heading">Recently added</h2>
+          <Suspense fallback={<p className="m-0 text-muted">Loading…</p>}>
             <RecentProductions />
           </Suspense>
         </section>
@@ -48,14 +41,13 @@ async function ShowCount() {
   const { count, error } = await supabase.from("shows").select("*", { count: "exact", head: true });
 
   if (error) {
-    return <p className="m-0 text-accent">Couldn&apos;t reach the database: {error.message}</p>;
+    return <p className="callout m-0">Couldn&apos;t reach the database: {error.message}</p>;
   }
 
   const shows = count ?? 0;
   return (
-    <p className="m-0 text-lg">
-      <span className="font-serif text-5xl text-accent">{shows}</span>{" "}
-      <span className="text-muted">{shows === 1 ? "show" : "shows"} in the database</span>
+    <p className="m-0 text-lg text-muted">
+      <strong className="text-ink">{shows}</strong> {shows === 1 ? "show" : "shows"} in the database so far.
     </p>
   );
 }
@@ -64,24 +56,35 @@ async function RecentProductions() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("productions")
-    .select("slug, year, title_override, show:shows(title, type), organization:organizations(name)")
+    .select("slug, year, title_override, color_ground, show:shows(title), organization:organizations(name)")
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(12);
 
   if (!data?.length) {
-    return <p className="text-muted">Nothing yet. Be the first to add a production.</p>;
+    return <p className="m-0 text-muted">Productions will appear here as members add them. Be the first.</p>;
   }
 
   return (
-    <ul className="m-0 list-none p-0">
-      {data.map((p) => (
-        <li key={p.slug} className="flex flex-col gap-0.5 border-b border-rule py-3.5">
-          <Link href={`/production/${p.slug}`} className="font-serif text-[22px] text-ink no-underline">
-            {p.title_override ?? p.show?.title} ({p.year})
-          </Link>
-          <span className="text-[15px] text-muted">{p.organization?.name}</span>
-        </li>
-      ))}
-    </ul>
+    <div className="grid grid-cols-2 gap-5 sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
+      {data.map((p) => {
+        const title = p.title_override ?? p.show?.title ?? "Untitled";
+        return (
+          <PosterTile
+            key={p.slug}
+            href={`/production/${p.slug}`}
+            title={title}
+            ground={p.color_ground}
+            caption={
+              <>
+                <span className="font-bold">
+                  {title} ({p.year})
+                </span>
+                <span className="text-[13px] text-muted">{p.organization?.name}</span>
+              </>
+            }
+          />
+        );
+      })}
+    </div>
   );
 }

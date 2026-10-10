@@ -240,11 +240,13 @@ export type Database = {
       }
       edit_proposals: {
         Row: {
+          approved_changes: Json | null
           changes: Json
           created_at: string
           entity_id: string | null
           entity_table: string
           id: string
+          left_out: Json | null
           note: string | null
           proposed_by: string
           review_note: string | null
@@ -253,11 +255,13 @@ export type Database = {
           status: Database["public"]["Enums"]["moderation_status"]
         }
         Insert: {
+          approved_changes?: Json | null
           changes: Json
           created_at?: string
           entity_id?: string | null
           entity_table: string
           id?: string
+          left_out?: Json | null
           note?: string | null
           proposed_by: string
           review_note?: string | null
@@ -266,11 +270,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["moderation_status"]
         }
         Update: {
+          approved_changes?: Json | null
           changes?: Json
           created_at?: string
           entity_id?: string | null
           entity_table?: string
           id?: string
+          left_out?: Json | null
           note?: string | null
           proposed_by?: string
           review_note?: string | null
@@ -1208,7 +1214,15 @@ export type Database = {
       }
     }
     Functions: {
-      approve_submission: { Args: { p_proposal_id: string }; Returns: string }
+      approve_submission: {
+        Args: {
+          p_bundle?: Json
+          p_left_out?: Json
+          p_note?: string
+          p_proposal_id: string
+        }
+        Returns: string
+      }
       frequent_collaborators: {
         Args: { max_results?: number; p_person_id: string }
         Returns: {

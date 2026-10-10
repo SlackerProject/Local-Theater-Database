@@ -35,6 +35,9 @@ async function UserNav() {
           <Link href="/add" className="text-ink no-underline">
             Add a production
           </Link>
+          <Link href="/submissions" className="text-ink no-underline">
+            Your submissions
+          </Link>
           {hasRole(user, "moderator") && (
             <Link href="/moderate" className="text-ink no-underline">
               Moderate

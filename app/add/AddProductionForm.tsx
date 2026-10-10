@@ -164,7 +164,11 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
   const [pasteText, setPasteText] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(
-    initial ? "Picked up where you left off from your saved draft." : null,
+    initial?.resubmissionOf
+      ? "Here’s what needs fixing. Make your changes, then submit for review again."
+      : initial
+        ? "Picked up where you left off from your saved draft."
+        : null,
   );
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -298,11 +302,28 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
   }
 
   const visibleCredits = state.credits.filter((c) => c.kind === tab);
+  // Resubmitting left-out items: they join this live production
+  const live = state.existingProduction;
 
   return (
     <div className="flex flex-wrap items-start gap-7">
       <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-5">
+        {live && (
+          <section
+            className="flex flex-col gap-4 rounded-[14px] border-[1.5px] border-marquee bg-marquee-tint p-5 sm:p-6"
+            aria-labelledby="s-live"
+          >
+            <h2 id="s-live" className="eyebrow m-0">Adding to a live production</h2>
+            <p className="m-0 font-serif text-[28px] leading-[1.1]">{live.label}</p>
+            <p className="m-0 text-[15px] text-muted">
+              These are the items a moderator didn’t approve last time. Fix what’s needed and submit them again;
+              once approved they’re added to this production.
+            </p>
+          </section>
+        )}
+
         {/* 1 · The show */}
+        {!live && (
         <section className={card} aria-labelledby="s-show">
           <h2 id="s-show" className="eyebrow m-0">1 · The show</h2>
           <div className="flex flex-col gap-1.5">
@@ -370,10 +391,13 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
             )}
           </div>
         </section>
+        )}
 
         {/* 2 · Company and location */}
+        {!live?.hasLocation && (
         <section className={card} aria-labelledby="s-org">
-          <h2 id="s-org" className="eyebrow m-0">2 · Company and location</h2>
+          <h2 id="s-org" className="eyebrow m-0">{live ? "Location" : "2 · Company and location"}</h2>
+          {!live && (
           <div className="flex flex-col gap-1.5">
             <TypeAhead
               kind="organizations"
@@ -431,6 +455,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
               </NewPanel>
             )}
           </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <TypeAhead
@@ -495,10 +520,13 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
               ))}
           </div>
         </section>
+        )}
 
         {/* 3 · When */}
         <section className={card} aria-labelledby="s-when">
-          <h2 id="s-when" className="eyebrow m-0">3 · When</h2>
+          <h2 id="s-when" className="eyebrow m-0">{live ? "Performances" : "3 · When"}</h2>
+          {!live && (
+          <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
             <div className="flex min-w-0 flex-col gap-1">
               <label htmlFor="f-year" className="font-semibold">Year</label>
@@ -538,9 +566,11 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
           <p className="m-0 text-sm text-muted" aria-live="polite">
             This production will appear as <strong className="text-ink">{title}</strong>.
           </p>
+          </>
+          )}
 
           <div className="flex flex-col gap-2">
-            <span className="font-semibold">Performances</span>
+            {!live && <span className="font-semibold">Performances</span>}
             <datalist id="performance-labels">
               <option value="Opening night" />
               <option value="Matinee" />
@@ -617,7 +647,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
         {/* 4 · Cast and crew */}
         <section className={card} aria-labelledby="s-credits">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="s-credits" className="eyebrow m-0">4 · Cast and crew</h2>
+            <h2 id="s-credits" className="eyebrow m-0">{live ? "Cast and crew" : "4 · Cast and crew"}</h2>
             <div role="tablist" aria-label="Credit type" className="inline-flex rounded-full bg-tabs p-1">
               {(["cast", "crew"] as const).map((k) => (
                 <button
@@ -702,7 +732,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
         <p className="m-0 font-serif text-[28px] leading-[1.1]">{title}</p>
         <dl className="m-0 flex flex-col">
           <SummaryRow term="Show" value={summary.show} />
-          <SummaryRow term="Production" value="New" />
+          <SummaryRow term="Production" value={summary.production} />
           <SummaryRow term="Company" value={summary.company} />
           <SummaryRow term="Location" value={summary.location} />
           <SummaryRow term="People" value={summary.people} />

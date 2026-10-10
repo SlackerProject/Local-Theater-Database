@@ -1,6 +1,7 @@
-// Shared by the "Add a production" form (browser) and its Server Actions.
-// FormState is what the form edits and what "Save draft" stores;
-// buildBundle() turns it into the bundle that approve_submission() reads.
+// Shared by the "Add a production" form (browser), its Server Actions and
+// the moderation queue. FormState is what the form edits and what "Save
+// draft" stores; buildBundle() turns it into the bundle that
+// approve_submission() reads (see migrations 0003 and 0004).
 
 export type ShowType = "musical" | "play" | "opera" | "revue" | "other";
 export const SHOW_TYPES: { value: ShowType; label: string }[] = [
@@ -33,6 +34,11 @@ export type CreditRow = {
 
 export type FormState = {
   version: 1;
+  // Set when resubmitting left-out items: they're added to this live
+  // production, so the show, company and year sections don't apply.
+  existingProduction?: { id: string; label: string; hasLocation: boolean };
+  // The submission this one fixes and resubmits (hides its "Fix and resubmit")
+  resubmissionOf?: string;
   // editing: the "new record" details panel is open (false once Done is pressed).
   // Optional on show and organization because drafts saved before it existed lack it.
   show: { query: string; choice: Choice; type: ShowType | ""; subtitle: string; editing?: boolean };
@@ -71,20 +77,56 @@ export function emptyCredit(kind: "cast" | "crew", id = newId()): CreditRow {
 }
 
 // ---------------------------------------------------------------------
-// Bundle: the shape approve_submission() expects (see migration 0003)
+// Bundles: the shapes approve_submission() expects
 // ---------------------------------------------------------------------
-type Ref<New> = { id: string; label: string } | { new: New };
+export type Ref<New> = { id: string; label: string } | { new: New };
+export type NewShow = { title: string; type: ShowType; subtitle?: string };
+export type NewOrganization = { name: string; town?: string; website_url?: string };
+export type NewLocation = { name: string; street_address?: string; town?: string };
+export type BundlePerformance = { date: string; time: string; label?: string };
+export type BundlePerson =
+  | { key: string; id: string; label: string }
+  | { key: string; new: { display_name: string; adult_confirmed: true } };
+export type BundleCredit = { kind: "cast" | "crew"; role: string; person_key: string };
 
-export type Bundle = {
+type BundleItems = {
   version: 1;
-  show: Ref<{ title: string; type: ShowType; subtitle?: string }>;
-  organization: Ref<{ name: string; town?: string; website_url?: string }>;
-  location: Ref<{ name: string; street_address?: string; town?: string }> | null;
-  production: { year: number; opening_date: string | null; closing_date: string | null; display_title: string };
-  performances: { date: string; time: string; label?: string }[];
-  people: ({ key: string; id: string; label: string } | { key: string; new: { display_name: string; adult_confirmed: true } })[];
-  credits: { kind: "cast" | "crew"; role: string; person_key: string }[];
+  resubmission_of?: string; // ignored by the database; used by "Your submissions"
+  location: Ref<NewLocation> | null;
+  performances: BundlePerformance[];
+  people: BundlePerson[];
+  credits: BundleCredit[];
 };
+
+// A whole new production
+export type NewProductionBundle = BundleItems & {
+  show: Ref<NewShow>;
+  organization: Ref<NewOrganization>;
+  production: { year: number; opening_date: string | null; closing_date: string | null; display_title: string };
+};
+
+// More cast, crew, performances (or its location) for a live production
+export type AddToProductionBundle = BundleItems & {
+  production: { id: string; display_title: string };
+};
+
+export type Bundle = NewProductionBundle | AddToProductionBundle;
+
+// What a moderator leaves out; the contributor can fix and resubmit it
+export type LeftOut = {
+  location: Ref<NewLocation> | null;
+  performances: BundlePerformance[];
+  people: BundlePerson[];
+  credits: BundleCredit[];
+};
+
+export function isAddTo(b: Bundle): b is AddToProductionBundle {
+  return "id" in b.production;
+}
+
+export function isEmptyLeftOut(l: LeftOut | null | undefined) {
+  return !l || (!l.location && !l.performances?.length && !l.credits?.length);
+}
 
 const clean = (s: string) => s.replace(/\s+/g, " ").trim();
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -95,10 +137,12 @@ export function isBlankCredit(c: CreditRow) {
 }
 
 export function showTitle(s: FormState) {
+  if (s.existingProduction) return s.existingProduction.label;
   return s.show.choice.kind === "existing" ? s.show.choice.match.label : clean(s.show.query);
 }
 
 export function displayTitle(s: FormState) {
+  if (s.existingProduction) return s.existingProduction.label;
   const title = showTitle(s) || "Untitled";
   return /^\d{4}$/.test(s.year.trim()) ? `${title} (${s.year.trim()})` : title;
 }
@@ -106,67 +150,74 @@ export function displayTitle(s: FormState) {
 // Returns a list of problems (empty = ready to submit) and the bundle.
 export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle | null } {
   const problems: string[] = [];
+  const existing = s.existingProduction;
 
   // Show
-  let show: Bundle["show"] | null = null;
-  if (s.show.choice.kind === "existing") {
-    show = { id: s.show.choice.match.id, label: s.show.choice.match.label };
-  } else if (s.show.choice.kind === "new" && clean(s.show.query)) {
-    if (!s.show.type) problems.push("Choose what kind of show it is (musical, play…).");
-    else
-      show = {
-        new: { title: clean(s.show.query), type: s.show.type, ...(clean(s.show.subtitle) && { subtitle: clean(s.show.subtitle) }) },
-      };
-  } else {
-    problems.push("Pick the show, or add it as a new one.");
+  let show: Ref<NewShow> | null = null;
+  if (!existing) {
+    if (s.show.choice.kind === "existing") {
+      show = { id: s.show.choice.match.id, label: s.show.choice.match.label };
+    } else if (s.show.choice.kind === "new" && clean(s.show.query)) {
+      if (!s.show.type) problems.push("Choose what kind of show it is (musical, play…).");
+      else
+        show = {
+          new: { title: clean(s.show.query), type: s.show.type, ...(clean(s.show.subtitle) && { subtitle: clean(s.show.subtitle) }) },
+        };
+    } else {
+      problems.push("Pick the show, or add it as a new one.");
+    }
   }
 
   // Company
-  let organization: Bundle["organization"] | null = null;
-  if (s.organization.choice.kind === "existing") {
-    organization = { id: s.organization.choice.match.id, label: s.organization.choice.match.label };
-  } else if (s.organization.choice.kind === "new" && clean(s.organization.query)) {
-    const website = clean(s.organization.website);
-    if (website && !/^https?:\/\/\S+\.\S+/i.test(website)) {
-      problems.push("The company website should start with https://");
+  let organization: Ref<NewOrganization> | null = null;
+  if (!existing) {
+    if (s.organization.choice.kind === "existing") {
+      organization = { id: s.organization.choice.match.id, label: s.organization.choice.match.label };
+    } else if (s.organization.choice.kind === "new" && clean(s.organization.query)) {
+      const website = clean(s.organization.website);
+      if (website && !/^https?:\/\/\S+\.\S+/i.test(website)) {
+        problems.push("The company website should start with https://");
+      }
+      organization = {
+        new: {
+          name: clean(s.organization.query),
+          ...(clean(s.organization.town) && { town: clean(s.organization.town) }),
+          ...(website && { website_url: website }),
+        },
+      };
+    } else {
+      problems.push("Pick the theater company, or add it as a new one.");
     }
-    organization = {
-      new: {
-        name: clean(s.organization.query),
-        ...(clean(s.organization.town) && { town: clean(s.organization.town) }),
-        ...(website && { website_url: website }),
-      },
-    };
-  } else {
-    problems.push("Pick the theater company, or add it as a new one.");
   }
 
-  // Location (optional)
-  let location: Bundle["location"] = null;
-  if (s.location.choice.kind === "existing") {
-    location = { id: s.location.choice.match.id, label: s.location.choice.match.label };
-  } else if (s.location.choice.kind === "new" && clean(s.location.query)) {
-    location = {
-      new: {
-        name: clean(s.location.query),
-        ...(clean(s.location.address) && { street_address: clean(s.location.address) }),
-        ...(clean(s.location.town) && { town: clean(s.location.town) }),
-      },
-    };
-  } else if (clean(s.location.query)) {
-    problems.push("Pick the location, add it as a new one, or clear the field.");
+  // Location (optional; for a live production only if it has none yet)
+  let location: Ref<NewLocation> | null = null;
+  if (!existing?.hasLocation) {
+    if (s.location.choice.kind === "existing") {
+      location = { id: s.location.choice.match.id, label: s.location.choice.match.label };
+    } else if (s.location.choice.kind === "new" && clean(s.location.query)) {
+      location = {
+        new: {
+          name: clean(s.location.query),
+          ...(clean(s.location.address) && { street_address: clean(s.location.address) }),
+          ...(clean(s.location.town) && { town: clean(s.location.town) }),
+        },
+      };
+    } else if (clean(s.location.query)) {
+      problems.push("Pick the location, add it as a new one, or clear the field.");
+    }
   }
 
   // When
   const year = Number(s.year.trim());
-  if (!/^\d{4}$/.test(s.year.trim()) || year < 1800 || year > 2100) {
+  if (!existing && (!/^\d{4}$/.test(s.year.trim()) || year < 1800 || year > 2100)) {
     problems.push("Enter the production’s year, like 2026.");
   }
   const opening = s.openingDate && DATE_RE.test(s.openingDate) ? s.openingDate : null;
   const closing = s.closingDate && DATE_RE.test(s.closingDate) ? s.closingDate : null;
-  if (opening && closing && closing < opening) problems.push("The closing date is before the opening date.");
+  if (!existing && opening && closing && closing < opening) problems.push("The closing date is before the opening date.");
 
-  const performances: Bundle["performances"] = [];
+  const performances: BundlePerformance[] = [];
   for (const p of s.performances) {
     if (!DATE_RE.test(p.date) || !TIME_RE.test(p.time)) {
       problems.push("Every performance needs a date and a time.");
@@ -176,9 +227,9 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   }
 
   // People and credits. The same new name used twice is one new person.
-  const people: Bundle["people"] = [];
+  const people: BundlePerson[] = [];
   const keyFor = new Map<string, string>();
-  const credits: Bundle["credits"] = [];
+  const credits: BundleCredit[] = [];
   let unresolved = 0;
   let unconfirmed = 0;
   let missingRole = 0;
@@ -213,14 +264,35 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   if (unresolved) problems.push(`${unresolved} ${unresolved === 1 ? "person needs" : "people need"} checking: pick an existing person or add them as new.`);
   if (unconfirmed) problems.push(`Confirm that every new person is 18 or older (${unconfirmed} to go).`);
 
-  if (problems.length || !show || !organization) return { problems, bundle: null };
+  if (existing && !location && !performances.length && !credits.length && !problems.length) {
+    problems.push("Add at least one cast or crew member, performance or the location.");
+  }
+
+  if (problems.length) return { problems, bundle: null };
+  const resubmission = s.resubmissionOf ? { resubmission_of: s.resubmissionOf } : {};
+
+  if (existing) {
+    return {
+      problems,
+      bundle: {
+        version: 1,
+        ...resubmission,
+        production: { id: existing.id, display_title: existing.label },
+        location,
+        performances,
+        people,
+        credits,
+      },
+    };
+  }
 
   return {
     problems,
     bundle: {
       version: 1,
-      show,
-      organization,
+      ...resubmission,
+      show: show!,
+      organization: organization!,
       location,
       production: { year, opening_date: opening, closing_date: closing, display_title: displayTitle(s) },
       performances,
@@ -250,10 +322,12 @@ export function summarize(s: FormState) {
     pending && `${pending} pending check`,
   ].filter(Boolean);
 
+  const live = s.existingProduction;
   return {
-    show: status(s.show.choice, !!clean(s.show.query)),
-    company: status(s.organization.choice, !!clean(s.organization.query)),
-    location: status(s.location.choice, !!clean(s.location.query)),
+    show: live ? "Existing" : status(s.show.choice, !!clean(s.show.query)),
+    production: live ? "Existing" : "New",
+    company: live ? "Existing" : status(s.organization.choice, !!clean(s.organization.query)),
+    location: live?.hasLocation ? "Existing" : status(s.location.choice, !!clean(s.location.query)),
     people: peopleParts.length ? peopleParts.join(" · ") : "—",
     credits: rows.length,
     performances: s.performances.length,
@@ -271,4 +345,103 @@ export function looksLikeFormState(value: unknown): value is FormState {
     Array.isArray(v.performances) &&
     Array.isArray(v.credits)
   );
+}
+
+// ---------------------------------------------------------------------
+// Checking a bundle a moderator edited (the database re-checks too)
+// ---------------------------------------------------------------------
+export function checkBundle(b: Bundle): string[] {
+  const problems: string[] = [];
+  const blank = (s: string | undefined) => !s || !clean(s);
+
+  if (!isAddTo(b)) {
+    if ("new" in b.show && blank(b.show.new.title)) problems.push("The show needs a title.");
+    if ("new" in b.organization && blank(b.organization.new.name)) problems.push("The company needs a name.");
+    if (!Number.isInteger(b.production.year) || b.production.year < 1800 || b.production.year > 2100) {
+      problems.push("The year should look like 2026.");
+    }
+    const { opening_date: o, closing_date: c } = b.production;
+    if ((o && !DATE_RE.test(o)) || (c && !DATE_RE.test(c))) problems.push("Opening and closing need full dates.");
+    if (o && c && c < o) problems.push("The closing date is before the opening date.");
+  }
+  if (b.location && "new" in b.location && blank(b.location.new.name)) problems.push("The location needs a name.");
+  if (b.performances.some((p) => !DATE_RE.test(p.date) || !TIME_RE.test(p.time))) {
+    problems.push("Every performance needs a date and a time.");
+  }
+  if (b.credits.some((c) => blank(c.role))) problems.push("Every cast and crew line needs a role.");
+  const keys = new Set(b.people.map((p) => p.key));
+  if (b.credits.some((c) => !keys.has(c.person_key))) problems.push("A cast or crew line is missing its person.");
+  if (b.people.some((p) => "new" in p && blank(p.new.display_name))) problems.push("Every new person needs a name.");
+  return problems;
+}
+
+// ---------------------------------------------------------------------
+// Bundle -> FormState, for "Fix and resubmit"
+// ---------------------------------------------------------------------
+function matchFrom(ref: { id: string; label: string }): Match {
+  return { id: ref.id, slug: "", label: ref.label, detail: "" };
+}
+
+function itemsToForm(
+  form: FormState,
+  items: { location: Ref<NewLocation> | null; performances: BundlePerformance[]; people: BundlePerson[]; credits: BundleCredit[] },
+): FormState {
+  const loc = items.location;
+  if (loc) {
+    form.location =
+      "new" in loc
+        ? {
+            query: loc.new.name,
+            choice: { kind: "new" },
+            address: loc.new.street_address ?? "",
+            town: loc.new.town ?? "",
+            editing: true,
+          }
+        : { query: loc.label, choice: { kind: "existing", match: matchFrom(loc) }, address: "", town: "", editing: false };
+  }
+  form.performances = items.performances.map((p) => ({ id: newId(), date: p.date, time: p.time, label: p.label ?? "" }));
+  const byKey = new Map(items.people.map((p) => [p.key, p]));
+  form.credits = items.credits.map((c) => {
+    const person = byKey.get(c.person_key);
+    const row = { ...emptyCredit(c.kind), role: c.role };
+    if (!person) return row;
+    return "new" in person
+      ? { ...row, person: person.new.display_name, choice: { kind: "new" as const }, adultConfirmed: true }
+      : { ...row, person: person.label, choice: { kind: "existing" as const, match: matchFrom(person) } };
+  });
+  if (!form.credits.length) form.credits = [emptyCredit("cast")];
+  return form;
+}
+
+// A rejected submission, reopened as it was submitted
+export function bundleToFormState(b: Bundle, defaultYear: string, liveHasLocation = false): FormState {
+  const form = emptyFormState(defaultYear);
+  if (isAddTo(b)) {
+    form.existingProduction = { id: b.production.id, label: b.production.display_title, hasLocation: liveHasLocation };
+  } else {
+    const { show, organization: org, production } = b;
+    form.show =
+      "new" in show
+        ? { query: show.new.title, choice: { kind: "new" }, type: show.new.type, subtitle: show.new.subtitle ?? "", editing: true }
+        : { query: show.label, choice: { kind: "existing", match: matchFrom(show) }, type: "", subtitle: "" };
+    form.organization =
+      "new" in org
+        ? { query: org.new.name, choice: { kind: "new" }, town: org.new.town ?? "", website: org.new.website_url ?? "", editing: true }
+        : { query: org.label, choice: { kind: "existing", match: matchFrom(org) }, town: "", website: "" };
+    form.year = String(production.year);
+    form.openingDate = production.opening_date ?? "";
+    form.closingDate = production.closing_date ?? "";
+  }
+  return itemsToForm(form, b);
+}
+
+// Items a moderator left out, reopened as additions to the live production
+export function leftOutToFormState(
+  leftOut: LeftOut,
+  production: { id: string; label: string; hasLocation: boolean },
+  defaultYear: string,
+): FormState {
+  const form = emptyFormState(defaultYear);
+  form.existingProduction = production;
+  return itemsToForm(form, leftOut);
 }

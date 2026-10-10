@@ -9,6 +9,12 @@
   --color-rule: #e3ded3;
   --color-accent: #8e1b2c;
   --color-marquee: #f2c230;
+  /* Supporting shades from the design reference */
+  --color-field: #cfc8ba;        /* input and secondary button borders */
+  --color-chip: #ede7da;         /* "In database" pill, empty headshot */
+  --color-panel: #fcfbf8;        /* dashed "new record" panels */
+  --color-tabs: #f0ece3;         /* Cast / Crew switch */
+  --color-marquee-tint: #fef8e6; /* "Did you mean…?" panel */
   --font-sans: var(--font-instrument-sans);
   --font-serif: var(--font-dm-serif-display);
 }
@@ -16,5 +22,26 @@
 body {
   background: var(--color-background);
   color: var(--color-ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans), "Helvetica Neue", system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+/* Section labels: "1 · THE SHOW" */
+@utility eyebrow {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Text inputs: 1.5px warm border, ink border while focused */
+@utility field {
+  border: 1.5px solid var(--color-field);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  &:focus {
+    outline: none;
+    border: 2px solid var(--color-ink);
+  }
 }

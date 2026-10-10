@@ -1,0 +1,1442 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.18"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  public: {
+    Tables: {
+      award_bodies: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          website_url: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          website_url?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      award_categories: {
+        Row: {
+          award_body_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          award_body_id: string
+          id?: string
+          name: string
+        }
+        Update: {
+          award_body_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "award_categories_award_body_id_fkey"
+            columns: ["award_body_id"]
+            isOneToOne: false
+            referencedRelation: "award_bodies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      award_entries: {
+        Row: {
+          award_year: number
+          category_id: string
+          created_at: string
+          created_by: string | null
+          credit_id: string | null
+          id: string
+          person_id: string | null
+          production_id: string
+          result: Database["public"]["Enums"]["award_result"]
+          updated_at: string
+        }
+        Insert: {
+          award_year: number
+          category_id: string
+          created_at?: string
+          created_by?: string | null
+          credit_id?: string | null
+          id?: string
+          person_id?: string | null
+          production_id: string
+          result: Database["public"]["Enums"]["award_result"]
+          updated_at?: string
+        }
+        Update: {
+          award_year?: number
+          category_id?: string
+          created_at?: string
+          created_by?: string | null
+          credit_id?: string | null
+          id?: string
+          person_id?: string | null
+          production_id?: string
+          result?: Database["public"]["Enums"]["award_result"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "award_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "award_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_entries_credit_id_fkey"
+            columns: ["credit_id"]
+            isOneToOne: false
+            referencedRelation: "credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_entries_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_entries_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credits: {
+        Row: {
+          added_by_owner: boolean
+          billing_order: number
+          character_id: string | null
+          created_at: string
+          created_by: string | null
+          hidden_on_person_page: boolean
+          id: string
+          is_understudy: boolean
+          kind: Database["public"]["Enums"]["credit_kind"]
+          person_id: string
+          production_id: string
+          role_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          added_by_owner?: boolean
+          billing_order?: number
+          character_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          hidden_on_person_page?: boolean
+          id?: string
+          is_understudy?: boolean
+          kind: Database["public"]["Enums"]["credit_kind"]
+          person_id: string
+          production_id: string
+          role_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          added_by_owner?: boolean
+          billing_order?: number
+          character_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          hidden_on_person_page?: boolean
+          id?: string
+          is_understudy?: boolean
+          kind?: Database["public"]["Enums"]["credit_kind"]
+          person_id?: string
+          production_id?: string
+          role_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credits_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "show_characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credits_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credits_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credits_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_proposals: {
+        Row: {
+          changes: Json
+          created_at: string
+          entity_id: string | null
+          entity_table: string
+          id: string
+          note: string | null
+          proposed_by: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["moderation_status"]
+        }
+        Insert: {
+          changes: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_table: string
+          id?: string
+          note?: string | null
+          proposed_by: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["moderation_status"]
+        }
+        Update: {
+          changes?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_table?: string
+          id?: string
+          note?: string | null
+          proposed_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["moderation_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_proposals_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_proposals_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string | null
+          person_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id?: string | null
+          person_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string | null
+          person_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          postal_code: string | null
+          seating_capacity: number | null
+          slug: string
+          state: string
+          street_address: string | null
+          town: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          postal_code?: string | null
+          seating_capacity?: number | null
+          slug: string
+          state?: string
+          street_address?: string | null
+          town?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          postal_code?: string | null
+          seating_capacity?: number | null
+          slug?: string
+          state?: string
+          street_address?: string | null
+          town?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media: {
+        Row: {
+          bytes: number | null
+          caption: string | null
+          created_at: string
+          height: number | null
+          id: string
+          kind: Database["public"]["Enums"]["media_kind"]
+          person_id: string | null
+          photographer_credit: string | null
+          production_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rights_confirmed_at: string
+          status: Database["public"]["Enums"]["moderation_status"]
+          storage_key: string
+          uploaded_by: string
+          width: number | null
+        }
+        Insert: {
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          kind: Database["public"]["Enums"]["media_kind"]
+          person_id?: string | null
+          photographer_credit?: string | null
+          production_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rights_confirmed_at: string
+          status?: Database["public"]["Enums"]["moderation_status"]
+          storage_key: string
+          uploaded_by: string
+          width?: number | null
+        }
+        Update: {
+          bytes?: number | null
+          caption?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["media_kind"]
+          person_id?: string | null
+          photographer_credit?: string | null
+          production_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rights_confirmed_at?: string
+          status?: Database["public"]["Enums"]["moderation_status"]
+          storage_key?: string
+          uploaded_by?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          revision_id: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          revision_id?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          revision_id?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_locations: {
+        Row: {
+          is_home_venue: boolean
+          location_id: string
+          organization_id: string
+        }
+        Insert: {
+          is_home_venue?: boolean
+          location_id: string
+          organization_id: string
+        }
+        Update: {
+          is_home_venue?: boolean
+          location_id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_locations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          founded_year: number | null
+          id: string
+          is_active: boolean
+          name: string
+          short_name: string | null
+          slug: string
+          state: string
+          town: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          founded_year?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          short_name?: string | null
+          slug: string
+          state?: string
+          town?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          founded_year?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          short_name?: string | null
+          slug?: string
+          state?: string
+          town?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      page_views: {
+        Row: {
+          day: string
+          entity_id: string
+          entity_table: string
+          visitor_hash: string
+        }
+        Insert: {
+          day?: string
+          entity_id: string
+          entity_table: string
+          visitor_hash: string
+        }
+        Update: {
+          day?: string
+          entity_id?: string
+          entity_table?: string
+          visitor_hash?: string
+        }
+        Relationships: []
+      }
+      people: {
+        Row: {
+          adult_attested_at: string
+          adult_attested_by: string | null
+          bio: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string
+          headshot_media_id: string | null
+          id: string
+          is_hidden: boolean
+          links: Json
+          slug: string
+          sort_name: string
+          updated_at: string
+          verified_owner_id: string | null
+        }
+        Insert: {
+          adult_attested_at: string
+          adult_attested_by?: string | null
+          bio?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          headshot_media_id?: string | null
+          id?: string
+          is_hidden?: boolean
+          links?: Json
+          slug: string
+          sort_name: string
+          updated_at?: string
+          verified_owner_id?: string | null
+        }
+        Update: {
+          adult_attested_at?: string
+          adult_attested_by?: string | null
+          bio?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          headshot_media_id?: string | null
+          id?: string
+          is_hidden?: boolean
+          links?: Json
+          slug?: string
+          sort_name?: string
+          updated_at?: string
+          verified_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_adult_attested_by_fkey"
+            columns: ["adult_attested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_headshot_fk"
+            columns: ["headshot_media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_verified_owner_id_fkey"
+            columns: ["verified_owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performances: {
+        Row: {
+          id: string
+          is_cancelled: boolean
+          label: string | null
+          location_id: string | null
+          production_id: string
+          starts_at: string
+        }
+        Insert: {
+          id?: string
+          is_cancelled?: boolean
+          label?: string | null
+          location_id?: string | null
+          production_id: string
+          starts_at: string
+        }
+        Update: {
+          id?: string
+          is_cancelled?: boolean
+          label?: string | null
+          location_id?: string | null
+          production_id?: string
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performances_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performances_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_claims: {
+        Row: {
+          created_at: string
+          evidence_note: string | null
+          evidence_url: string | null
+          id: string
+          person_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["claim_status"]
+          user_id: string
+          vouched_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          evidence_note?: string | null
+          evidence_url?: string | null
+          id?: string
+          person_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          user_id: string
+          vouched_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          evidence_note?: string | null
+          evidence_url?: string | null
+          id?: string
+          person_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          user_id?: string
+          vouched_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_claims_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_claims_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_claims_vouched_by_fkey"
+            columns: ["vouched_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      point_events: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          reason: string
+          ref_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: never
+          reason: string
+          ref_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: never
+          reason?: string
+          ref_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "point_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      productions: {
+        Row: {
+          closing_date: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_hidden: boolean
+          location_id: string | null
+          opening_date: string | null
+          organization_id: string
+          poster_media_id: string | null
+          show_id: string
+          slug: string
+          ticket_url: string | null
+          title_override: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          closing_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_hidden?: boolean
+          location_id?: string | null
+          opening_date?: string | null
+          organization_id: string
+          poster_media_id?: string | null
+          show_id: string
+          slug: string
+          ticket_url?: string | null
+          title_override?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          closing_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_hidden?: boolean
+          location_id?: string | null
+          opening_date?: string | null
+          organization_id?: string
+          poster_media_id?: string | null
+          show_id?: string
+          slug?: string
+          ticket_url?: string | null
+          title_override?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "productions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_poster_fk"
+            columns: ["poster_media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          age_confirmed_at: string
+          created_at: string
+          display_name: string
+          id: string
+          person_id: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          age_confirmed_at: string
+          created_at?: string
+          display_name: string
+          id: string
+          person_id?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          age_confirmed_at?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          person_id?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revisions: {
+        Row: {
+          action: string
+          after: Json | null
+          before: Json | null
+          changed_at: string
+          changed_by: string | null
+          entity_id: string
+          entity_table: string
+          id: number
+        }
+        Insert: {
+          action: string
+          after?: Json | null
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          entity_id: string
+          entity_table: string
+          id?: never
+        }
+        Update: {
+          action?: string
+          after?: Json | null
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          entity_id?: string
+          entity_table?: string
+          id?: never
+        }
+        Relationships: []
+      }
+      show_characters: {
+        Row: {
+          id: string
+          name: string
+          show_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          show_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          show_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_characters_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shows: {
+        Row: {
+          authors: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          premiere_year: number | null
+          slug: string
+          subtitle: string | null
+          synopsis: string | null
+          title: string
+          type: Database["public"]["Enums"]["show_type"]
+          updated_at: string
+        }
+        Insert: {
+          authors?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          premiere_year?: number | null
+          slug: string
+          subtitle?: string | null
+          synopsis?: string | null
+          title: string
+          type: Database["public"]["Enums"]["show_type"]
+          updated_at?: string
+        }
+        Update: {
+          authors?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          premiere_year?: number | null
+          slug?: string
+          subtitle?: string | null
+          synopsis?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["show_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shows_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submission_drafts: {
+        Row: {
+          data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          data: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_drafts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watch_list: {
+        Row: {
+          performance_id: string | null
+          production_id: string
+          status: Database["public"]["Enums"]["watch_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          performance_id?: string | null
+          production_id: string
+          status: Database["public"]["Enums"]["watch_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          performance_id?: string | null
+          production_id?: string
+          status?: Database["public"]["Enums"]["watch_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_list_performance_id_fkey"
+            columns: ["performance_id"]
+            isOneToOne: false
+            referencedRelation: "performances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watch_list_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watch_list_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      hotlist_7d: {
+        Row: {
+          entity_id: string | null
+          entity_table: string | null
+          unique_visitors: number | null
+        }
+        Relationships: []
+      }
+      user_points: {
+        Row: {
+          points: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "point_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Functions: {
+      approve_submission: { Args: { p_proposal_id: string }; Returns: string }
+      frequent_collaborators: {
+        Args: { max_results?: number; p_person_id: string }
+        Returns: {
+          display_name: string
+          person_id: string
+          shows_together: number
+          slug: string
+        }[]
+      }
+      has_role: {
+        Args: { min_role: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
+      lookup: {
+        Args: { max_results?: number; p_kind: string; p_query: string }
+        Returns: {
+          detail: string
+          id: string
+          label: string
+          slug: string
+        }[]
+      }
+      my_person_id: { Args: never; Returns: string }
+      owner_add_credit: {
+        Args: {
+          p_character_id: string
+          p_kind: Database["public"]["Enums"]["credit_kind"]
+          p_production_id: string
+          p_role_name: string
+        }
+        Returns: string
+      }
+      owner_set_credit_hidden: {
+        Args: { p_credit_id: string; p_hidden: boolean }
+        Returns: undefined
+      }
+      owner_set_page_hidden: { Args: { p_hidden: boolean }; Returns: undefined }
+      owner_update_credit: {
+        Args: {
+          p_character_id: string
+          p_credit_id: string
+          p_role_name: string
+        }
+        Returns: undefined
+      }
+      owner_update_person: {
+        Args: { p_bio: string; p_headshot_media_id: string; p_links: Json }
+        Returns: undefined
+      }
+      production_display_title: {
+        Args: { p: Database["public"]["Tables"]["productions"]["Row"] }
+        Returns: string
+      }
+      record_view: {
+        Args: { p_id: string; p_table: string; p_visitor_hash: string }
+        Returns: undefined
+      }
+      reject_submission: {
+        Args: { p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
+      search_all: {
+        Args: { max_results?: number; q: string }
+        Returns: {
+          entity_table: string
+          id: string
+          label: string
+          score: number
+          slug: string
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      slugify: { Args: { p_text: string }; Returns: string }
+      sort_name_for: { Args: { p_name: string }; Returns: string }
+      unaccent: { Args: { "": string }; Returns: string }
+      unique_slug: {
+        Args: { p_table: string; p_text: string }
+        Returns: string
+      }
+    }
+    Enums: {
+      award_result: "nominated" | "won"
+      claim_status: "pending" | "verified" | "rejected"
+      credit_kind: "cast" | "crew"
+      media_kind: "production_photo" | "poster" | "headshot"
+      moderation_status: "pending" | "approved" | "rejected"
+      show_type: "musical" | "play" | "opera" | "revue" | "other"
+      user_role: "member" | "trusted" | "moderator" | "admin"
+      watch_status: "want_to_see" | "going" | "seen"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      award_result: ["nominated", "won"],
+      claim_status: ["pending", "verified", "rejected"],
+      credit_kind: ["cast", "crew"],
+      media_kind: ["production_photo", "poster", "headshot"],
+      moderation_status: ["pending", "approved", "rejected"],
+      show_type: ["musical", "play", "opera", "revue", "other"],
+      user_role: ["member", "trusted", "moderator", "admin"],
+      watch_status: ["want_to_see", "going", "seen"],
+    },
+  },
+} as const

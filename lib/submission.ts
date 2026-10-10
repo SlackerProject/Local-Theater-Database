@@ -33,8 +33,10 @@ export type CreditRow = {
 
 export type FormState = {
   version: 1;
-  show: { query: string; choice: Choice; type: ShowType | ""; subtitle: string };
-  organization: { query: string; choice: Choice; town: string; website: string };
+  // editing: the "new record" details panel is open (false once Done is pressed).
+  // Optional on show and organization because drafts saved before it existed lack it.
+  show: { query: string; choice: Choice; type: ShowType | ""; subtitle: string; editing?: boolean };
+  organization: { query: string; choice: Choice; town: string; website: string; editing?: boolean };
   location: { query: string; choice: Choice; address: string; town: string; editing: boolean };
   year: string;
   openingDate: string;
@@ -48,8 +50,8 @@ export type FormState = {
 export function emptyFormState(defaultYear: string): FormState {
   return {
     version: 1,
-    show: { query: "", choice: { kind: "none" }, type: "", subtitle: "" },
-    organization: { query: "", choice: { kind: "none" }, town: "", website: "" },
+    show: { query: "", choice: { kind: "none" }, type: "", subtitle: "", editing: true },
+    organization: { query: "", choice: { kind: "none" }, town: "", website: "", editing: true },
     location: { query: "", choice: { kind: "none" }, address: "", town: "", editing: true },
     year: defaultYear,
     openingDate: "",

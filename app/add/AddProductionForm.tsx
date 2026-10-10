@@ -34,7 +34,21 @@ const pillDark =
 const pillLight =
   "inline-flex h-11 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-field bg-surface px-[18px] text-sm font-semibold text-ink";
 
-function NewPanel({ badge, note, children }: { badge: string; note: string; children?: React.ReactNode }) {
+// Dashed "not in the database yet" panel. With onDone it gets a Done button
+// that folds it into a NewSummary line; doneHint explains why Done is disabled.
+function NewPanel({
+  badge,
+  note,
+  children,
+  onDone,
+  doneHint,
+}: {
+  badge: string;
+  note: string;
+  children?: React.ReactNode;
+  onDone?: () => void;
+  doneHint?: string;
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-[10px] border-[1.5px] border-dashed border-field bg-panel p-4">
       <div className="flex flex-wrap items-center gap-2.5">
@@ -42,6 +56,32 @@ function NewPanel({ badge, note, children }: { badge: string; note: string; chil
         <span className="text-sm text-muted">{note}</span>
       </div>
       {children}
+      {onDone && (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className={`${pillLight} disabled:cursor-not-allowed disabled:opacity-50`}
+            disabled={!!doneHint}
+            onClick={onDone}
+          >
+            Done
+          </button>
+          {doneHint && <span className="text-sm text-muted">{doneHint}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// A folded NewPanel: "NEW SHOW  Play · The Broadway Musical  Edit details"
+function NewSummary({ badge, details, onEdit }: { badge: string; details: string; onEdit: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2.5 text-sm text-muted">
+      <NewPill>{badge}</NewPill>
+      {details}
+      <button type="button" className={linkButton} onClick={onEdit}>
+        Edit details
+      </button>
     </div>
   );
 }
@@ -272,7 +312,9 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
               label="Show title"
               query={state.show.query}
               choice={state.show.choice}
-              onQueryChange={(query) => update((s) => ({ ...s, show: { ...s.show, query, choice: { kind: "none" } } }))}
+              onQueryChange={(query) =>
+                update((s) => ({ ...s, show: { ...s.show, query, choice: { kind: "none" }, editing: true } }))
+              }
               onPick={(match) => update((s) => ({ ...s, show: { ...s.show, query: match.label, choice: { kind: "existing", match } } }))}
               onAddNew={() => update((s) => ({ ...s, show: { ...s.show, choice: { kind: "new" } } }))}
               onLeaveUnresolved={(matches) => {
@@ -285,8 +327,22 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                 onChange={() => update((s) => ({ ...s, show: { ...s.show, choice: { kind: "none" } } }))}
               />
             )}
-            {state.show.choice.kind === "new" && (
-              <NewPanel badge="New show" note="Not in the database yet. A few details:">
+            {state.show.choice.kind === "new" && state.show.editing === false && (
+              <NewSummary
+                badge="New show"
+                details={[SHOW_TYPES.find((t) => t.value === state.show.type)?.label ?? "", state.show.subtitle]
+                  .filter((x) => x.trim())
+                  .join(" · ")}
+                onEdit={() => update((s) => ({ ...s, show: { ...s.show, editing: true } }))}
+              />
+            )}
+            {state.show.choice.kind === "new" && state.show.editing !== false && (
+              <NewPanel
+                badge="New show"
+                note="Not in the database yet. A few details:"
+                onDone={() => update((s) => ({ ...s, show: { ...s.show, editing: false } }))}
+                doneHint={state.show.type ? undefined : "Choose a type first."}
+              >
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
                   <div className="flex min-w-0 flex-col gap-1">
                     <label htmlFor="f-show-type" className="text-sm font-semibold">Type</label>
@@ -305,7 +361,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                   <SmallInput
                     label="Subtitle"
                     optional
-                    placeholder="The Broadway Musical"
+                    placeholder="e.g. The Broadway Musical"
                     value={state.show.subtitle}
                     onChange={(subtitle) => update((s) => ({ ...s, show: { ...s.show, subtitle } }))}
                   />
@@ -326,7 +382,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
               query={state.organization.query}
               choice={state.organization.choice}
               onQueryChange={(query) =>
-                update((s) => ({ ...s, organization: { ...s.organization, query, choice: { kind: "none" } } }))
+                update((s) => ({ ...s, organization: { ...s.organization, query, choice: { kind: "none" }, editing: true } }))
               }
               onPick={(match) =>
                 update((s) => ({ ...s, organization: { ...s.organization, query: match.label, choice: { kind: "existing", match } } }))
@@ -342,8 +398,21 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                 onChange={() => update((s) => ({ ...s, organization: { ...s.organization, choice: { kind: "none" } } }))}
               />
             )}
-            {state.organization.choice.kind === "new" && (
-              <NewPanel badge="New company" note="Not in the database yet. A few details:">
+            {state.organization.choice.kind === "new" && state.organization.editing === false && (
+              <NewSummary
+                badge="New company"
+                details={[state.organization.town, state.organization.website.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "")]
+                  .filter((x) => x.trim())
+                  .join(" · ")}
+                onEdit={() => update((s) => ({ ...s, organization: { ...s.organization, editing: true } }))}
+              />
+            )}
+            {state.organization.choice.kind === "new" && state.organization.editing !== false && (
+              <NewPanel
+                badge="New company"
+                note="Not in the database yet. A few details:"
+                onDone={() => update((s) => ({ ...s, organization: { ...s.organization, editing: false } }))}
+              >
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
                   <SmallInput
                     label="Town"
@@ -398,7 +467,11 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
             )}
             {state.location.choice.kind === "new" &&
               (state.location.editing ? (
-                <NewPanel badge="New location" note="Not in the database yet. Where is it?">
+                <NewPanel
+                  badge="New location"
+                  note="Not in the database yet. Where is it?"
+                  onDone={() => update((s) => ({ ...s, location: { ...s.location, editing: false } }))}
+                >
                   <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
                     <SmallInput
                       label="Street address"
@@ -412,28 +485,13 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
                       onChange={(town) => update((s) => ({ ...s, location: { ...s.location, town } }))}
                     />
                   </div>
-                  <div>
-                    <button
-                      type="button"
-                      className={pillLight}
-                      onClick={() => update((s) => ({ ...s, location: { ...s.location, editing: false } }))}
-                    >
-                      Done
-                    </button>
-                  </div>
                 </NewPanel>
               ) : (
-                <div className="flex flex-wrap items-center gap-2.5 text-sm text-muted">
-                  <NewPill>New location</NewPill>
-                  {[state.location.address, state.location.town, "MA"].filter((x) => x.trim()).join(", ")}
-                  <button
-                    type="button"
-                    className={linkButton}
-                    onClick={() => update((s) => ({ ...s, location: { ...s.location, editing: true } }))}
-                  >
-                    Edit details
-                  </button>
-                </div>
+                <NewSummary
+                  badge="New location"
+                  details={[state.location.address, state.location.town, "MA"].filter((x) => x.trim()).join(", ")}
+                  onEdit={() => update((s) => ({ ...s, location: { ...s.location, editing: true } }))}
+                />
               ))}
           </div>
         </section>

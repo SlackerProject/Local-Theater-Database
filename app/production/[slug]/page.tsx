@@ -55,12 +55,12 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
     .from("productions")
     .select(
       `id, slug, year, title_override, opening_date, closing_date, description, audition_note, audition_url,
-       auditions(id, starts_at, ends_at, place),
+       auditions(id, starts_at, ends_at, label, place, location_id, venue:locations(slug, name)),
        color_ground, color_ground_2, color_ink, color_soft, color_accent,
        poster:media!productions_poster_fk(thumb_key, storage_key, width, height),
        show:shows(id, slug, title, subtitle, type, authors),
        organization:organizations(slug, name),
-       location:locations(slug, name, street_address, town, state),
+       location:locations(id, slug, name, street_address, town, state),
        performances(id, starts_at, label, is_cancelled),
        credits(id, kind, role_name, billing_order, is_understudy,
                person:people(slug, display_name, headshot:media!people_headshot_fk(thumb_key)),
@@ -173,11 +173,17 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const auditionSessions = [...(p.auditions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const auditionRows: AuditionRow[] = auditionSessions.map((a) => ({
     id: a.id,
+    label: a.label,
     when: `${localDay(a.starts_at)} · ${localTime(a.starts_at)}${a.ends_at ? ` – ${localTime(a.ends_at)}` : ""}`,
+    venue: a.venue,
     place: a.place,
     past: new Date(a.starts_at).getTime() < now,
   }));
   const showAuditions = precast || auditionRows.some((a) => !a.past);
+  // The "Where" choices in the audition form (members only)
+  const { data: locationRows } =
+    showAuditions && user ? await supabase.from("locations").select("id, name, town").order("name") : { data: [] };
+  const auditionLocations = locationRows ?? [];
 
   // Section heading rule takes the show's accent (ink when there's no poster)
   const sectionRule = { borderBottom: `2px solid ${c.accent}` };
@@ -271,8 +277,11 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
                 date: localDate(a.starts_at),
                 start: localHHMM(a.starts_at),
                 end: a.ends_at ? localHHMM(a.ends_at) : "",
-                place: a.place ?? "",
+                label: a.label ?? "",
+                locationId: a.location_id ?? "",
               }))}
+              locations={auditionLocations}
+              defaultLocationId={p.location?.id ?? ""}
               note={p.audition_note}
               url={p.audition_url}
               following={!!auditionFollow}

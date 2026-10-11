@@ -134,7 +134,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
       .limit(3),
     supabase
       .from("audition_follows")
-      .select("production:productions(slug, year, title_override, is_hidden, show:shows(title), auditions(id, starts_at, place))")
+      .select("production:productions(slug, year, title_override, is_hidden, show:shows(title), auditions(id, starts_at, label, place, venue:locations(name)))")
       .eq("user_id", user.id),
   ]);
 
@@ -150,7 +150,8 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
       showTitle,
       date: localDate(a.starts_at),
       startsAt: a.starts_at,
-      place: a.place,
+      label: a.label ?? "Auditions",
+      place: a.venue?.name ?? a.place,
     }));
   });
   const auditionsInGrid = auditionEvents.filter((a) => a.date >= gridStart && a.date <= gridEnd);

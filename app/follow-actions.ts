@@ -105,7 +105,9 @@ export async function setAuditionFollow(productionId: string, follow: boolean, p
 // Audition dates: trusted editors and moderators publish right away;
 // everyone else's go to the moderation queue (submit_auditions())
 // ---------------------------------------------------------------------
-export type AuditionSession = { date: string; start: string; end: string; place: string };
+// label: "Dance audition", "Callbacks" (blank reads as "Auditions");
+// locationId: one of the site's locations, or "" when not given
+export type AuditionSession = { date: string; start: string; end: string; label: string; locationId: string };
 
 export async function submitAuditions(
   productionId: string,
@@ -116,13 +118,14 @@ export async function submitAuditions(
 ): Promise<{ ok: true; published: boolean } | { ok: false; error: string }> {
   const { supabase, userId } = await signedIn();
   if (!userId) return { ok: false, error: "Sign in first." };
-  const cleaned = sessions.filter((s) => s.date || s.start || s.end || s.place.trim());
+  const cleaned = sessions.filter((s) => s.date || s.start || s.end || s.label.trim() || s.locationId);
   if (cleaned.some((s) => !s.date)) return { ok: false, error: "Each audition session needs a date." };
+  if (cleaned.some((s) => s.label.trim().length > 60)) return { ok: false, error: "Keep each session label under 60 characters." };
   const link = url.trim();
   if (link && !/^https?:\/\/\S+\.\S+/i.test(link)) return { ok: false, error: "The sign-up link should start with https://" };
   const { data, error } = await supabase.rpc("submit_auditions", {
     p_production_id: productionId,
-    p_sessions: cleaned,
+    p_sessions: cleaned.map((s) => ({ date: s.date, start: s.start, end: s.end, label: s.label.trim(), location_id: s.locationId })),
     p_note: note,
     p_url: link,
   });

@@ -54,6 +54,7 @@ export type AuditionEvent = {
   showTitle: string;
   date: string;
   startsAt: string;
+  label: string; // "Auditions", "Callbacks"
   place: string | null;
 };
 
@@ -134,12 +135,14 @@ export function Week({
               <Link
                 key={a.id}
                 href={`/production/${a.slug}`}
-                title={`Auditions: ${a.title} · ${localTime(a.startsAt)}${a.place ? ` · ${a.place}` : ""}`}
+                title={`${a.label}: ${a.title} · ${localTime(a.startsAt)}${a.place ? ` · ${a.place}` : ""}`}
                 className={`${chipBase} border border-dotted border-ink bg-soft`}
               >
                 <span className="flex min-w-0 flex-col py-0.5 leading-tight">
                   <span className="overflow-hidden text-ellipsis">{a.showTitle}</span>
-                  <span className="text-[11.5px] font-semibold">Auditions · {localTime(a.startsAt)}</span>
+                  <span className="overflow-hidden text-ellipsis text-[11.5px] font-semibold">
+                    {a.label} · {localTime(a.startsAt)}
+                  </span>
                 </span>
               </Link>
             ))}
@@ -156,7 +159,9 @@ export function AuditionRowItem({ a }: { a: AuditionEvent }) {
     <Link href={`/production/${a.slug}`} className="link-quiet flex items-stretch gap-3 border-b border-rule py-3">
       <span aria-hidden="true" className="w-2 flex-none rounded-[3px] border border-dotted border-ink bg-soft" />
       <span className="flex min-w-0 flex-col">
-        <span className="font-bold">Auditions: {a.title}</span>
+        <span className="font-bold">
+          {a.label}: {a.title}
+        </span>
         <span className="text-sm text-muted">
           {localDay(a.startsAt)} · {localTime(a.startsAt)}
           {a.place && ` · ${a.place}`}

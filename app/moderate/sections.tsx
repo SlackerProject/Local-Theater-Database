@@ -138,7 +138,7 @@ export async function DisputesSection() {
 // Audition dates sent in by members (trusted editors publish directly)
 // ---------------------------------------------------------------------
 type AuditionChanges = {
-  sessions?: { date: string; start: string; end: string; place: string }[];
+  sessions?: { date: string; start: string; end: string; label?: string; location_id?: string; place?: string }[];
   note?: string;
   url?: string;
 };
@@ -164,6 +164,13 @@ export async function AuditionsSection() {
     : { data: [] };
   const prodFor = new Map((prods ?? []).map((p) => [p.id, p]));
   const points = await pointsFor((proposals ?? []).map((p) => p.proposed_by));
+  const locationIds = [
+    ...new Set((proposals ?? []).flatMap((p) => ((p.changes ?? {}) as AuditionChanges).sessions?.map((s) => s.location_id ?? "") ?? []).filter(Boolean)),
+  ];
+  const { data: locs } = locationIds.length
+    ? await supabase.from("locations").select("id, name, town").in("id", locationIds)
+    : { data: [] };
+  const locationName = new Map((locs ?? []).map((l) => [l.id, l.town ? `${l.name}, ${l.town}` : l.name]));
 
   return (
     <section className="flex flex-col gap-4">
@@ -191,8 +198,10 @@ export async function AuditionsSection() {
               <ul className="m-0 flex list-none flex-col gap-1 p-0">
                 {c.sessions.map((s, i) => (
                   <li key={i}>
-                    {sessionText(s)}
-                    {s.place && <span className="text-muted"> · {s.place}</span>}
+                    <strong>{s.label || "Auditions"}:</strong> {sessionText(s)}
+                    {(s.location_id ? locationName.get(s.location_id) : s.place) && (
+                      <span className="text-muted"> · {s.location_id ? locationName.get(s.location_id) : s.place}</span>
+                    )}
                   </li>
                 ))}
               </ul>

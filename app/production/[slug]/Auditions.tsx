@@ -4,7 +4,18 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { setAuditionFollow, submitAuditions, type AuditionSession } from "@/app/follow-actions";
 
-export type AuditionRow = { id: string; when: string; place: string | null; past: boolean };
+export type AuditionRow = {
+  id: string;
+  label: string | null;
+  when: string;
+  venue: { slug: string; name: string } | null;
+  place: string | null;
+  past: boolean;
+};
+export type LocationOption = { id: string; name: string; town: string | null };
+
+// Suggestions for a session's label; anything else can be typed
+const SESSION_LABELS = ["Auditions", "Dance audition", "Vocal audition", "Callbacks", "Video submissions", "Open call", "Children’s auditions"];
 
 // A production before its cast is announced: audition dates (or "TBD"),
 // "Remind me about auditions", and a form anyone can use to add the dates.
@@ -15,6 +26,8 @@ export function Auditions({
   precast,
   sessions,
   editable,
+  locations,
+  defaultLocationId,
   note,
   url,
   following: initiallyFollowing,
@@ -27,6 +40,8 @@ export function Auditions({
   precast: boolean;
   sessions: AuditionRow[];
   editable: AuditionSession[];
+  locations: LocationOption[];
+  defaultLocationId: string;
   note: string | null;
   url: string | null;
   following: boolean;
@@ -64,9 +79,18 @@ export function Auditions({
       {sessions.length ? (
         <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
           {sessions.map((s) => (
-            <li key={s.id} className={`flex flex-wrap justify-between gap-x-4 border-b border-rule py-2.5 ${s.past ? "text-muted" : ""}`}>
-              <span className="font-semibold">{s.when}</span>
-              {s.place && <span className="text-muted">{s.place}</span>}
+            <li key={s.id} className={`flex flex-wrap items-baseline justify-between gap-x-4 border-b border-rule py-2.5 ${s.past ? "text-muted" : ""}`}>
+              <span className="flex flex-col">
+                <span className="font-bold">{s.label ?? "Auditions"}</span>
+                <span>{s.when}</span>
+              </span>
+              {s.venue ? (
+                <Link href={`/venue/${s.venue.slug}`} className={s.past ? "text-muted" : ""}>
+                  {s.venue.name}
+                </Link>
+              ) : (
+                s.place && <span className="text-muted">{s.place}</span>
+              )}
             </li>
           ))}
         </ul>
@@ -125,6 +149,8 @@ export function Auditions({
       {editing && (
         <AuditionForm
           initial={editable}
+          locations={locations}
+          defaultLocationId={defaultLocationId}
           note={note ?? ""}
           url={url ?? ""}
           canPublish={canPublish}
@@ -157,10 +183,34 @@ export function Auditions({
   );
 }
 
-const emptySession = (): AuditionSession => ({ date: "", start: "19:00", end: "", place: "" });
+const emptySession = (locationId: string): AuditionSession => ({ date: "", start: "19:00", end: "", label: "", locationId });
+
+// "Where": the site's locations, grouped by town
+function LocationSelect({ value, locations, onChange }: { value: string; locations: LocationOption[]; onChange: (id: string) => void }) {
+  const towns = [...new Set(locations.map((l) => l.town ?? "Other"))].sort((a, b) => a.localeCompare(b));
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="field h-12 w-full px-3">
+      <option value="">Not given</option>
+      {towns.map((town) => (
+        <optgroup key={town} label={town}>
+          {locations
+            .filter((l) => (l.town ?? "Other") === town)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
 
 function AuditionForm({
   initial,
+  locations,
+  defaultLocationId,
   note: initialNote,
   url: initialUrl,
   canPublish,
@@ -168,13 +218,15 @@ function AuditionForm({
   onSubmit,
 }: {
   initial: AuditionSession[];
+  locations: LocationOption[];
+  defaultLocationId: string;
   note: string;
   url: string;
   canPublish: boolean;
   onCancel: () => void;
   onSubmit: (sessions: AuditionSession[], note: string, url: string) => Promise<string | null>;
 }) {
-  const [rows, setRows] = useState<AuditionSession[]>(initial.length ? initial : [emptySession()]);
+  const [rows, setRows] = useState<AuditionSession[]>(initial.length ? initial : [emptySession(defaultLocationId)]);
   const [note, setNote] = useState(initialNote);
   const [url, setUrl] = useState(initialUrl);
   const [error, setError] = useState("");
@@ -194,9 +246,28 @@ function AuditionForm({
         Add each audition session. Leave the list empty if the dates aren’t announced yet; the page will say “TBD”.
         {canPublish ? " Your changes publish right away." : " A moderator will check them before they appear."}
       </p>
+      <datalist id="audition-session-labels">
+        {SESSION_LABELS.map((l) => (
+          <option key={l} value={l} />
+        ))}
+      </datalist>
       {rows.map((row, i) => (
-        <fieldset key={i} className="m-0 flex flex-wrap items-end gap-3 border-0 p-0">
+        <fieldset key={i} className="m-0 flex flex-wrap items-end gap-3 border-0 border-l-[3px] border-solid border-rule p-0 pl-4">
           <legend className="sr-only">Session {i + 1}</legend>
+          <label className="flex w-full flex-col gap-1 text-sm font-semibold">
+            <span>
+              What is this session? <span className="font-normal text-muted">(optional, e.g. Dance audition, Callbacks)</span>
+            </span>
+            <input
+              type="text"
+              list="audition-session-labels"
+              value={row.label}
+              maxLength={60}
+              placeholder="Auditions"
+              onChange={(e) => update(i, { label: e.target.value })}
+              className="field h-12 max-w-[320px] px-3"
+            />
+          </label>
           <label className="flex flex-col gap-1 text-sm font-semibold">
             Date
             <input type="date" value={row.date} onChange={(e) => update(i, { date: e.target.value })} className="field h-12 w-[170px] px-3" />
@@ -211,21 +282,22 @@ function AuditionForm({
           </label>
           <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-sm font-semibold">
             Where
-            <input
-              type="text"
-              value={row.place}
-              maxLength={200}
-              placeholder="e.g. the theater, or Video submissions"
-              onChange={(e) => update(i, { place: e.target.value })}
-              className="field h-12 px-3"
-            />
+            <LocationSelect value={row.locationId} locations={locations} onChange={(locationId) => update(i, { locationId })} />
           </label>
           <button type="button" onClick={() => setRows((r) => r.filter((_, j) => j !== i))} className="btn-text min-h-12">
             Remove
           </button>
         </fieldset>
       ))}
-      <button type="button" onClick={() => setRows((r) => [...r, emptySession()])} className="btn-text self-start">
+      <p className="m-0 text-sm text-muted">
+        “Where” lists the locations already on the site. If yours isn’t there, leave it as “Not given” and say where in the details below.
+      </p>
+      <button
+        type="button"
+        // A new session starts at the same place as the one before it
+        onClick={() => setRows((r) => [...r, emptySession(r.at(-1)?.locationId ?? defaultLocationId)])}
+        className="btn-text self-start"
+      >
         + Add another session
       </button>
       <label className="flex flex-col gap-1 text-sm font-semibold">

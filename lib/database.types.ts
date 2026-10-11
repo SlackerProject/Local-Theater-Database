@@ -78,6 +78,8 @@ export type Database = {
           created_by: string | null
           ends_at: string | null
           id: string
+          label: string | null
+          location_id: string | null
           place: string | null
           production_id: string
           starts_at: string
@@ -87,6 +89,8 @@ export type Database = {
           created_by?: string | null
           ends_at?: string | null
           id?: string
+          label?: string | null
+          location_id?: string | null
           place?: string | null
           production_id: string
           starts_at: string
@@ -96,6 +100,8 @@ export type Database = {
           created_by?: string | null
           ends_at?: string | null
           id?: string
+          label?: string | null
+          location_id?: string | null
           place?: string | null
           production_id?: string
           starts_at?: string
@@ -106,6 +112,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auditions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {

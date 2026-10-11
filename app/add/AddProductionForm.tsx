@@ -732,6 +732,7 @@ export function AddProductionForm({
             <CreditRowEditor
               key={c.id}
               row={c}
+              sameNewPersonAs={sameNewPersonAs(state.credits, c)}
               onChange={(patch) => setCredit(c.id, patch)}
               onRemove={() => update((s) => ({ ...s, credits: s.credits.filter((x) => x.id !== c.id) }))}
             />
@@ -868,12 +869,23 @@ function SummaryRow({ term, value, last }: { term: string; value: string; last?:
 // ---------------------------------------------------------------------
 // One cast or crew row: Role + Person, then the person's status panel
 // ---------------------------------------------------------------------
+// A new person named again in a later row (someone with two roles) is the
+// same new person: returns the earlier row's role, or null
+function sameNewPersonAs(credits: CreditRow[], row: CreditRow): string | null {
+  const name = row.person.trim().toLowerCase();
+  if (row.choice.kind !== "new" || !name) return null;
+  const first = credits.find((c) => c.choice.kind === "new" && c.person.trim().toLowerCase() === name);
+  return first && first.id !== row.id ? first.role.trim() || "another role" : null;
+}
+
 function CreditRowEditor({
   row,
+  sameNewPersonAs,
   onChange,
   onRemove,
 }: {
   row: CreditRow;
+  sameNewPersonAs: string | null; // the earlier row's role, when this is the same new person
   onChange: (patch: Partial<CreditRow>) => void;
   onRemove: () => void;
 }) {
@@ -929,7 +941,14 @@ function CreditRowEditor({
         <PickedLine match={choice.match} onChange={() => onChange({ choice: { kind: "none" } })} />
       )}
 
-      {choice.kind === "new" && row.person.trim() && (
+      {choice.kind === "new" && row.person.trim() && sameNewPersonAs !== null && (
+        <p className="m-0 text-sm text-muted">
+          Same new person as <strong className="text-ink">{row.person.trim()}</strong> ({sameNewPersonAs}). They’ll get one page with
+          both credits.
+        </p>
+      )}
+
+      {choice.kind === "new" && row.person.trim() && sameNewPersonAs === null && (
         <NewPanel badge="New person" note="Not in the database yet. We’ll create their page.">
           <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-[15px]">
             <input

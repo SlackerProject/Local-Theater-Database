@@ -183,7 +183,8 @@ No box around it.
 ## Badges and points
 
 **Points** come only from approved contributions: 10 per production submission, 3 per poster,
-2 per photo, 2 per correction or smaller edit. A submission earns points the first time it is
+2 per photo, 0.5 per correction (an approved edit to a production, person, company, show or
+venue), 2 per audition dates or award entry. A submission earns points the first time it is
 approved (partial approval counts); resubmissions earn nothing extra. Self-reported activity
 (Want to see, Seen) never earns points.
 
@@ -200,8 +201,10 @@ Verified performer (mask), Founding member (flag), Shows seen 10 / 25 / 50 / 100
 grayed out on the profile ("Badges collected, 5 of 12").
 
 **Where badges appear**: the full medal, progress bar, ladder and collection only on the
-account profile (`contributor-profile.html`). Elsewhere, only an 18px medal beside a
-contributor's name in contribution contexts: "Added by", edit history, moderation. Never on
+account profile (`contributor-profile.html`). Elsewhere, only a small (22px) medal beside a
+contributor's name in contribution contexts: "Added by", edit history, moderation. At this size
+the level dots are drawn larger so I / II / III stays readable; the name and points show on
+hover. In moderation, accounts without a medal yet get a dashed gray outline. Never on
 cast lists, production pages, person pages or search results. When someone earns a new level
 or badge, show one brief, dismissible message ("You reached Silver III") once, then never again.
 

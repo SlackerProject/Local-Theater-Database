@@ -2,29 +2,34 @@ import { levelFor } from "@/lib/badges";
 import { createClient } from "@/lib/supabase/server";
 import { Medal } from "./Medal";
 
-// The 18px medal beside a contributor's name, used only in contribution
-// contexts: "Added by", edit history and moderation (DESIGN.md)
+const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 1 });
+
+// The small medal beside a contributor's name, used only in contribution
+// contexts: "Added by", edit history and moderation (DESIGN.md). The dots
+// under it show the level (I, II, III); hovering shows it in words.
 export function ContributorMedal({ points }: { points: number | undefined }) {
-  const level = levelFor(points ?? 0);
+  const p = points ?? 0;
+  const level = levelFor(p);
   if (!level) return null;
   return (
-    <span title={`${level.name} contributor`} className="inline-flex align-[-3px]">
-      <Medal metal={level.metal} size={18} />
+    <span title={`${level.name} contributor · ${fmt(p)} pts`} className="inline-flex align-[-5px]">
+      <Medal metal={level.metal} dots={level.tier} size={22} />
       <span className="sr-only"> ({level.name} contributor)</span>
     </span>
   );
 }
 
-// For moderators deciding how much to trust a submission: the medal with
-// its level and points in words ("Bronze III · 69 pts"), and a plain
-// "New contributor" for accounts that haven't earned a medal yet
+// Moderation: the same medal, and a plain outline for accounts that haven't
+// earned one yet, so newcomers stand out too
 export function ContributorTag({ points }: { points: number | undefined }) {
   const p = points ?? 0;
-  const level = levelFor(p);
+  if (levelFor(p)) return <ContributorMedal points={p} />;
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded bg-soft px-1.5 py-0.5 align-[-2px] text-[13px] font-semibold leading-none text-ink">
-      {level && <Medal metal={level.metal} size={18} />}
-      {level ? level.name : "New contributor"} · {p.toLocaleString("en-US")} {p === 1 ? "pt" : "pts"}
+    <span title={`New contributor · ${fmt(p)} pts`} className="inline-flex align-[-5px]">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 48 50">
+        <circle cx="24" cy="22" r="15" fill="none" stroke="#949494" strokeWidth="2.5" strokeDasharray="4 3" />
+      </svg>
+      <span className="sr-only"> (new contributor)</span>
     </span>
   );
 }
@@ -35,5 +40,5 @@ export async function pointsFor(ids: (string | null | undefined)[]) {
   if (!unique.length) return new Map<string, number>();
   const supabase = await createClient();
   const { data } = await supabase.from("user_points").select("user_id, points").in("user_id", unique);
-  return new Map((data ?? []).flatMap((r) => (r.user_id ? [[r.user_id, r.points ?? 0] as const] : [])));
+  return new Map((data ?? []).flatMap((r) => (r.user_id ? [[r.user_id, Number(r.points ?? 0)] as const] : [])));
 }

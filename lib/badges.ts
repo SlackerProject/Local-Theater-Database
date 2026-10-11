@@ -61,7 +61,8 @@ export function nextMetal(points: number): Level | null {
 
 // "One or two more productions gets you there."
 export function progressHint(remaining: number) {
-  if (remaining <= 2) return "One more photo or correction gets you there.";
+  if (remaining <= 0.5) return "One more correction gets you there.";
+  if (remaining <= 2) return "One more photo gets you there.";
   if (remaining <= 3) return "One more poster gets you there.";
   if (remaining <= 10) return "One more production gets you there.";
   if (remaining <= 20) return "One or two more productions gets you there.";

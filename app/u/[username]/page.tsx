@@ -28,7 +28,7 @@ export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
   );
 }
 
-const fmt = (n: number) => n.toLocaleString("en-US");
+const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 1 });
 
 function ago(iso: string, now: number) {
   const days = Math.floor((now - new Date(iso).getTime()) / 86400000);
@@ -62,7 +62,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
     supabase.rpc("profile_seen", { p_user: profile.id }),
   ]);
   const stats = statsRows?.[0] ?? { points: 0, contributions: 0, photos: 0, seen: null };
-  const points = stats.points;
+  const points = Number(stats.points);
   const level = levelFor(points);
   const next = nextLevel(points);
   const metal = nextMetal(points);
@@ -140,14 +140,14 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
         ) : (
           <>Added a photo of {prodLink(r.production_id) ?? "a production"}</>
         );
-    } else if (r.reason === "edit_approved") {
+    } else if (r.reason === "edit_approved" || r.reason === "correction_approved") {
       if (r.entity_table === "auditions") text = <>Added audition dates for {prodLink(r.entity_id) ?? "a production"}</>;
       else if (r.entity_table === "award_entries") text = "Added an award";
       else text = <>Corrected {pageLink(r.entity_table, r.entity_id) ?? "a page"}</>;
     } else if (r.reason === "adjustment") {
       text = "Points adjustment";
     }
-    return { text, amount: r.amount, when: ago(r.earned_at, now) };
+    return { text, amount: Number(r.amount), when: ago(r.earned_at, now) };
   });
 
   const seenList = seenIds.map((id) => (seenProds ?? []).find((p) => p.id === id)).filter((p) => !!p);
@@ -320,7 +320,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
                   <li key={i} className="flex justify-between gap-4 border-b border-rule py-3">
                     <span>{c.text}</span>
                     <span className="whitespace-nowrap text-sm text-muted">
-                      {c.amount >= 0 ? `+${c.amount}` : c.amount} · {c.when}
+                      {c.amount >= 0 ? `+${fmt(c.amount)}` : fmt(c.amount)} · {c.when}
                     </span>
                   </li>
                 ))}
@@ -353,7 +353,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
             );
           })}
           <p className="m-0 mt-2 text-[13px] text-muted">
-            Points come from approved contributions: 10 per production, 3 per poster, 2 per photo or correction.
+            Points come from approved contributions: 10 per production, 3 per poster, 2 per photo, 0.5 per correction.
           </p>
         </aside>
       </div>

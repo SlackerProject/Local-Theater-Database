@@ -251,6 +251,11 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   let unresolved = 0;
   let unconfirmed = 0;
   let missingRole = 0;
+  // Someone new with two roles is confirmed 18+ once, on their first row
+  const confirmedNew = new Set(
+    s.credits.filter((c) => c.choice.kind === "new" && c.adultConfirmed).map((c) => clean(c.person).toLowerCase()),
+  );
+  const countedNew = new Set<string>();
 
   for (const c of s.credits) {
     // Rows without a person are skipped: roles filled in from the show's
@@ -266,8 +271,10 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
         people.push({ key: keyFor.get(mapKey)!, id: c.choice.match.id, label: c.choice.match.label });
       }
     } else if (c.choice.kind === "new" && clean(c.person)) {
-      if (!c.adultConfirmed) unconfirmed++;
-      mapKey = `new:${clean(c.person).toLowerCase()}`;
+      const name = clean(c.person).toLowerCase();
+      if (!confirmedNew.has(name) && !countedNew.has(name)) unconfirmed++;
+      countedNew.add(name);
+      mapKey = `new:${name}`;
       if (!keyFor.has(mapKey)) {
         keyFor.set(mapKey, `p${keyFor.size + 1}`);
         people.push({ key: keyFor.get(mapKey)!, new: { display_name: clean(c.person), adult_confirmed: true } });

@@ -24,6 +24,8 @@ const RAYS: [number, number, number, number][] = [
   [39.59, 14.0, 43.92, 11.5],
 ];
 const DOT_X: Record<number, number[]> = { 1: [24], 2: [19, 29], 3: [14, 24, 34] };
+// At small sizes the level dots are drawn bigger so I / II / III stays readable
+const SMALL_DOT_X: Record<number, number[]> = { 1: [24], 2: [18, 30], 3: [12, 24, 36] };
 const GRAY = "#D4D4D4";
 
 export function Medal({ metal, dots = 0, size = 64, muted = false }: { metal: Metal; dots?: number; size?: number; muted?: boolean }) {
@@ -69,9 +71,9 @@ export function Medal({ metal, dots = 0, size = 64, muted = false }: { metal: Me
           <path d="M8 22h32M15 14l4 8 5-8 5 8 4-8M19 22l5 18 5-18" fill="none" stroke={c("#9FB4F0")} strokeWidth="1.2" strokeLinejoin="round" />
         </>
       )}
-      {(DOT_X[dots] ?? []).map((x) => (
-        <circle key={x} cx={x} cy="46" r="2" fill={c("#141414")} />
-      ))}
+      {size <= 28
+        ? (SMALL_DOT_X[dots] ?? []).map((x) => <circle key={x} cx={x} cy="46.5" r="4" fill={c("#141414")} stroke="#FFFFFF" strokeWidth="1" />)
+        : (DOT_X[dots] ?? []).map((x) => <circle key={x} cx={x} cy="46" r="2" fill={c("#141414")} />)}
     </svg>
   );
 }

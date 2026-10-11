@@ -176,6 +176,7 @@ export function CorrectionForm({
                   removed={removedCredits}
                   roleChanges={roleChanges}
                   added={addedCredits.map((a, i) => ({ a, i })).filter(({ a }) => a.kind === kind)}
+                  pendingNew={[...new Set(addedCredits.flatMap((a) => (a.new_name ? [a.new_name] : [])))]}
                   onToggleRemove={(cid) =>
                     setRemovedCredits((s) => {
                       const next = new Set(s);
@@ -507,6 +508,7 @@ function CreditsRow({
   removed,
   roleChanges,
   added,
+  pendingNew,
   onToggleRemove,
   onRole,
   onAdd,
@@ -517,6 +519,7 @@ function CreditsRow({
   removed: Set<string>;
   roleChanges: Record<string, string>;
   added: { a: CreditAdd; i: number }[];
+  pendingNew: string[]; // new people already added in this correction (cast or crew)
   onToggleRemove: (id: string) => void;
   onRole: (id: string, role: string, original: string) => void;
   onAdd: (a: CreditAdd) => void;
@@ -610,6 +613,7 @@ function CreditsRow({
           {adding ? (
             <AddPerson
               kind={kind}
+              pendingNew={pendingNew}
               onCancel={() => setAdding(false)}
               onAdd={(a) => {
                 onAdd(a);
@@ -627,18 +631,38 @@ function CreditsRow({
   );
 }
 
-function AddPerson({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (a: CreditAdd) => void; onCancel: () => void }) {
+// People already being added as new in this correction can be picked again
+// (someone with two roles), so they become one person, not two
+const PENDING = "pending:";
+
+function AddPerson({
+  kind,
+  pendingNew,
+  onAdd,
+  onCancel,
+}: {
+  kind: "cast" | "crew";
+  pendingNew: string[];
+  onAdd: (a: CreditAdd) => void;
+  onCancel: () => void;
+}) {
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<Match | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [role, setRole] = useState("");
   const [adult, setAdult] = useState(false);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [found, setFound] = useState<Match[]>([]);
   const [problem, setProblem] = useState("");
+  const typed = name.trim().toLowerCase();
+  const pendingMatches: Match[] = pendingNew
+    .filter((n) => typed.length >= 2 && n.toLowerCase().includes(typed))
+    .map((n) => ({ id: `${PENDING}${n}`, slug: "", label: n, detail: "New person, being added in this correction" }));
+  const matches = [...pendingMatches, ...found];
+  const exactPending = pendingNew.some((n) => n.toLowerCase() === typed);
 
   useEffect(() => {
     let live = true;
-    const t = setTimeout(() => lookup("people", name).then((m) => live && setMatches(m)), 200);
+    const t = setTimeout(() => lookup("people", name).then((m) => live && setFound(m)), 200);
     return () => {
       live = false;
       clearTimeout(t);
@@ -649,6 +673,10 @@ function AddPerson({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (a
     if (!picked && !(isNew && name.trim())) return setProblem("Pick the person from the list, or add them as someone new.");
     if (!role.trim()) return setProblem(kind === "cast" ? "Enter the role they played." : "Enter their position, e.g. Director.");
     if (!picked && !adult) return setProblem("Confirm that this person is 18 or older.");
+    if (picked?.id.startsWith(PENDING)) {
+      // Same new person as an earlier line: already confirmed 18+
+      return onAdd({ kind, role: role.trim(), new_name: picked.label, adult_confirmed: true });
+    }
     onAdd(
       picked
         ? { kind, role: role.trim(), person_id: picked.id, person_label: picked.label }
@@ -698,6 +726,7 @@ function AddPerson({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (a
               </ul>
             )}
             {name.trim().length >= 2 &&
+              !exactPending &&
               (isNew ? (
                 <span className="text-sm">
                   <strong>{name.trim()}</strong> will be added as someone new.
@@ -707,6 +736,12 @@ function AddPerson({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (a
                   <Icon d={PLUS} /> Not listed? Add “{name.trim()}” as someone new
                 </button>
               ))}
+            {isNew && (
+              <label className="mt-1 flex cursor-pointer items-start gap-2.5 text-[15px]">
+                <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} className="mt-0.5 h-5 w-5 flex-none accent-ink" />
+                I confirm this person is 18 or older.
+              </label>
+            )}
           </>
         )}
       </div>
@@ -726,13 +761,7 @@ function AddPerson({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (a
           />
         )}
       </div>
-      {isNew && !picked && (
-        <label className="flex cursor-pointer items-start gap-2.5 text-[15px]">
-          <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} className="mt-0.5 h-5 w-5 flex-none accent-ink" />
-          I confirm this person is 18 or older.
-        </label>
-      )}
-      {problem && <span className="text-sm font-semibold">{problem}</span>}
+      {problem &&<span className="text-sm font-semibold">{problem}</span>}
       <div className="flex gap-2">
         <button type="button" onClick={add} className={small}>
           Add

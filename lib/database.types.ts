@@ -504,29 +504,48 @@ export type Database = {
       notifications: {
         Row: {
           created_at: string
+          dispute_note: string | null
           id: string
           kind: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
           revision_id: number | null
           status: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          dispute_note?: string | null
           id?: string
           kind: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           revision_id?: number | null
           status?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          dispute_note?: string | null
           id?: string
           kind?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           revision_id?: number | null
           status?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_revision_id_fkey"
             columns: ["revision_id"]
@@ -1242,6 +1261,10 @@ export type Database = {
         Args: { p_media: string; p_production: string }
         Returns: undefined
       }
+      approve_person_edit: {
+        Args: { p_approve: boolean; p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
       approve_submission: {
         Args: {
           p_bundle?: Json
@@ -1260,6 +1283,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      character_for: {
+        Args: { p_production_id: string; p_role: string }
+        Returns: string
+      }
+      claim_state: { Args: { p_person_id: string }; Returns: string }
       frequent_collaborators: {
         Args: { max_results?: number; p_person_id: string }
         Returns: {
@@ -1273,8 +1301,18 @@ export type Database = {
         Args: { min_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      keep_all_notifications: { Args: never; Returns: undefined }
       lookup: {
         Args: { max_results?: number; p_kind: string; p_query: string }
+        Returns: {
+          detail: string
+          id: string
+          label: string
+          slug: string
+        }[]
+      }
+      lookup_productions: {
+        Args: { max_results?: number; p_query: string }
         Returns: {
           detail: string
           id: string
@@ -1292,8 +1330,20 @@ export type Database = {
         }
         Returns: string
       }
+      owner_add_credit_named: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["credit_kind"]
+          p_production_id: string
+          p_role: string
+        }
+        Returns: string
+      }
       owner_set_credit_hidden: {
         Args: { p_credit_id: string; p_hidden: boolean }
+        Returns: undefined
+      }
+      owner_set_credit_role: {
+        Args: { p_credit_id: string; p_role: string }
         Returns: undefined
       }
       owner_set_page_hidden: { Args: { p_hidden: boolean }; Returns: undefined }
@@ -1321,6 +1371,19 @@ export type Database = {
         Args: { p_note?: string; p_proposal_id: string }
         Returns: undefined
       }
+      resolve_dispute: {
+        Args: { p_id: string; p_undo: boolean }
+        Returns: undefined
+      }
+      respond_notification: {
+        Args: { p_id: string; p_keep: boolean; p_note?: string }
+        Returns: undefined
+      }
+      revert_revision: { Args: { p_revision_id: number }; Returns: undefined }
+      review_claim: {
+        Args: { p_claim_id: string; p_verify: boolean }
+        Returns: undefined
+      }
       review_media: {
         Args: { p_approve: boolean; p_media_id: string; p_note?: string }
         Returns: undefined
@@ -1339,11 +1402,20 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
       slugify: { Args: { p_text: string }; Returns: string }
       sort_name_for: { Args: { p_name: string }; Returns: string }
+      submission_destination: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          slug: string
+          status: string
+          title: string
+        }[]
+      }
       unaccent: { Args: { "": string }; Returns: string }
       unique_slug: {
         Args: { p_table: string; p_text: string }
         Returns: string
       }
+      vouch_claim: { Args: { p_claim_id: string }; Returns: undefined }
     }
     Enums: {
       award_result: "nominated" | "won"

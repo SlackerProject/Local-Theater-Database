@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buildBundle, looksLikeFormState, type FormState } from "@/lib/submission";
 import type { Json } from "@/lib/database.types";
 
-export type ActionResult = { ok: true; savedAt?: string } | { ok: false; problems: string[] };
+export type ActionResult = { ok: true; savedAt?: string; submissionId?: string } | { ok: false; problems: string[] };
 
 const MAX_BYTES = 200_000;
 
@@ -25,15 +25,19 @@ export async function submitProduction(state: FormState): Promise<ActionResult> 
   const { problems, bundle } = buildBundle(state);
   if (!bundle) return { ok: false, problems };
 
-  const { error } = await supabase.from("edit_proposals").insert({
-    entity_table: "production_submission",
-    changes: bundle as unknown as Json,
-    proposed_by: userId,
-  });
+  const { data, error } = await supabase
+    .from("edit_proposals")
+    .insert({
+      entity_table: "production_submission",
+      changes: bundle as unknown as Json,
+      proposed_by: userId,
+    })
+    .select("id")
+    .single();
   if (error) return { ok: false, problems: [`We couldn’t save your submission: ${error.message}`] };
 
   await supabase.from("submission_drafts").delete().eq("user_id", userId);
-  return { ok: true };
+  return { ok: true, submissionId: data.id };
 }
 
 export async function saveDraft(state: FormState): Promise<ActionResult> {

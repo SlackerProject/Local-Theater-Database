@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/app/auth-actions";
 
-type User = { displayName: string; isModerator: boolean } | null;
+type User = { displayName: string; canModerate: boolean; unread: number } | null;
 
 const BROWSE = [
   { href: "/shows", label: "Shows" },
@@ -16,8 +16,28 @@ function accountLinks(user: NonNullable<User>) {
   return [
     { href: "/add", label: "Add a production" },
     { href: "/submissions", label: "Your submissions" },
-    ...(user.isModerator ? [{ href: "/moderate", label: "Moderate" }] : []),
+    ...(user.canModerate ? [{ href: "/moderate", label: "Moderate" }] : []),
   ];
+}
+
+function Bell({ count }: { count: number }) {
+  return (
+    <Link
+      href="/notifications"
+      aria-label={count ? `Notifications, ${count} new` : "Notifications"}
+      className="link-quiet relative flex h-11 w-11 items-center justify-center rounded-lg hover:bg-soft"
+    >
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      </svg>
+      {count > 0 && (
+        <span aria-hidden="true" className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink px-1 text-[11px] font-bold leading-none text-white">
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </Link>
+  );
 }
 
 // Closes a click-opened menu on Escape or a click outside it
@@ -56,6 +76,7 @@ export function HeaderNav({ user }: { user: User }) {
             {l.label}
           </Link>
         ))}
+        {user && <Bell count={user.unread} />}
         {user ? (
           <div ref={accountRef} className="relative">
             <button
@@ -99,11 +120,16 @@ export function HeaderNav({ user }: { user: User }) {
           aria-label="Menu"
           aria-expanded={mobile}
           onClick={() => setMobile((v) => !v)}
-          className="flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
+          className="relative flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
         >
           <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141414" strokeWidth="2" strokeLinecap="round">
             {mobile ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
           </svg>
+          {!!user?.unread && !mobile && (
+            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-ink ring-2 ring-white">
+              <span className="sr-only">{user.unread} new notifications</span>
+            </span>
+          )}
         </button>
         {mobile && (
           <nav aria-label="Main" className="absolute inset-x-0 top-full z-20 flex flex-col border-b border-rule bg-page pb-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
@@ -116,6 +142,10 @@ export function HeaderNav({ user }: { user: User }) {
             {user ? (
               <>
                 <span className="px-4 pb-1 text-sm text-muted">Signed in as {user.displayName}</span>
+                <Link href="/notifications" className={menuItem} onClick={() => setMobile(false)}>
+                  Notifications
+                  {user.unread > 0 && <span className="ml-2 rounded bg-ink px-1.5 text-[13px] font-bold text-white">{user.unread}</span>}
+                </Link>
                 {accountLinks(user).map((l) => (
                   <Link key={l.href} href={l.href} className={menuItem} onClick={() => setMobile(false)}>
                     {l.label}

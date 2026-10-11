@@ -21,6 +21,7 @@ import {
 import { discardDraft, saveDraft, submitProduction } from "./actions";
 import { NewPill, PickedLine, TypeAhead, lookup } from "./TypeAhead";
 import { PosterField } from "@/components/uploads/UploadPanels";
+import { ShareWithCast } from "@/components/ShareWithCast";
 
 // ---------------------------------------------------------------------
 // Small presentational pieces shared by the sections
@@ -169,7 +170,8 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
         ? "Picked up where you left off from your saved draft."
         : null,
   );
-  const [submitted, setSubmitted] = useState(false);
+  // The new submission's id once sent (drives the "Share with your cast" link)
+  const [submitted, setSubmitted] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const update = (fn: (s: FormState) => FormState) => setState((s) => fn(s));
@@ -253,7 +255,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
     startTransition(async () => {
       const result = await submitProduction(state);
       if (result.ok) {
-        setSubmitted(true);
+        setSubmitted(result.submissionId ?? "");
         window.scrollTo({ top: 0 });
       } else {
         setProblems(result.problems);
@@ -275,27 +277,30 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
       setState(emptyFormState(defaultYear));
       setProblems([]);
       setNotice(null);
-      setSubmitted(false);
+      setSubmitted(null);
     });
   }
 
-  if (submitted) {
+  if (submitted !== null) {
     return (
-      <div className="callout flex max-w-[640px] flex-col gap-4" role="status">
-        <h2 className="heading">Submitted</h2>
-        <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</p>
-        <p className="m-0 text-muted">
-          Thanks! A moderator will review your submission. Once it’s approved, the production and everyone in it go
-          live, and you earn points.
-        </p>
-        <div className="flex flex-wrap gap-2.5">
-          <button type="button" className={pillDark} onClick={startOver}>
-            Add another production
-          </button>
-          <Link href="/" className={`${pillLight} no-underline`}>
-            Back to home
-          </Link>
+      <div className="flex max-w-[720px] flex-col gap-8">
+        <div className="callout flex flex-col gap-4" role="status">
+          <h2 className="heading">Submitted</h2>
+          <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</p>
+          <p className="m-0 text-muted">
+            Thanks! A moderator will review your submission. Once it’s approved, the production and everyone in it go
+            live, and you earn points.
+          </p>
+          <div className="flex flex-wrap gap-2.5">
+            <button type="button" className={pillDark} onClick={startOver}>
+              Add another production
+            </button>
+            <Link href="/submissions" className={pillLight}>
+              Your submissions
+            </Link>
+          </div>
         </div>
+        {submitted && <ShareWithCast submissionId={submitted} title={title} />}
       </div>
     );
   }

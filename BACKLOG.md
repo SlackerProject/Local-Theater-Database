@@ -6,6 +6,16 @@
 - **Suggest an edit** links (production cast list, person pages). Hidden until there's an edit-suggestion flow.
 - **Clean up unused uploads.** A poster uploaded on the Add a production form is stored immediately; if the draft is abandoned, or the submission is rejected and never resubmitted, the file stays in storage. A periodic cleanup of files no media row or open submission refers to would reclaim space.
 
+## Milestone 5
+
+- **Email notifications** for page owners (changes to their page, claim verified or rejected). In-app notifications exist; email waits for the custom domain and email service.
+
+## Claiming follow-ups
+
+- Let a claimant withdraw a pending claim (today a moderator rejects it).
+- Tell a claimant in-app when their claim is verified or rejected (today they find out by visiting the page).
+- "Undo the change" covers credits, page edits and approved uploads; other kinds of disputed change are marked resolved and fixed by hand.
+
 ## Before public launch
 
 - **Merge duplicate people.** A moderator tool to combine two person pages that are the same person, moving all credits to one.

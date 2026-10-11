@@ -8,6 +8,7 @@ import type { Bundle } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ReviewCard } from "./ReviewCard";
 import { UploadQueue, type QueueGroup } from "./UploadQueue";
+import { ClaimsSection, DisputesSection, SuggestionsSection } from "./sections";
 import { mediaUrl, type MediaPalette } from "@/lib/media";
 
 export const metadata: Metadata = { title: "Moderation queue · Local Theater Database" };
@@ -17,7 +18,7 @@ export default function ModeratePage({ searchParams }: PageProps<"/moderate">) {
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8 md:pt-12">
-        <h1 className="display text-[40px] md:text-[56px]">Pending submissions</h1>
+        <h1 className="display text-[40px] md:text-[56px]">Moderation</h1>
         <Suspense fallback={<p className="text-muted">Loading the queue…</p>}>
           <Queue searchParams={searchParams} />
         </Suspense>
@@ -30,9 +31,11 @@ export default function ModeratePage({ searchParams }: PageProps<"/moderate">) {
 async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParams">) {
   const user = await getCurrentUser();
   if (!user) redirect("/signin?next=/moderate");
-  if (!hasRole(user, "moderator")) {
-    return <p className="text-muted">Only moderators and admins can see the moderation queue.</p>;
+  if (!hasRole(user, "trusted")) {
+    return <p className="text-muted">Only trusted editors, moderators and admins can see the moderation queue.</p>;
   }
+  // Trusted editors can only vouch for claims; everything else is for moderators
+  if (!hasRole(user, "moderator")) return <ClaimsSection user={user} />;
 
   const params = await searchParams;
   const supabase = await createClient();
@@ -84,7 +87,10 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
 
   return (
     <>
-      <h2 className="heading -mb-2">Submissions</h2>
+      <ClaimsSection user={user} />
+      <DisputesSection />
+      <SuggestionsSection />
+      <h2 className="heading -mb-2 mt-4">Production submissions</h2>
       {typeof params.approved === "string" && (
         <Banner>
           Approved and published.{" "}

@@ -59,6 +59,35 @@ export async function reviewUploads(ids: string[], approve: boolean, note = ""):
   return { ok: problems.length === 0, problems: [...new Set(problems)] };
 }
 
+// Claims, disputes and suggested corrections (migration 0008). Each
+// database function checks the reviewer's role and the self-review rules.
+type Done = { ok: boolean; error?: string };
+async function call(fn: () => PromiseLike<{ error: { message: string } | null }>): Promise<Done> {
+  const { error } = await fn();
+  revalidatePath("/moderate");
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+export async function reviewClaim(id: string, verify: boolean): Promise<Done> {
+  const supabase = await createClient();
+  return call(() => supabase.rpc("review_claim", { p_claim_id: id, p_verify: verify }));
+}
+
+export async function vouchForClaim(id: string): Promise<Done> {
+  const supabase = await createClient();
+  return call(() => supabase.rpc("vouch_claim", { p_claim_id: id }));
+}
+
+export async function resolveDispute(id: string, undo: boolean): Promise<Done> {
+  const supabase = await createClient();
+  return call(() => supabase.rpc("resolve_dispute", { p_id: id, p_undo: undo }));
+}
+
+export async function reviewSuggestion(id: string, approve: boolean, note = ""): Promise<Done> {
+  const supabase = await createClient();
+  return call(() => supabase.rpc("approve_person_edit", { p_proposal_id: id, p_approve: approve, p_note: note }));
+}
+
 export async function rejectSubmission(id: string, note: string): Promise<ReviewResult | void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("reject_submission", { p_proposal_id: id, p_note: note });

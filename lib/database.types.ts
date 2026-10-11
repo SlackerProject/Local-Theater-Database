@@ -1511,14 +1511,6 @@ export type Database = {
       }
     }
     Views: {
-      hotlist_7d: {
-        Row: {
-          entity_id: string | null
-          entity_table: string | null
-          unique_visitors: number | null
-        }
-        Relationships: []
-      }
       user_points: {
         Row: {
           points: number | null
@@ -1622,6 +1614,13 @@ export type Database = {
           has_history: boolean
           last_week_rank: number
           rank: number
+          visitors: number
+        }[]
+      }
+      hotlist_counts: {
+        Args: { p_table: string }
+        Returns: {
+          entity_id: string
           visitors: number
         }[]
       }

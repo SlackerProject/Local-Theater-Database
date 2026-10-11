@@ -22,6 +22,7 @@ import { discardDraft, saveDraft, submitProduction } from "./actions";
 import { NewPill, PickedLine, TypeAhead, lookup } from "./TypeAhead";
 import { PosterField } from "@/components/uploads/UploadPanels";
 import { ShareWithCast } from "@/components/ShareWithCast";
+import { PositionSelect } from "@/components/PositionSelect";
 import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------
@@ -894,15 +895,19 @@ function CreditRowEditor({
       </button>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
         <div className="flex min-w-0 flex-col gap-1">
-          <label htmlFor={roleId} className="text-[15px] font-semibold">Role</label>
-          <input
-            id={roleId}
-            type="text"
-            value={row.role}
-            placeholder={row.kind === "cast" ? "Jo March" : "Director"}
-            onChange={(e) => onChange({ role: e.target.value })}
-            className={smallField}
-          />
+          <label htmlFor={roleId} className="text-[15px] font-semibold">{row.kind === "cast" ? "Role" : "Position"}</label>
+          {row.kind === "crew" ? (
+            <PositionSelect id={roleId} value={row.role} onChange={(role) => onChange({ role })} className={smallField} />
+          ) : (
+            <input
+              id={roleId}
+              type="text"
+              value={row.role}
+              placeholder="Jo March"
+              onChange={(e) => onChange({ role: e.target.value })}
+              className={smallField}
+            />
+          )}
         </div>
         <TypeAhead
           kind="people"

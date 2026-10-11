@@ -15,6 +15,7 @@ import {
   type PerformanceEdit,
 } from "@/lib/corrections";
 import { submitCorrection } from "@/app/edit/actions";
+import { PositionSelect } from "@/components/PositionSelect";
 
 export type CreditLine = { id: string; kind: "cast" | "crew"; person: string; role: string };
 export type PerformanceLine = { id: string; date: string; time: string; label: string; cancelled: boolean };
@@ -549,7 +550,11 @@ function CreditsRow({
                     <label className="sr-only" htmlFor={`role-${l.id}`}>
                       {roleWord}
                     </label>
-                    <input id={`role-${l.id}`} value={roleDraft} onChange={(e) => setRoleDraft(e.target.value)} className={`${input} max-w-[240px]`} />
+                    {kind === "crew" ? (
+                      <PositionSelect id={`role-${l.id}`} value={roleDraft} onChange={setRoleDraft} className={`${input} max-w-[260px]`} />
+                    ) : (
+                      <input id={`role-${l.id}`} value={roleDraft} onChange={(e) => setRoleDraft(e.target.value)} className={`${input} max-w-[240px]`} />
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -709,13 +714,17 @@ function AddPerson({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (a
         <label htmlFor={`add-${kind}-role`} className="text-sm font-bold">
           {kind === "cast" ? "Role" : "Position"}
         </label>
-        <input
-          id={`add-${kind}-role`}
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          placeholder={kind === "cast" ? "e.g. Jo March" : "e.g. Director"}
-          className={`${input} max-w-[300px]`}
-        />
+        {kind === "crew" ? (
+          <PositionSelect id={`add-${kind}-role`} value={role} onChange={setRole} className={`${input} max-w-[300px]`} />
+        ) : (
+          <input
+            id={`add-${kind}-role`}
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="e.g. Jo March"
+            className={`${input} max-w-[300px]`}
+          />
+        )}
       </div>
       {isNew && !picked && (
         <label className="flex cursor-pointer items-start gap-2.5 text-[15px]">

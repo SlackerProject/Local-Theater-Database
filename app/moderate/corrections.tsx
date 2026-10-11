@@ -12,7 +12,7 @@ import {
 import { SHOW_TYPES } from "@/lib/submission";
 import { localDate, localHHMM } from "@/lib/calendar";
 import { CorrectionReview, type ReviewRow } from "./CorrectionReview";
-import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
+import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
 const TABLES = Object.keys(KIND_FOR_TABLE) as PageTable[];
 
@@ -53,7 +53,7 @@ export async function CorrectionsSection() {
             <Link href={`/moderate/members?q=${encodeURIComponent(c.username)}`} className="font-bold">
               {c.who}
             </Link>{" "}
-            <ContributorMedal points={points.get(c.proposedBy)} /> sent a correction for{" "}
+            <ContributorTag points={points.get(c.proposedBy)} /> sent a correction for{" "}
             {c.page ? (
               <Link href={c.page.href} className="font-bold">
                 {c.page.label}

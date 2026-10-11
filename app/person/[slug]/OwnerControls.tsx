@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { PositionSelect } from "@/components/PositionSelect";
 import {
   addOwnCredit,
   chooseHeadshot,
@@ -67,18 +68,19 @@ export function ClaimPanel({ personId, slug, name }: { personId: string; slug: s
   const { pending, error, run } = useAction();
 
   return (
-    <section aria-label="Claim this page" className="flex flex-col gap-3 border-y border-rule py-5">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-0.5">
-          <span className="text-xl font-extrabold">Is this you?</span>
-          <span className="text-muted">Claim this page to choose your headshot, write a bio, and keep your credits up to date.</span>
-        </div>
-        {!open && (
-          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
+    <section aria-label="Claim this page" className="-mb-6 flex flex-col gap-3">
+      {/* A quiet line until it's needed */}
+      {!open ? (
+        <p className="m-0 text-sm text-muted">
+          Is this you?{" "}
+          <button type="button" className="btn-text min-h-0 text-sm" onClick={() => setOpen(true)}>
             Claim this page
-          </button>
-        )}
-      </div>
+          </button>{" "}
+          to choose your headshot, write a bio and keep your credits up to date.
+        </p>
+      ) : (
+        <h2 className="subheading">Claim this page</h2>
+      )}
       {open && (
         <div className={panel}>
           <p className="m-0 text-[15px]">
@@ -302,8 +304,14 @@ export function AddCreditForm({ slug }: { slug: string }) {
             </select>
           )}
         </Field>
-        <Field label="Role">
-          {(id) => <input id={id} value={role} onChange={(e) => setRole(e.target.value)} placeholder={kind === "cast" ? "e.g. Laurie" : "e.g. Director"} className="field h-12 w-[260px] max-w-full px-3" />}
+        <Field label={kind === "cast" ? "Role" : "Position"}>
+          {(id) =>
+            kind === "crew" ? (
+              <PositionSelect id={id} value={role} onChange={setRole} className="field h-12 w-[260px] max-w-full px-3" />
+            ) : (
+              <input id={id} value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Laurie" className="field h-12 w-[260px] max-w-full px-3" />
+            )
+          }
         </Field>
       </div>
       <ErrorText error={error} />
@@ -331,7 +339,7 @@ export function AddCreditForm({ slug }: { slug: string }) {
 const iconButton =
   "flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-muted hover:bg-soft hover:text-ink";
 
-export function EditableRole({ slug, creditId, role }: { slug: string; creditId: string; role: string }) {
+export function EditableRole({ slug, creditId, role, kind }: { slug: string; creditId: string; role: string; kind: "cast" | "crew" }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(role);
   const { pending, error, run } = useAction();
@@ -342,7 +350,11 @@ export function EditableRole({ slug, creditId, role }: { slug: string; creditId:
         <label className="sr-only" htmlFor={`role-${creditId}`}>
           Role
         </label>
-        <input id={`role-${creditId}`} value={value} onChange={(e) => setValue(e.target.value)} className="field h-12 w-full min-w-[160px] px-3" />
+        {kind === "crew" ? (
+          <PositionSelect id={`role-${creditId}`} value={value} onChange={setValue} className="field h-12 w-full min-w-[160px] px-3" />
+        ) : (
+          <input id={`role-${creditId}`} value={value} onChange={(e) => setValue(e.target.value)} className="field h-12 w-full min-w-[160px] px-3" />
+        )}
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => setOwnCreditRole(slug, creditId, value), () => setEditing(false))}>
             Save

@@ -215,15 +215,13 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
           ) : user ? (
             <ClaimPanel personId={person.id} slug={person.slug} name={person.display_name} />
           ) : (
-            <section className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-y border-rule py-5">
-              <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-0.5">
-                <span className="text-xl font-extrabold">Is this you?</span>
-                <span className="text-muted">Claim this page to choose your headshot, write a bio, and keep your credits up to date.</span>
-              </div>
-              <Link href={`/signin?next=${encodeURIComponent(pagePath)}`} className="btn-primary">
+            <p className="-mb-6 text-sm text-muted">
+              Is this you?{" "}
+              <Link href={`/signin?next=${encodeURIComponent(pagePath)}`} className="font-semibold text-ink">
                 Sign in to claim this page
-              </Link>
-            </section>
+              </Link>{" "}
+              and keep your credits up to date.
+            </p>
           ))}
 
         <section className="flex flex-wrap items-end gap-9">
@@ -431,7 +429,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                                   </span>
                                 </td>
                                 <td className="py-3 pr-4">
-                                  {editing ? <EditableRole slug={person.slug} creditId={c.id} role={c.role} /> : c.role}
+                                  {editing ? <EditableRole slug={person.slug} creditId={c.id} role={c.role} kind={c.kind} /> : c.role}
                                 </td>
                                 <td className="hidden py-3 pr-4 md:table-cell">
                                   {org ? (

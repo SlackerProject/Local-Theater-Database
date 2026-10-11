@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasRole, type CurrentUser } from "@/lib/auth";
 import { describeChanges, type Revision } from "@/lib/changes";
 import { AuditionButtons, AwardButtons, ClaimButtons, DisputeButtons } from "./ModerationButtons";
-import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
+import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
@@ -25,6 +25,7 @@ export async function ClaimsSection({ user }: { user: CurrentUser }) {
     )
     .eq("status", "pending")
     .order("created_at", { ascending: true });
+  const claimPoints = await pointsFor((claims ?? []).map((c) => c.user_id));
 
   return (
     <section className="flex flex-col gap-4">
@@ -36,7 +37,7 @@ export async function ClaimsSection({ user }: { user: CurrentUser }) {
             <strong>
               {c.claimant?.display_name} (@{c.claimant?.username})
             </strong>{" "}
-            says they’re{" "}
+            <ContributorTag points={claimPoints.get(c.user_id)} /> says they’re{" "}
             {c.person ? (
               <Link href={`/person/${c.person.slug}`} className="font-bold">
                 {c.person.display_name}
@@ -174,7 +175,7 @@ export async function AuditionsSection() {
         return (
           <article key={p.id} className={item}>
             <p className="m-0 text-lg">
-              <strong>{p.proposer?.display_name}</strong> <ContributorMedal points={points.get(p.proposed_by)} /> sent audition
+              <strong>{p.proposer?.display_name}</strong> <ContributorTag points={points.get(p.proposed_by)} /> sent audition
               details for{" "}
               {prod ? (
                 <Link href={`/production/${prod.slug}`} className="font-bold">
@@ -259,7 +260,7 @@ export async function AwardsSection() {
         return (
           <article key={p.id} className={item}>
             <p className="m-0 text-lg">
-              <strong>{p.proposer?.display_name}</strong> <ContributorMedal points={points.get(p.proposed_by)} /> added an award
+              <strong>{p.proposer?.display_name}</strong> <ContributorTag points={points.get(p.proposed_by)} /> added an award
             </p>
             <span className="text-sm text-muted">Sent {when(p.created_at)}</span>
             <p className="m-0">

@@ -11,7 +11,7 @@ import { UploadQueue, type QueueGroup } from "./UploadQueue";
 import { AuditionsSection, AwardsSection, ClaimsSection, DisputesSection } from "./sections";
 import { CorrectionsSection } from "./corrections";
 import { ModerationNav } from "./ModerationNav";
-import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
+import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 import { mediaUrl, type MediaPalette } from "@/lib/media";
 
 export const metadata: Metadata = { title: "Moderation queue · Local Theater Database" };
@@ -86,7 +86,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       credit: m.photographer_credit,
       palette: (m.palette as MediaPalette | null) ?? null,
       uploader: `${m.uploader?.display_name} (@${m.uploader?.username})`,
-      uploaderMedal: <ContributorMedal points={points.get(m.uploaded_by)} />,
+      uploaderMedal: <ContributorTag points={points.get(m.uploaded_by)} />,
       uploadedAt: new Date(m.created_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }),
     });
     groups.set(target.key, group);
@@ -121,7 +121,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
           id={p.id}
           submitted={p.changes as unknown as Bundle}
           submittedBy={`${p.proposer?.display_name} (@${p.proposer?.username})`}
-          medal={<ContributorMedal points={points.get(p.proposed_by)} />}
+          medal={<ContributorTag points={points.get(p.proposed_by)} />}
           submittedAt={new Date(p.created_at).toLocaleString("en-US", {
             timeZone: "America/New_York",
             dateStyle: "medium",

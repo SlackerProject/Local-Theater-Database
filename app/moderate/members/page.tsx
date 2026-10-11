@@ -8,6 +8,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
 import { MemberActions } from "./MemberActions";
 import { FoundingSwitch } from "./FoundingSwitch";
+import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
 export const metadata: Metadata = { title: "Members · Moderation · Local Theater Database" };
 
@@ -46,6 +47,7 @@ async function Members({ searchParams }: Pick<PageProps<"/moderate/members">, "s
     supabase.from("site_settings").select("value").eq("key", "founding").maybeSingle(),
   ]);
   const isAdmin = hasRole(user, "admin");
+  const points = await pointsFor((members ?? []).map((m) => m.id));
   const foundingValue = (founding?.value ?? { open: true, closed_at: null }) as { open: boolean; closed_at: string | null };
 
   return (
@@ -95,6 +97,9 @@ async function Members({ searchParams }: Pick<PageProps<"/moderate/members">, "s
                         {m.display_name}
                       </Link>
                       <span className="block text-sm text-muted">@{m.username} · joined {day(m.joined)}</span>
+                      <span className="mt-1 block">
+                        <ContributorTag points={points.get(m.id)} />
+                      </span>
                       {m.banned_at && (
                         <span className="mt-1 block text-sm font-semibold">
                           Suspended {day(m.banned_at)}

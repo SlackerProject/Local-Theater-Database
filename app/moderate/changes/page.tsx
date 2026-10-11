@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { KIND_FOR_TABLE, type PageTable } from "@/lib/corrections";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
-import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
+import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
 export const metadata: Metadata = { title: "Recent changes · Moderation · Local Theater Database" };
 
@@ -167,7 +167,7 @@ async function Changes({ searchParams }: Pick<PageProps<"/moderate/changes">, "s
                     {it.who ? (
                       <span className="inline-flex items-center gap-1">
                         <Link href={`/moderate/changes?user=${it.who.id}`}>{it.who.name}</Link>
-                        <ContributorMedal points={points.get(it.who.id)} />
+                        <ContributorTag points={points.get(it.who.id)} />
                       </span>
                     ) : (
                       "—"

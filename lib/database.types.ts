@@ -1840,6 +1840,7 @@ export type Database = {
           username: string
         }[]
       }
+      moderation_pending_count: { Args: never; Returns: number }
       moderator_delete: {
         Args: { p_id: string; p_table: string; p_with_orphans?: boolean }
         Returns: number

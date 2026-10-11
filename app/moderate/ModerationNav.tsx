@@ -8,10 +8,14 @@ const TABS = [
   { href: "/moderate/bugs", label: "Bug reports" },
 ] as const;
 
-// The moderators' tools, one tab each; Bug reports shows how many are open
+// The moderators' tools, one tab each; the review queue shows how many
+// decisions are waiting (in red), Bug reports how many are open
 export async function ModerationNav({ current }: { current: (typeof TABS)[number]["href"] }) {
   const supabase = await createClient();
-  const { count } = await supabase.from("bug_reports").select("id", { count: "exact", head: true }).eq("status", "open");
+  const [{ count }, { data: waiting }] = await Promise.all([
+    supabase.from("bug_reports").select("id", { count: "exact", head: true }).eq("status", "open"),
+    supabase.rpc("moderation_pending_count"),
+  ]);
 
   return (
     <nav aria-label="Moderation" className="flex flex-wrap gap-x-6 border-b border-rule">
@@ -25,6 +29,12 @@ export async function ModerationNav({ current }: { current: (typeof TABS)[number
           }`}
         >
           {t.label}
+          {t.href === "/moderate" && !!waiting && (
+            <span className="rounded-full bg-alert px-1.5 text-[12px] font-bold leading-5 text-white">
+              {waiting}
+              <span className="sr-only"> waiting</span>
+            </span>
+          )}
           {t.href === "/moderate/bugs" && !!count && (
             <span className="rounded bg-ink px-1.5 text-[12px] font-bold leading-5 text-white">
               {count}

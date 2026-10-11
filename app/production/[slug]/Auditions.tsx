@@ -15,7 +15,7 @@ export type AuditionRow = {
 export type LocationOption = { id: string; name: string; town: string | null };
 
 // Suggestions for a session's label; anything else can be typed
-const SESSION_LABELS = ["Auditions", "Dance audition", "Vocal audition", "Callbacks", "Video submissions", "Open call", "Children’s auditions"];
+const SESSION_LABELS = ["Auditions", "Dance audition", "Vocal audition", "Callbacks", "Open call"];
 
 // A production before its cast is announced: audition dates (or "TBD"),
 // "Remind me about auditions", and a form anyone can use to add the dates.

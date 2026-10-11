@@ -11,8 +11,23 @@ type User = {
   canModerate: boolean;
   canWriteUpdates: boolean; // moderators and the admin
   unread: number;
+  waiting: number; // decisions waiting in the review queue (moderators)
   pageSlug: string | null;
 } | null;
+
+// Red count of decisions waiting for a moderator
+function WaitingCount({ count, className = "" }: { count: number; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-alert px-[5px] text-[11.5px] font-bold leading-none text-white ${className}`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+const waitingLabel = (n: number) => `${n} ${n === 1 ? "decision" : "decisions"} waiting`;
 
 const BROWSE = [
   { href: "/shows", label: "Shows" },
@@ -121,15 +136,16 @@ export function HeaderNav({ user }: { user: User }) {
             <div ref={accountRef} className="relative">
               <button
                 type="button"
-                aria-label="Your account"
+                aria-label={user.waiting ? `Your account, ${waitingLabel(user.waiting)}` : "Your account"}
                 aria-expanded={account}
                 aria-haspopup="menu"
                 onClick={() => setAccount((v) => !v)}
-                className="flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
+                className="relative flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
               >
                 <span aria-hidden="true" className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#2B2B2B] text-sm font-bold text-white">
                   {initial(user.displayName)}
                 </span>
+                {user.waiting > 0 && <WaitingCount count={user.waiting} className="absolute -right-0.5 top-0 shadow-[0_0_0_2px_#fff]" />}
               </button>
               {account && (
                 <div role="menu" className="absolute right-0 top-full z-20 mt-2 flex w-56 flex-col rounded-lg border border-rule bg-page py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
@@ -137,6 +153,12 @@ export function HeaderNav({ user }: { user: User }) {
                   {accountLinks(user).map((l) => (
                     <Link key={l.href} href={l.href} role="menuitem" className={menuItem} onClick={() => setAccount(false)}>
                       {l.label}
+                      {l.href === "/moderate" && user.waiting > 0 && (
+                        <>
+                          <WaitingCount count={user.waiting} className="ml-2" />
+                          <span className="sr-only">, {waitingLabel(user.waiting)}</span>
+                        </>
+                      )}
                     </Link>
                   ))}
                   <form action={signOut} className="border-t border-rule pt-1.5">
@@ -174,7 +196,7 @@ export function HeaderNav({ user }: { user: User }) {
         )}
         <button
           type="button"
-          aria-label="Menu"
+          aria-label={user?.waiting ? `Menu, ${waitingLabel(user.waiting)}` : "Menu"}
           aria-expanded={mobile}
           onClick={() => setMobile((v) => !v)}
           className="relative flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
@@ -182,6 +204,7 @@ export function HeaderNav({ user }: { user: User }) {
           <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141414" strokeWidth="2" strokeLinecap="round">
             {mobile ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
           </svg>
+          {!!user?.waiting && !mobile && <WaitingCount count={user.waiting} className="absolute -right-0.5 top-0 shadow-[0_0_0_2px_#fff]" />}
         </button>
         {mobile && (
           <nav aria-label="Main" className="absolute inset-x-0 top-full z-20 flex flex-col border-b border-rule bg-page pb-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
@@ -204,6 +227,12 @@ export function HeaderNav({ user }: { user: User }) {
                 {accountLinks(user).map((l) => (
                   <Link key={l.href} href={l.href} className={menuItem} onClick={() => setMobile(false)}>
                     {l.label}
+                    {l.href === "/moderate" && user.waiting > 0 && (
+                      <>
+                        <WaitingCount count={user.waiting} className="ml-2" />
+                        <span className="sr-only">, {waitingLabel(user.waiting)}</span>
+                      </>
+                    )}
                   </Link>
                 ))}
                 <form action={signOut}>

@@ -59,14 +59,18 @@ async function UserNav() {
   let unread = 0;
   let pageSlug: string | null = null;
   let news: string[] = [];
+  let waiting = 0;
   if (user) {
     const supabase = await createClient();
-    const [{ count }, { data: page }, { data: badges }] = await Promise.all([
+    const [{ count }, { data: page }, { data: badges }, { data: pending }] = await Promise.all([
       supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "unread"),
       supabase.from("people").select("slug").eq("verified_owner_id", user.id).maybeSingle(),
       supabase.from("user_badges").select("badge, earned_at").eq("user_id", user.id).is("seen_at", null).order("earned_at", { ascending: false }),
+      // Decisions waiting in the review queue (moderators only)
+      hasRole(user, "moderator") ? supabase.rpc("moderation_pending_count") : Promise.resolve({ data: 0 }),
     ]);
     unread = count ?? 0;
+    waiting = Number(pending ?? 0);
     pageSlug = page?.slug ?? null;
     // Newly earned levels and badges, highest level first
     news = (badges ?? [])
@@ -87,6 +91,7 @@ async function UserNav() {
                 canModerate: hasRole(user, "trusted"),
                 canWriteUpdates: hasRole(user, "moderator"),
                 unread,
+                waiting,
                 pageSlug,
               }
             : null

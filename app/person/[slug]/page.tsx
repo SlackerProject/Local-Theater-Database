@@ -9,6 +9,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
 import { FollowButton } from "@/components/FollowButton";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
+import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { HeadshotUploader } from "@/components/uploads/UploadPanels";
 import type { PageLink } from "./actions";
 import {
@@ -235,9 +236,12 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             {headshot?.photographer_credit && <span className="text-xs text-muted">Photo: {headshot.photographer_credit}</span>}
           </div>
           <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-2.5">
-            <h1 className="display text-[40px] md:text-[60px]" style={{ lineHeight: 1 }}>
-              {person.display_name}
-            </h1>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h1 className="display text-[40px] md:text-[60px]" style={{ lineHeight: 1 }}>
+                {person.display_name}
+              </h1>
+              {!isOwner && <EditButton kind="person" slug={person.slug} signedIn={!!user} />}
+            </div>
             <p className="m-0 text-muted">
               {descriptor}
               {person.verified_owner_id && (
@@ -476,21 +480,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             <HidePageButton slug={person.slug} />
           </section>
         )}
-        {!isOwner &&
-          !myClaim &&
-          (user ? (
-            <section className="flex flex-col items-stretch gap-1 border-t border-rule pt-5 text-[15px] text-muted">
-              Spot something wrong or missing?
-              <SuggestCorrection personId={person.id} slug={person.slug} currentName={person.display_name} label="Suggest an edit" />
-            </section>
-          ) : (
-            <p className="m-0 border-t border-rule pt-5 text-[15px] text-muted">
-              Spot something wrong or missing?{" "}
-              <Link href={`/signin?next=${encodeURIComponent(pagePath)}`} className="font-semibold text-ink">
-                Sign in to suggest an edit
-              </Link>
-            </p>
-          ))}
+        {!isOwner && <SuggestEdit kind="person" slug={person.slug} signedIn={!!user} />}
         <ModeratorDeleteSection table="people" id={person.id} name={person.display_name} afterDelete="/people" />
       </main>
     </>

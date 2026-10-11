@@ -1189,6 +1189,9 @@ export type Database = {
       profiles: {
         Row: {
           age_confirmed_at: string
+          banned_at: string | null
+          banned_by: string | null
+          banned_reason: string | null
           created_at: string
           display_name: string
           id: string
@@ -1199,6 +1202,9 @@ export type Database = {
         }
         Insert: {
           age_confirmed_at: string
+          banned_at?: string | null
+          banned_by?: string | null
+          banned_reason?: string | null
           created_at?: string
           display_name: string
           id: string
@@ -1209,6 +1215,9 @@ export type Database = {
         }
         Update: {
           age_confirmed_at?: string
+          banned_at?: string | null
+          banned_by?: string | null
+          banned_reason?: string | null
           created_at?: string
           display_name?: string
           id?: string
@@ -1218,6 +1227,13 @@ export type Database = {
           username?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_person_id_fkey"
             columns: ["person_id"]
@@ -1439,6 +1455,10 @@ export type Database = {
     }
     Functions: {
       apply_auditions: { Args: { p_proposal_id: string }; Returns: undefined }
+      apply_correction: {
+        Args: { p_accept: string[]; p_proposal_id: string }
+        Returns: number
+      }
       apply_poster: {
         Args: { p_media: string; p_production: string }
         Returns: undefined
@@ -1484,6 +1504,8 @@ export type Database = {
         Returns: string
       }
       claim_state: { Args: { p_person_id: string }; Returns: string }
+      correction_changes: { Args: { p_changes: Json }; Returns: Json }
+      correction_fields: { Args: { p_table: string }; Returns: string[] }
       deletion_blockers: {
         Args: { p_id: string; p_table: string }
         Returns: {
@@ -1510,6 +1532,7 @@ export type Database = {
         Args: { min_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      is_banned: { Args: never; Returns: boolean }
       keep_all_notifications: { Args: never; Returns: undefined }
       lookup: {
         Args: { max_results?: number; p_kind: string; p_query: string }
@@ -1527,6 +1550,23 @@ export type Database = {
           id: string
           label: string
           slug: string
+        }[]
+      }
+      member_overview: {
+        Args: { p_query?: string }
+        Returns: {
+          approved: number
+          banned_at: string
+          banned_reason: string
+          display_name: string
+          id: string
+          joined: string
+          last_active: string
+          pending: number
+          rejected: number
+          role: Database["public"]["Enums"]["user_role"]
+          uploads: number
+          username: string
         }[]
       }
       moderator_delete: {
@@ -1605,6 +1645,7 @@ export type Database = {
         Args: { p_id: string; p_keep: boolean; p_note?: string }
         Returns: undefined
       }
+      restore_member: { Args: { p_user: string }; Returns: undefined }
       revert_revision: { Args: { p_revision_id: number }; Returns: undefined }
       review_auditions: {
         Args: { p_approve: boolean; p_note?: string; p_proposal_id: string }
@@ -1613,6 +1654,10 @@ export type Database = {
       review_claim: {
         Args: { p_claim_id: string; p_verify: boolean }
         Returns: undefined
+      }
+      review_correction: {
+        Args: { p_accept: string[]; p_note?: string; p_proposal_id: string }
+        Returns: number
       }
       review_media: {
         Args: { p_approve: boolean; p_media_id: string; p_note?: string }
@@ -1629,6 +1674,13 @@ export type Database = {
         }[]
       }
       seen_count: { Args: { p_person_id: string }; Returns: number }
+      set_member_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user: string
+        }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       slugify: { Args: { p_text: string }; Returns: string }
@@ -1650,6 +1702,14 @@ export type Database = {
           p_url: string
         }
         Returns: string
+      }
+      submit_correction: {
+        Args: { p_changes: Json; p_id: string; p_note: string; p_table: string }
+        Returns: string
+      }
+      suspend_member: {
+        Args: { p_reason: string; p_user: string }
+        Returns: number
       }
       unaccent: { Args: { "": string }; Returns: string }
       unique_slug: {

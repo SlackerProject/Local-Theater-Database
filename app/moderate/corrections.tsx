@@ -1,0 +1,189 @@
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import {
+  FIELDS,
+  KIND_FOR_TABLE,
+  KINDS,
+  normalizeChanges,
+  performanceText,
+  type FieldValue,
+  type PageTable,
+} from "@/lib/corrections";
+import { SHOW_TYPES } from "@/lib/submission";
+import { localDate, localHHMM } from "@/lib/calendar";
+import { CorrectionReview, type ReviewRow } from "./CorrectionReview";
+
+const TABLES = Object.keys(KIND_FOR_TABLE) as PageTable[];
+
+const when = (iso: string) =>
+  new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+async function names(supabase: Supabase, table: "organizations" | "locations" | "people", ids: string[]) {
+  if (!ids.length) return new Map<string, string>();
+  const col = table === "people" ? "display_name" : "name";
+  const { data } = await supabase.from(table).select(`id, ${col}`).in("id", ids);
+  return new Map(((data ?? []) as unknown as Record<string, string>[]).map((r) => [r.id, r[col]]));
+}
+
+// ---------------------------------------------------------------------
+// Corrections from the Edit pages (and older "suggest a correction" notes)
+// ---------------------------------------------------------------------
+export async function CorrectionsSection() {
+  const supabase = await createClient();
+  const { data: proposals } = await supabase
+    .from("edit_proposals")
+    .select("id, entity_table, entity_id, changes, note, created_at, proposed_by, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
+    .in("entity_table", TABLES)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  const cards = await Promise.all((proposals ?? []).map((p) => buildCard(supabase, p)));
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="heading">Corrections</h2>
+      {!cards.length && <p className="m-0 text-muted">No corrections waiting for review.</p>}
+      {cards.map((c) => (
+        <article key={c.id} className="flex flex-col gap-3 border-t border-rule pt-4">
+          <p className="m-0 text-lg">
+            <Link href={`/moderate/members?q=${encodeURIComponent(c.username)}`} className="font-bold">
+              {c.who}
+            </Link>{" "}
+            sent a correction for{" "}
+            {c.page ? (
+              <Link href={c.page.href} className="font-bold">
+                {c.page.label}
+              </Link>
+            ) : (
+              "a page that no longer exists"
+            )}{" "}
+            <span className="text-muted">({c.noun})</span>
+          </p>
+          <span className="text-sm text-muted">Sent {c.sent}</span>
+          {c.note && (
+            <div className="callout m-0 flex flex-col gap-1 text-[15px]">
+              <strong>Notes to moderator</strong>
+              <span className="whitespace-pre-line">{c.note}</span>
+            </div>
+          )}
+          <CorrectionReview id={c.id} rows={c.rows} />
+        </article>
+      ))}
+    </section>
+  );
+}
+
+type Proposal = {
+  id: string;
+  entity_table: string;
+  entity_id: string | null;
+  changes: unknown;
+  note: string | null;
+  created_at: string;
+  proposer: { username: string; display_name: string } | null;
+};
+
+async function buildCard(supabase: Supabase, p: Proposal) {
+  const table = p.entity_table as PageTable;
+  const kind = KIND_FOR_TABLE[table];
+  const c = normalizeChanges(p.changes);
+  const fields = FIELDS[table];
+  const rows: ReviewRow[] = [];
+
+  // The page as it is now
+  const cols = ["id", "slug", ...fields.map((f) => f.key)].join(", ");
+  const { data: live } = p.entity_id ? await supabase.from(table).select(cols).eq("id", p.entity_id).maybeSingle() : { data: null };
+  const now = (live ?? null) as unknown as (Record<string, FieldValue> & { slug: string }) | null;
+
+  let label = now ? String(now.display_name ?? now.name ?? now.title ?? now.slug) : "";
+  if (table === "productions" && p.entity_id) {
+    const { data: prod } = await supabase.from("productions").select("year, title_override, show:shows(title)").eq("id", p.entity_id).maybeSingle();
+    if (prod) label = `${prod.title_override ?? prod.show?.title} (${prod.year})`;
+  }
+
+  // Readable names for picked companies, venues and people
+  const proposed = c.fields ?? {};
+  const orgs = await names(supabase, "organizations", [proposed.organization_id, now?.organization_id].filter((x): x is string => typeof x === "string" && !!x));
+  const venues = await names(supabase, "locations", [proposed.location_id, now?.location_id].filter((x): x is string => typeof x === "string" && !!x));
+  const pretty = (key: string, v: FieldValue | undefined) => {
+    if (v === null || v === undefined || v === "") return "";
+    if (key === "organization_id") return orgs.get(String(v)) ?? "(unknown company)";
+    if (key === "location_id") return venues.get(String(v)) ?? "(unknown venue)";
+    if (key === "type") return SHOW_TYPES.find((t) => t.value === v)?.label ?? String(v);
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      return new Date(`${v}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+    }
+    return String(v);
+  };
+
+  for (const f of fields) {
+    if (!(f.key in proposed)) continue;
+    rows.push({ key: `field:${f.key}`, what: f.label, current: pretty(f.key, now?.[f.key]), proposed: pretty(f.key, proposed[f.key]) });
+  }
+
+  if (table === "productions" && p.entity_id) {
+    const creditIds = [...(c.credits?.remove ?? []), ...(c.credits?.update ?? []).map((u) => u.id)];
+    const { data: credits } = creditIds.length
+      ? await supabase.from("credits").select("id, kind, role_name, person:people(display_name), character:show_characters(name)").in("id", creditIds)
+      : { data: [] };
+    const credit = new Map((credits ?? []).map((cr) => [cr.id, cr]));
+    const people = await names(supabase, "people", (c.credits?.add ?? []).map((a) => a.person_id).filter((x): x is string => !!x));
+
+    for (const id of c.credits?.remove ?? []) {
+      const cr = credit.get(id);
+      rows.push({
+        key: `credit:remove:${id}`,
+        what: `Remove from ${cr?.kind === "crew" ? "creative team" : "cast"}`,
+        current: cr ? `${cr.person?.display_name} — ${cr.character?.name ?? cr.role_name ?? ""}` : "(already gone)",
+        proposed: "Removed",
+      });
+    }
+    for (const u of c.credits?.update ?? []) {
+      const cr = credit.get(u.id);
+      rows.push({
+        key: `credit:update:${u.id}`,
+        what: `Change ${cr?.kind === "crew" ? "position" : "role"}: ${cr?.person?.display_name ?? "?"}`,
+        current: cr ? (cr.character?.name ?? cr.role_name ?? "") : "(credit is gone)",
+        proposed: u.role,
+      });
+    }
+    (c.credits?.add ?? []).forEach((a, i) => {
+      const who = a.person_id ? (people.get(a.person_id) ?? a.person_label ?? "(unknown person)") : `${a.new_name} (new person, confirmed 18+)`;
+      rows.push({ key: `credit:add:${i}`, what: `Add to ${a.kind === "crew" ? "creative team" : "cast"}`, current: "", proposed: `${who} — ${a.role}` });
+    });
+
+    const perfIds = [...(c.performances?.remove ?? []), ...(c.performances?.update ?? []).map((u) => u.id)];
+    const { data: perfs } = perfIds.length ? await supabase.from("performances").select("id, starts_at, label, is_cancelled").in("id", perfIds) : { data: [] };
+    const perf = new Map((perfs ?? []).map((x) => [x.id, x]));
+    const perfLabel = (x: { starts_at: string; label: string | null; is_cancelled: boolean } | undefined) =>
+      x ? `${performanceText(localDate(x.starts_at), localHHMM(x.starts_at))}${x.label ? ` · ${x.label}` : ""}${x.is_cancelled ? " · Cancelled" : ""}` : "(already gone)";
+
+    for (const id of c.performances?.remove ?? []) {
+      rows.push({ key: `perf:remove:${id}`, what: "Remove performance", current: perfLabel(perf.get(id)), proposed: "Removed" });
+    }
+    for (const u of c.performances?.update ?? []) {
+      rows.push({
+        key: `perf:update:${u.id}`,
+        what: "Change performance",
+        current: perfLabel(perf.get(u.id)),
+        proposed: `${performanceText(u.date, u.time)}${u.label ? ` · ${u.label}` : ""}${u.cancelled ? " · Cancelled" : ""}`,
+      });
+    }
+    (c.performances?.add ?? []).forEach((a, i) => {
+      rows.push({ key: `perf:add:${i}`, what: "Add performance", current: "", proposed: `${performanceText(a.date, a.time)}${a.label ? ` · ${a.label}` : ""}` });
+    });
+  }
+
+  return {
+    id: p.id,
+    who: p.proposer?.display_name ?? "Someone",
+    username: p.proposer?.username ?? "",
+    noun: KINDS[kind].noun,
+    page: now ? { href: `/${kind}/${now.slug}`, label } : null,
+    sent: when(p.created_at),
+    note: p.note,
+    rows,
+  };
+}

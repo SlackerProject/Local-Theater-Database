@@ -8,7 +8,9 @@ import type { Bundle } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ReviewCard } from "./ReviewCard";
 import { UploadQueue, type QueueGroup } from "./UploadQueue";
-import { AuditionsSection, ClaimsSection, DisputesSection, PageSuggestionsSection, SuggestionsSection } from "./sections";
+import { AuditionsSection, ClaimsSection, DisputesSection } from "./sections";
+import { CorrectionsSection } from "./corrections";
+import { ModerationNav } from "./ModerationNav";
 import { mediaUrl, type MediaPalette } from "@/lib/media";
 
 export const metadata: Metadata = { title: "Moderation queue · Local Theater Database" };
@@ -87,10 +89,10 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
 
   return (
     <>
+      <ModerationNav current="/moderate" />
       <ClaimsSection user={user} />
       <DisputesSection />
-      <PageSuggestionsSection />
-      <SuggestionsSection />
+      <CorrectionsSection />
       <AuditionsSection />
       <h2 className="heading -mb-2 mt-4">Production submissions</h2>
       {typeof params.approved === "string" && (

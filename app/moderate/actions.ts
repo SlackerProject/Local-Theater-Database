@@ -88,6 +88,47 @@ export async function reviewSuggestion(id: string, approve: boolean, note = ""):
   return call(() => supabase.rpc("approve_person_edit", { p_proposal_id: id, p_approve: approve, p_note: note }));
 }
 
+// ---------------------------------------------------------------------
+// Members: roles (admin only) and suspensions (moderators, for members
+// below their own role). The database functions enforce both.
+// ---------------------------------------------------------------------
+export async function setMemberRole(userId: string, role: "member" | "trusted" | "moderator"): Promise<Done> {
+  const supabase = await createClient();
+  const r = await call(() => supabase.rpc("set_member_role", { p_user: userId, p_role: role }));
+  revalidatePath("/moderate/members");
+  return r;
+}
+
+export async function suspendMember(userId: string, reason: string): Promise<Done & { rejected?: number }> {
+  const supabase = await createClient();
+  // Their waiting uploads are rejected; remove the files too
+  const { data: files } = await supabase.from("media").select("storage_key, thumb_key").eq("uploaded_by", userId).eq("status", "pending");
+  const { data, error } = await supabase.rpc("suspend_member", { p_user: userId, p_reason: reason });
+  if (error) return { ok: false, error: error.message };
+  const keys = (files ?? []).flatMap((f) => [f.storage_key, ...(f.thumb_key ? [f.thumb_key] : [])]);
+  if (keys.length) await supabase.storage.from(MEDIA_BUCKET).remove(keys);
+  revalidatePath("/moderate/members");
+  revalidatePath("/moderate");
+  return { ok: true, rejected: data ?? 0 };
+}
+
+export async function restoreMember(userId: string): Promise<Done> {
+  const supabase = await createClient();
+  const r = await call(() => supabase.rpc("restore_member", { p_user: userId }));
+  revalidatePath("/moderate/members");
+  return r;
+}
+
+// Corrections: approve the ticked changes (none = rejected). A note-only
+// correction is "marked done" instead.
+export async function reviewCorrection(id: string, accept: string[], note: string, noteOnlyDone: boolean): Promise<Done> {
+  const supabase = await createClient();
+  if (noteOnlyDone) return call(() => supabase.rpc("resolve_suggestion", { p_proposal_id: id, p_done: true, p_note: note }));
+  const result = await call(() => supabase.rpc("review_correction", { p_proposal_id: id, p_accept: accept, p_note: note }));
+  for (const p of ["/", "/calendar", "/shows", "/people", "/companies"]) revalidatePath(p);
+  return result;
+}
+
 export async function resolveSuggestion(id: string, done: boolean, note = ""): Promise<Done> {
   const supabase = await createClient();
   return call(() => supabase.rpc("resolve_suggestion", { p_proposal_id: id, p_done: done, p_note: note }));

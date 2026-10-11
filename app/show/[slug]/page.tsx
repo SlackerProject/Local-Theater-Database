@@ -5,7 +5,7 @@ import { SHOW_TYPES } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
-import { SuggestEdit } from "@/components/SuggestEdit";
+import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
 
@@ -50,7 +50,10 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
   return (
     <>
       <section className="flex flex-col gap-3">
-        <h1 className="display text-[42px] md:text-[72px]">{show.title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="display text-[42px] md:text-[72px]">{show.title}</h1>
+          <EditButton kind="show" slug={slug} signedIn={!!user} />
+        </div>
         {about && <p className="m-0 text-[17px] text-muted">{about}</p>}
       </section>
 
@@ -77,7 +80,7 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
           </div>
         )}
       </section>
-      <SuggestEdit table="shows" id={show.id} path={`/show/${slug}`} signedIn={!!user} />
+      <SuggestEdit kind="show" slug={slug} signedIn={!!user} />
       <ModeratorDeleteSection table="shows" id={show.id} name={show.title} afterDelete="/shows" />
     </>
   );

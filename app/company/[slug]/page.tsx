@@ -8,7 +8,7 @@ import { mediaUrl } from "@/lib/media";
 import { getCurrentUser } from "@/lib/auth";
 import { FollowButton } from "@/components/FollowButton";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
-import { SuggestEdit } from "@/components/SuggestEdit";
+import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -62,7 +62,10 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
   return (
     <>
       <section className="flex flex-col gap-3">
-        <h1 className="display text-[42px] md:text-[72px]">{org.name}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="display text-[42px] md:text-[72px]">{org.name}</h1>
+          <EditButton kind="company" slug={slug} signedIn={!!user} />
+        </div>
         <p className="m-0 text-[17px] text-muted">
           {[org.town && `${org.town}, ${org.state}`, org.founded_year && `Founded ${org.founded_year}`].filter(Boolean).join(" · ")}
           {org.website_url && (
@@ -125,7 +128,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
           </section>
         </aside>
       </div>
-      <SuggestEdit table="organizations" id={org.id} path={`/company/${slug}`} signedIn={!!user} />
+      <SuggestEdit kind="company" slug={slug} signedIn={!!user} />
       <ModeratorDeleteSection table="organizations" id={org.id} name={org.name} afterDelete="/companies" />
     </>
   );

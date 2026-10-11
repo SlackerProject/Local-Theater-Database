@@ -15,7 +15,7 @@ import { Auditions, type AuditionRow } from "./Auditions";
 import { siteOrigin } from "@/lib/site";
 import { HeroActions, type PerformanceRow } from "./HeroActions";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
-import { SuggestEdit } from "@/components/SuggestEdit";
+import { AddThemLink, EditButton, SuggestEdit } from "@/components/SuggestEdit";
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {
   return (
@@ -193,11 +193,16 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
             )}
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-3">
-            {p.organization && (
-              <Link href={`/company/${p.organization.slug}`} className="self-start font-semibold underline" style={{ color: c.ink }}>
-                {p.organization.name}
-              </Link>
-            )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {p.organization ? (
+                <Link href={`/company/${p.organization.slug}`} className="font-semibold underline" style={{ color: c.ink }}>
+                  {p.organization.name}
+                </Link>
+              ) : (
+                <span />
+              )}
+              <EditButton kind="production" slug={p.slug} signedIn={!!user} color={c.ink} />
+            </div>
             <h1 className="display text-[42px] md:text-[72px]">
               {title} <span className="font-normal" style={{ color: c.accent }}>({p.year})</span>
             </h1>
@@ -306,7 +311,12 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
               <h2 className="heading">Cast</h2>
             </div>
             {cast.length === 0 ? (
-              <p className="m-0 pt-3 text-muted">The cast will appear here once it’s added.</p>
+              <p className="m-0 pt-3 text-muted">
+                The cast will appear here once it’s added.{" "}
+                <AddThemLink slug={p.slug} signedIn={!!user} section="cast">
+                  Know who’s in the cast? Add them.
+                </AddThemLink>
+              </p>
             ) : (
               <ul className="m-0 grid list-none grid-cols-1 gap-x-10 p-0 md:grid-cols-2">
                 {cast.map((x) => (
@@ -348,9 +358,9 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
             {crew.length === 0 ? (
               <p className="m-0 pt-3 text-muted">
                 The creative team will appear here once it’s added.{" "}
-                <Link href={user ? `/add?to=${p.id}` : signInHref} className="font-semibold text-ink">
-                  Know who’s directing? Add them
-                </Link>
+                <AddThemLink slug={p.slug} signedIn={!!user} section="crew">
+                  Know who’s on the creative team? Add them.
+                </AddThemLink>
               </p>
             ) : (
               crew.map((x) => (
@@ -364,7 +374,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
             )}
           </section>
 
-          <SuggestEdit table="productions" id={p.id} path={path} signedIn={!!user} addToHref={`/add?to=${p.id}`} />
+          <SuggestEdit kind="production" slug={p.slug} signedIn={!!user} />
           <ModeratorDeleteSection table="productions" id={p.id} name={`${title} (${p.year})`} afterDelete="/shows" />
         </div>
 

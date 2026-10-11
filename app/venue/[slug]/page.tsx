@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
-import { SuggestEdit } from "@/components/SuggestEdit";
+import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
 
@@ -56,7 +56,10 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
   return (
     <>
       <section className="flex flex-col gap-3">
-        <h1 className="display text-[42px] md:text-[72px]">{venue.name}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="display text-[42px] md:text-[72px]">{venue.name}</h1>
+          <EditButton kind="venue" slug={slug} signedIn={!!user} />
+        </div>
         <p className="m-0 flex flex-wrap items-center gap-x-2 text-[17px] text-muted">
           <span>{address}</span>
           <span aria-hidden="true">·</span>
@@ -103,7 +106,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
           )}
         </aside>
       </div>
-      <SuggestEdit table="locations" id={venue.id} path={`/venue/${slug}`} signedIn={!!user} />
+      <SuggestEdit kind="venue" slug={slug} signedIn={!!user} />
       <ModeratorDeleteSection table="locations" id={venue.id} name={venue.name} afterDelete="/" />
     </>
   );

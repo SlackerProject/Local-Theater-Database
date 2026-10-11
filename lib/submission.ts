@@ -39,6 +39,8 @@ export type FormState = {
   existingProduction?: { id: string; label: string; hasLocation: boolean };
   // The submission this one fixes and resubmits (hides its "Fix and resubmit")
   resubmissionOf?: string;
+  // Step 5: a poster, already uploaded to the contributor's storage folder
+  poster?: (BundlePoster & { rightsConfirmed: boolean }) | null;
   // editing: the "new record" details panel is open (false once Done is pressed).
   // Optional on show and organization because drafts saved before it existed lack it.
   show: { query: string; choice: Choice; type: ShowType | ""; subtitle: string; authors?: string; editing?: boolean };
@@ -88,10 +90,20 @@ export type BundlePerson =
   | { key: string; id: string; label: string }
   | { key: string; new: { display_name: string; adult_confirmed: true } };
 export type BundleCredit = { kind: "cast" | "crew"; role: string; person_key: string };
+// An uploaded poster and the palette read from it in the browser (migration 0007)
+export type BundlePoster = {
+  storage_key: string;
+  thumb_key: string;
+  width: number;
+  height: number;
+  bytes: number;
+  palette: { ground: string; ground2: string; ink: string; soft: string; accent: string };
+};
 
 type BundleItems = {
   version: 1;
   resubmission_of?: string; // ignored by the database; used by "Your submissions"
+  poster?: BundlePoster | null;
   location: Ref<NewLocation> | null;
   performances: BundlePerformance[];
   people: BundlePerson[];
@@ -114,6 +126,7 @@ export type Bundle = NewProductionBundle | AddToProductionBundle;
 
 // What a moderator leaves out; the contributor can fix and resubmit it
 export type LeftOut = {
+  poster?: BundlePoster | null;
   location: Ref<NewLocation> | null;
   performances: BundlePerformance[];
   people: BundlePerson[];
@@ -125,7 +138,7 @@ export function isAddTo(b: Bundle): b is AddToProductionBundle {
 }
 
 export function isEmptyLeftOut(l: LeftOut | null | undefined) {
-  return !l || (!l.location && !l.performances?.length && !l.credits?.length);
+  return !l || (!l.poster && !l.location && !l.performances?.length && !l.credits?.length);
 }
 
 const clean = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -269,19 +282,31 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   if (unresolved) problems.push(`${unresolved} ${unresolved === 1 ? "person needs" : "people need"} checking: pick an existing person or add them as new.`);
   if (unconfirmed) problems.push(`Confirm that every new person is 18 or older (${unconfirmed} to go).`);
 
-  if (existing && !location && !performances.length && !credits.length && !problems.length) {
-    problems.push("Add at least one cast or crew member, performance or the location.");
+  // Poster (optional)
+  let poster: BundlePoster | null = null;
+  if (s.poster) {
+    if (!s.poster.rightsConfirmed) problems.push("Confirm you have permission to share the poster.");
+    const { storage_key, thumb_key, width, height, bytes, palette } = s.poster;
+    poster = { storage_key, thumb_key, width, height, bytes, palette };
+  }
+
+  if (existing && !poster && !location && !performances.length && !credits.length && !problems.length) {
+    problems.push("Add at least one cast or crew member, performance, the location or a poster.");
   }
 
   if (problems.length) return { problems, bundle: null };
-  const resubmission = s.resubmissionOf ? { resubmission_of: s.resubmissionOf } : {};
+  // Optional extras shared by both bundle kinds
+  const extras = {
+    ...(s.resubmissionOf && { resubmission_of: s.resubmissionOf }),
+    ...(poster && { poster }),
+  };
 
   if (existing) {
     return {
       problems,
       bundle: {
         version: 1,
-        ...resubmission,
+        ...extras,
         production: { id: existing.id, display_title: existing.label },
         location,
         performances,
@@ -295,7 +320,7 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
     problems,
     bundle: {
       version: 1,
-      ...resubmission,
+      ...extras,
       show: show!,
       organization: organization!,
       location,
@@ -333,6 +358,7 @@ export function summarize(s: FormState) {
     production: live ? "Existing" : "New",
     company: live ? "Existing" : status(s.organization.choice, !!clean(s.organization.query)),
     location: live?.hasLocation ? "Existing" : status(s.location.choice, !!clean(s.location.query)),
+    poster: s.poster ? "Added" : "—",
     people: peopleParts.length ? peopleParts.join(" · ") : "—",
     credits: rows.length,
     performances: s.performances.length,
@@ -389,8 +415,15 @@ function matchFrom(ref: { id: string; label: string }): Match {
 
 function itemsToForm(
   form: FormState,
-  items: { location: Ref<NewLocation> | null; performances: BundlePerformance[]; people: BundlePerson[]; credits: BundleCredit[] },
+  items: {
+    poster?: BundlePoster | null;
+    location: Ref<NewLocation> | null;
+    performances: BundlePerformance[];
+    people: BundlePerson[];
+    credits: BundleCredit[];
+  },
 ): FormState {
+  if (items.poster) form.poster = { ...items.poster, rightsConfirmed: true };
   const loc = items.location;
   if (loc) {
     form.location =

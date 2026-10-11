@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
+import { mediaUrl } from "@/lib/media";
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -26,7 +27,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
     .from("organizations")
     .select(
       `id, name, town, state, website_url, founded_year, description,
-       productions(id, slug, year, title_override, color_ground,
+       productions(id, slug, year, title_override, color_ground, poster:media!productions_poster_fk(thumb_key),
                    show:shows(title), location:locations(id, slug, name, town)),
        organization_locations(is_home_venue, location:locations(id, slug, name, town))`,
     )
@@ -76,6 +77,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
                 year: p.year,
                 title: p.title_override ?? p.show!.title,
                 ground: p.color_ground,
+                posterUrl: mediaUrl(p.poster?.thumb_key),
                 caption: p.location?.name ?? "",
               }))}
           />

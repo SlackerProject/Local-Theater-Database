@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
+import { mediaUrl } from "@/lib/media";
 
 export default function Home() {
   return (
@@ -56,7 +57,9 @@ async function RecentProductions() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("productions")
-    .select("slug, year, title_override, color_ground, show:shows(title), organization:organizations(name)")
+    .select(
+      "slug, year, title_override, color_ground, poster:media!productions_poster_fk(thumb_key), show:shows(title), organization:organizations(name)",
+    )
     .order("created_at", { ascending: false })
     .limit(12);
 
@@ -74,6 +77,7 @@ async function RecentProductions() {
             href={`/production/${p.slug}`}
             title={title}
             ground={p.color_ground}
+            posterUrl={mediaUrl(p.poster?.thumb_key)}
             caption={
               <>
                 <span className="font-bold">

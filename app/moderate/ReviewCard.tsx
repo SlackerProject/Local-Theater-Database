@@ -8,11 +8,14 @@ import {
   type BundleCredit,
   type BundlePerformance,
   type BundlePerson,
+  type BundlePoster,
   type LeftOut,
   type NewLocation,
   type Ref,
   type ShowType,
 } from "@/lib/submission";
+import { mediaUrl } from "@/lib/media";
+import { PaletteSwatches } from "@/components/uploads/UploadPanels";
 import { approveSubmission, rejectSubmission } from "./actions";
 
 type Item<T> = { include: boolean; value: T };
@@ -77,6 +80,9 @@ export function ReviewCard({
   const [year, setYear] = useState(addTo ? "" : String(submitted.production.year));
   const [opening, setOpening] = useState(addTo ? "" : (submitted.production.opening_date ?? ""));
   const [closing, setClosing] = useState(addTo ? "" : (submitted.production.closing_date ?? ""));
+  const [poster, setPoster] = useState<Item<BundlePoster> | null>(
+    submitted.poster ? { include: true, value: submitted.poster } : null,
+  );
   const [location, setLocation] = useState<Item<Ref<NewLocation>> | null>(
     submitted.location ? { include: true, value: submitted.location } : null,
   );
@@ -97,6 +103,7 @@ export function ReviewCard({
     setPeople((ps) => ps.map((p) => (p.key === key && "new" in p ? { ...p, new: { ...p.new, display_name: name } } : p)));
 
   const leftOutCount =
+    (poster && !poster.include ? 1 : 0) +
     (location && !location.include ? 1 : 0) +
     performances.filter((p) => !p.include).length +
     credits.filter((c) => !c.include).length;
@@ -107,6 +114,7 @@ export function ReviewCard({
     const peopleFor = (cs: BundleCredit[]) => people.filter((p) => cs.some((c) => c.person_key === p.key));
     const items = {
       version: 1 as const,
+      ...(poster?.include && { poster: poster.value }),
       location: location?.include ? location.value : null,
       performances: performances.filter((p) => p.include).map((p) => p.value),
       people: peopleFor(keep),
@@ -126,6 +134,7 @@ export function ReviewCard({
           },
         };
     const leftOut: LeftOut = {
+      poster: poster && !poster.include ? poster.value : null,
       location: location && !location.include ? location.value : null,
       performances: performances.filter((p) => !p.include).map((p) => p.value),
       people: peopleFor(drop),
@@ -224,6 +233,22 @@ export function ReviewCard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Poster: optional, can be left out */}
+      {poster && (
+        <section className="flex flex-col gap-2">
+          <h3 className="subheading">Poster</h3>
+          <div className={`flex flex-wrap items-end gap-3 ${poster.include ? "" : "opacity-55"}`}>
+            <Include checked={poster.include} onChange={(include) => setPoster({ ...poster, include })} label="Include the poster" />
+            <a href={mediaUrl(poster.value.storage_key)!} target="_blank" rel="noopener noreferrer" className="block w-[120px]">
+              <div className="flex aspect-[4/5] w-full items-center overflow-hidden rounded-[4px]" style={{ background: poster.value.palette.ground }}>
+                <img src={mediaUrl(poster.value.thumb_key)!} alt="Submitted poster" className="h-full w-full object-contain" />
+              </div>
+            </a>
+            <PaletteSwatches palette={poster.value.palette} />
+          </div>
+        </section>
       )}
 
       {/* Location: optional, can be left out */}

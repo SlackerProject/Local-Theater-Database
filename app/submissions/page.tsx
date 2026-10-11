@@ -128,6 +128,7 @@ async function Submissions() {
               <div className="flex flex-col gap-1">
                 <h3 className="subheading">Not approved yet</h3>
                 <ul className="m-0 flex list-none flex-col p-0 text-[15px]">
+                  {leftOut.poster && <li className="border-b border-rule py-1.5">The poster</li>}
                   {leftOut.location && (
                     <li className="border-b border-rule py-1.5">
                       Location: {"new" in leftOut.location ? leftOut.location.new.name : leftOut.location.label}

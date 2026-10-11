@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { showColors } from "@/lib/palette";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
+import { HeadshotUploader } from "@/components/uploads/UploadPanels";
+import { getCurrentUser } from "@/lib/auth";
+import { mediaUrl } from "@/lib/media";
 
 export default function PersonPage({ params }: PageProps<"/person/[slug]">) {
   return (
@@ -30,10 +33,12 @@ async function Person({ params }: Pick<PageProps<"/person/[slug]">, "params">) {
     .from("people")
     .select(
       `id, slug, display_name, bio, verified_owner_id,
+       headshot:media!people_headshot_fk(thumb_key, storage_key, photographer_credit),
        credits(id, kind, role_name, hidden_on_person_page, added_by_owner,
                character:show_characters(name),
                production:productions(id, slug, year, title_override, opening_date,
                                       color_ground, color_ground_2, color_ink, color_soft, color_accent,
+                                      poster:media!productions_poster_fk(thumb_key),
                                       show:shows(title),
                                       organization:organizations(slug, name),
                                       location:locations(slug, name)))`,
@@ -43,12 +48,14 @@ async function Person({ params }: Pick<PageProps<"/person/[slug]">, "params">) {
 
   if (!person) notFound();
 
-  const [{ data: collaborators }, { data: owner }] = await Promise.all([
+  const [{ data: collaborators }, { data: owner }, user] = await Promise.all([
     supabase.rpc("frequent_collaborators", { p_person_id: person.id }),
     person.verified_owner_id
       ? supabase.from("profiles").select("display_name").eq("id", person.verified_owner_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    getCurrentUser(),
   ]);
+  const headshot = person.headshot;
 
   // Hidden credits and hidden productions don't appear; newest first
   const credits = (person.credits ?? [])
@@ -81,11 +88,24 @@ async function Person({ params }: Pick<PageProps<"/person/[slug]">, "params">) {
   return (
     <>
       <section className="flex flex-wrap items-end gap-9">
-        <div
-          aria-hidden="true"
-          className="flex aspect-[4/5] w-[140px] flex-none items-center justify-center rounded-md bg-soft text-5xl font-extrabold text-muted md:w-[180px]"
-        >
-          {person.display_name.charAt(0).toUpperCase()}
+        <div className="flex w-[140px] flex-none flex-col gap-1 md:w-[180px]">
+          {headshot ? (
+            <img
+              src={mediaUrl(headshot.thumb_key ?? headshot.storage_key)!}
+              alt={`${person.display_name}, headshot`}
+              className="block aspect-[4/5] w-full rounded-md bg-soft object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="flex aspect-[4/5] w-full items-center justify-center rounded-md bg-soft text-5xl font-extrabold text-muted"
+            >
+              {person.display_name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          {headshot?.photographer_credit && (
+            <span className="text-xs text-muted">Photo: {headshot.photographer_credit}</span>
+          )}
         </div>
         <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-2.5">
           <h1 className="display text-[40px] md:text-[60px]" style={{ lineHeight: 1 }}>
@@ -107,6 +127,15 @@ async function Person({ params }: Pick<PageProps<"/person/[slug]">, "params">) {
             )}
           </p>
           {person.bio && <p className="m-0 max-w-[620px]">{person.bio}</p>}
+          {user ? (
+            <HeadshotUploader personId={person.id} hasHeadshot={!!headshot} />
+          ) : (
+            !headshot && (
+              <Link href={`/signin?next=${encodeURIComponent(`/person/${person.slug}`)}`} className="self-start text-[15px] font-semibold">
+                Sign in to add a headshot
+              </Link>
+            )
+          )}
         </div>
       </section>
 
@@ -122,6 +151,7 @@ async function Person({ params }: Pick<PageProps<"/person/[slug]">, "params">) {
                 href={`/production/${prod.slug}`}
                 title={title}
                 ground={prod.color_ground}
+                posterUrl={mediaUrl(prod.poster?.thumb_key)}
                 caption={
                   <>
                     <span className="font-bold">{roles.join(", ")}</span>

@@ -6,6 +6,7 @@ export type ProductionTile = {
   year: number;
   title: string;
   ground: string | null;
+  posterUrl?: string | null;
   caption: string; // second caption line, e.g. the company
 };
 
@@ -42,6 +43,7 @@ export function TileGrid({ productions }: { productions: ProductionTile[] }) {
           href={`/production/${p.slug}`}
           title={p.title}
           ground={p.ground}
+          posterUrl={p.posterUrl}
           caption={
             <>
               <span className="font-bold">

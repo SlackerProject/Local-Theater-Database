@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
+import { mediaUrl } from "@/lib/media";
 
 export default function VenuePage({ params }: PageProps<"/venue/[slug]">) {
   return (
@@ -26,7 +27,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
     .from("locations")
     .select(
       `id, name, street_address, town, state, postal_code, seating_capacity, description,
-       productions(id, slug, year, title_override, color_ground,
+       productions(id, slug, year, title_override, color_ground, poster:media!productions_poster_fk(thumb_key),
                    show:shows(title), organization:organizations(id, slug, name)),
        organization_locations(organization:organizations(id, slug, name))`,
     )
@@ -80,6 +81,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
                 year: p.year,
                 title: p.title_override ?? p.show!.title,
                 ground: p.color_ground,
+                posterUrl: mediaUrl(p.poster?.thumb_key),
                 caption: p.organization?.name ?? "",
               }))}
           />

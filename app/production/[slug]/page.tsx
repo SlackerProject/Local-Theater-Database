@@ -6,6 +6,10 @@ import { showColors } from "@/lib/palette";
 import { SHOW_TYPES } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
+import { PhotoGallery } from "@/components/PhotoGallery";
+import { PhotoUploader, PosterUploader } from "@/components/uploads/UploadPanels";
+import { getCurrentUser } from "@/lib/auth";
+import { PHOTO_LIMIT, mediaUrl } from "@/lib/media";
 import { AllPerformances } from "./AllPerformances";
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {
@@ -45,12 +49,13 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
     .select(
       `id, slug, year, title_override, opening_date, closing_date, description,
        color_ground, color_ground_2, color_ink, color_soft, color_accent,
+       poster:media!productions_poster_fk(thumb_key, storage_key, width, height),
        show:shows(id, slug, title, subtitle, type, authors),
        organization:organizations(slug, name),
        location:locations(slug, name, town),
        performances(starts_at, label, is_cancelled),
        credits(id, kind, role_name, billing_order, is_understudy,
-               person:people(slug, display_name),
+               person:people(slug, display_name, headshot:media!people_headshot_fk(thumb_key)),
                character:show_characters(name))`,
     )
     .eq("slug", slug)
@@ -58,13 +63,28 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
 
   if (!p || !p.show) notFound();
 
-  const { data: others } = await supabase
-    .from("productions")
-    .select("id, slug, year, color_ground, organization:organizations(name)")
-    .eq("show_id", p.show.id)
-    .neq("id", p.id)
-    .order("year", { ascending: false })
-    .limit(8);
+  const [{ data: others }, { data: photoRows }, user] = await Promise.all([
+    supabase
+      .from("productions")
+      .select("id, slug, year, color_ground, poster:media!productions_poster_fk(thumb_key), organization:organizations(name)")
+      .eq("show_id", p.show.id)
+      .neq("id", p.id)
+      .order("year", { ascending: false })
+      .limit(8),
+    supabase
+      .from("media")
+      .select("id, storage_key, thumb_key, photographer_credit, caption, status, uploaded_by")
+      .eq("production_id", p.id)
+      .eq("kind", "production_photo")
+      .neq("status", "rejected")
+      .order("created_at", { ascending: true }),
+    getCurrentUser(),
+  ]);
+  const approvedPhotos = (photoRows ?? []).filter((m) => m.status === "approved");
+  const myPending = (photoRows ?? []).filter((m) => m.status === "pending" && m.uploaded_by === user?.id).length;
+  // Others' pending photos aren't visible here, so this can overcount the room left; the database has the final say
+  const remaining = PHOTO_LIMIT - (photoRows ?? []).length;
+  const signInHref = `/signin?next=${encodeURIComponent(`/production/${p.slug}`)}`;
 
   const c = showColors(p);
   const title = p.title_override ?? p.show.title;
@@ -102,7 +122,17 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
       >
         <div className="mx-auto flex max-w-[1180px] flex-col items-start gap-[22px] px-4 pb-7 pt-6 md:flex-row md:items-end md:gap-12 md:px-8 md:py-12">
           <div className="w-[190px] flex-none md:w-[270px]">
-            <PosterTile title={title} ground={c.hasPalette ? c.ground : null} />
+            {p.poster ? (
+              <img
+                src={mediaUrl(p.poster.thumb_key ?? p.poster.storage_key)!}
+                alt={`${title} poster`}
+                width={p.poster.width ?? undefined}
+                height={p.poster.height ?? undefined}
+                className="block h-auto w-full rounded-[4px] shadow-[0_18px_40px_rgba(40,20,10,0.25)]"
+              />
+            ) : (
+              <PosterTile title={title} />
+            )}
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             {p.organization && (
@@ -131,15 +161,56 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
             )}
             {p.description && <p className="m-0 max-w-[620px]">{p.description}</p>}
             <AllPerformances performances={performances} ink={c.ink} ground={c.ground} />
+            {user ? (
+              <PosterUploader productionId={p.id} hasPoster={!!p.poster} ink={c.ink} />
+            ) : (
+              !p.poster && (
+                <Link href={signInHref} className="self-start text-[15px] font-semibold underline" style={{ color: c.ink }}>
+                  Sign in to add a poster
+                </Link>
+              )
+            )}
           </div>
         </div>
       </section>
 
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-wrap items-start gap-12 px-4 pb-16 pt-7 md:px-8 md:pt-11">
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-10">
-          <section className="flex flex-col gap-2">
-            <h2 className="heading">Photos</h2>
-            <p className="m-0 text-muted">Production photos will appear here once members add them.</p>
+          <section className="flex flex-col gap-3.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <h2 className="heading">Photos</h2>
+              {approvedPhotos.length > 0 && (
+                <span className="text-sm text-muted">
+                  {approvedPhotos.length} {approvedPhotos.length === 1 ? "photo" : "photos"}
+                </span>
+              )}
+            </div>
+            {approvedPhotos.length ? (
+              <PhotoGallery
+                title={title}
+                photos={approvedPhotos.map((m) => ({
+                  id: m.id,
+                  full: mediaUrl(m.storage_key)!,
+                  thumb: mediaUrl(m.thumb_key ?? m.storage_key)!,
+                  credit: m.photographer_credit,
+                  caption: m.caption,
+                }))}
+              />
+            ) : (
+              <p className="m-0 text-muted">Production photos will appear here once someone uploads them.</p>
+            )}
+            {myPending > 0 && (
+              <p className="m-0 text-sm text-muted">
+                You have {myPending} {myPending === 1 ? "photo" : "photos"} waiting for a moderator.
+              </p>
+            )}
+            {user ? (
+              <PhotoUploader productionId={p.id} remaining={remaining} />
+            ) : (
+              <Link href={signInHref} className="self-start font-semibold">
+                Sign in to upload photos
+              </Link>
+            )}
           </section>
 
           <section className="flex flex-col">
@@ -156,9 +227,18 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
                       href={`/person/${x.person!.slug}`}
                       className="link-quiet flex items-center gap-3 border-b border-rule py-2.5"
                     >
-                      <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-soft font-bold text-muted">
-                        {x.person!.display_name.charAt(0).toUpperCase()}
-                      </span>
+                      {x.person!.headshot?.thumb_key ? (
+                        <img
+                          src={mediaUrl(x.person!.headshot.thumb_key)!}
+                          alt=""
+                          loading="lazy"
+                          className="h-11 w-11 flex-none rounded-full bg-soft object-cover"
+                        />
+                      ) : (
+                        <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-soft font-bold text-muted">
+                          {x.person!.display_name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
                       <span className="flex min-w-0 flex-col">
                         <span className="font-bold">{x.person!.display_name}</span>
                         <span className="text-sm text-muted">
@@ -205,6 +285,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
                     href={`/production/${o.slug}`}
                     title={p.show!.title}
                     ground={o.color_ground}
+                    posterUrl={mediaUrl(o.poster?.thumb_key)}
                     caption={
                       <span className="text-[13px]">
                         <strong>{o.year}</strong> · {o.organization?.name}

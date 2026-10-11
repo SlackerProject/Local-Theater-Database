@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SHOW_TYPES } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
+import { mediaUrl } from "@/lib/media";
 
 export default function ShowPage({ params }: PageProps<"/show/[slug]">) {
   return (
@@ -27,7 +28,8 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
     .from("shows")
     .select(
       `id, title, subtitle, type, authors, premiere_year,
-       productions(id, slug, year, opening_date, title_override, color_ground, organization:organizations(name)),
+       productions(id, slug, year, opening_date, title_override, color_ground,
+                   poster:media!productions_poster_fk(thumb_key), organization:organizations(name)),
        show_characters(id, name, sort_order,
                        credits(id, person:people(slug, display_name), production:productions(year)))`,
     )
@@ -76,6 +78,7 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
                 href={`/production/${p.slug}`}
                 title={p.title_override ?? show.title}
                 ground={p.color_ground}
+                posterUrl={mediaUrl(p.poster?.thumb_key)}
                 caption={
                   <span className="text-[15px]">
                     {p.organization?.name} · <strong>{p.year}</strong>

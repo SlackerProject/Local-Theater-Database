@@ -23,8 +23,7 @@ export function PosterTile({
           className="flex aspect-[4/5] w-full items-center overflow-hidden rounded-[4px] shadow-[0_6px_16px_rgba(0,0,0,0.15)]"
           style={{ background: ground ?? "#F5F5F4" }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- posters come from storage in a later milestone */}
-          <img src={posterUrl} alt={`${title} poster`} className="block h-full w-full object-contain" />
+          <img src={posterUrl} alt={`${title} poster`} loading="lazy" className="block h-full w-full object-contain" />
         </div>
       ) : (
         <div

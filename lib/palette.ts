@@ -109,9 +109,10 @@ export function derivePalette(ground: string, accentCandidate?: string | null): 
     }
   }
 
-  // Accent: the poster's saturated color, else ground's hue darkened
+  // Accent: the poster's saturated color, else ground's hue darkened to a
+  // muted mid-tone (DESIGN.md's Leading Ladies example: #FFD5DB -> #B4465E)
   const [h, s] = rgbToHsl(parseHex(g));
-  const fallback = toHex(hslToRgb([h, Math.max(s, 0.45), 0.35]));
+  const fallback = toHex(hslToRgb([h, Math.min(Math.max(s, 0.35), 0.45), 0.48]));
   const accent =
     (accentCandidate && readableAccent(accentCandidate.toUpperCase(), g)) ?? readableAccent(fallback, g) ?? ink;
 
@@ -141,20 +142,49 @@ export function extractColors(pixels: Uint8ClampedArray): { ground: string; acce
   // Ground: the most common color
   const ground = colors.reduce((a, b) => (b.n > a.n ? b : a)).hex;
 
-  // Accent: prominent and saturated, not too dark or light, and unlike ground
-  let accent: string | null = null;
-  let best = 0;
-  for (const c of colors) {
-    const [, s, l] = rgbToHsl(parseHex(c.hex));
-    if (s < 0.35 || l < 0.15 || l > 0.85) continue;
-    if (contrast(c.hex, ground) < 1.5) continue;
-    const score = c.n * s * s;
-    if (score > best) {
-      best = score;
-      accent = c.hex;
-    }
+  return { ground, accent: prominentColor(pixels, ground) };
+}
+
+// Accent candidate: the largest family of vivid colors (20° hue bands), so a
+// color spread across thin lines and lettering still counts as one color.
+// Vivid = clearly colored (chroma at least 0.3), neither near-black nor
+// near-white, and unlike the ground. The family must cover at least 1% of
+// the poster; otherwise there's no accent and derivePalette() derives one
+// from the ground's hue. Tuned on the two DESIGN.md reference posters:
+// Little Women's red covers 3.4% (its orange 1.5%); Leading Ladies has no
+// family above 0.1%, and its reference accent is the ground's hue darkened.
+const MIN_ACCENT_SHARE = 0.01;
+
+function prominentColor(pixels: Uint8ClampedArray, ground: string): string | null {
+  const [gr, gg, gb] = parseHex(ground);
+  const families = new Map<number, { r: number; g: number; b: number; chroma: number }[]>();
+  let opaque = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] < 128) continue;
+    opaque++;
+    const [r, g, b] = [pixels[i], pixels[i + 1], pixels[i + 2]];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const chroma = (max - min) / 255;
+    const lightness = (max + min) / 510;
+    if (chroma < 0.3 || lightness < 0.15 || lightness > 0.8) continue;
+    if (Math.abs(r - gr) + Math.abs(g - gg) + Math.abs(b - gb) < 90) continue; // too close to ground
+    const [h] = rgbToHsl([r, g, b]);
+    const band = Math.floor(h * 18) % 18;
+    const list = families.get(band) ?? [];
+    list.push({ r, g, b, chroma });
+    families.set(band, list);
   }
-  return { ground, accent };
+  if (!opaque) return null;
+
+  const largest = [...families.values()].sort((a, b) => b.length - a.length)[0];
+  if (!largest || largest.length < opaque * MIN_ACCENT_SHARE) return null;
+
+  // The family's color: average of its more vivid half (anti-aliased edges
+  // blend toward the background and would wash it out)
+  const vivid = [...largest].sort((a, b) => b.chroma - a.chroma).slice(0, Math.max(1, Math.ceil(largest.length / 2)));
+  const avg = (k: "r" | "g" | "b") => vivid.reduce((sum, p) => sum + p[k], 0) / vivid.length;
+  return toHex([avg("r"), avg("g"), avg("b")]);
 }
 
 // ---------------------------------------------------------------------

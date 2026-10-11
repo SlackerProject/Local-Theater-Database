@@ -414,14 +414,17 @@ export type Database = {
           height: number | null
           id: string
           kind: Database["public"]["Enums"]["media_kind"]
+          palette: Json | null
           person_id: string | null
           photographer_credit: string | null
           production_id: string | null
+          review_note: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           rights_confirmed_at: string
           status: Database["public"]["Enums"]["moderation_status"]
           storage_key: string
+          thumb_key: string | null
           uploaded_by: string
           width: number | null
         }
@@ -432,14 +435,17 @@ export type Database = {
           height?: number | null
           id?: string
           kind: Database["public"]["Enums"]["media_kind"]
+          palette?: Json | null
           person_id?: string | null
           photographer_credit?: string | null
           production_id?: string | null
+          review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           rights_confirmed_at: string
           status?: Database["public"]["Enums"]["moderation_status"]
           storage_key: string
+          thumb_key?: string | null
           uploaded_by: string
           width?: number | null
         }
@@ -450,14 +456,17 @@ export type Database = {
           height?: number | null
           id?: string
           kind?: Database["public"]["Enums"]["media_kind"]
+          palette?: Json | null
           person_id?: string | null
           photographer_credit?: string | null
           production_id?: string | null
+          review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           rights_confirmed_at?: string
           status?: Database["public"]["Enums"]["moderation_status"]
           storage_key?: string
+          thumb_key?: string | null
           uploaded_by?: string
           width?: number | null
         }
@@ -1229,6 +1238,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_poster: {
+        Args: { p_media: string; p_production: string }
+        Returns: undefined
+      }
       approve_submission: {
         Args: {
           p_bundle?: Json
@@ -1237,6 +1250,15 @@ export type Database = {
           p_proposal_id: string
         }
         Returns: string
+      }
+      attach_submission_poster: {
+        Args: {
+          p_confirmed_at: string
+          p_poster: Json
+          p_production: string
+          p_uploader: string
+        }
+        Returns: undefined
       }
       frequent_collaborators: {
         Args: { max_results?: number; p_person_id: string }
@@ -1297,6 +1319,10 @@ export type Database = {
       }
       reject_submission: {
         Args: { p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
+      review_media: {
+        Args: { p_approve: boolean; p_media_id: string; p_note?: string }
         Returns: undefined
       }
       search_all: {

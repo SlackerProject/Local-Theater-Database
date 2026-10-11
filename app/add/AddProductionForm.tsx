@@ -20,6 +20,7 @@ import {
 } from "@/lib/submission";
 import { discardDraft, saveDraft, submitProduction } from "./actions";
 import { NewPill, PickedLine, TypeAhead, lookup } from "./TypeAhead";
+import { PosterField } from "@/components/uploads/UploadPanels";
 
 // ---------------------------------------------------------------------
 // Small presentational pieces shared by the sections
@@ -726,6 +727,22 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
             </button>
           </div>
         </section>
+
+        {/* 5 · Poster */}
+        {(!live || state.poster) && (
+          <section className={card} aria-labelledby="s-poster">
+            <div className="flex flex-col gap-1">
+              <h2 id="s-poster" className="heading">
+                {live ? "Poster" : "5 · Poster"} <span className="text-base font-normal text-muted">(optional)</span>
+              </h2>
+              <p className="m-0 text-[15px] text-muted">
+                The poster’s colors become the production page’s colors. Photos can be added on the production page once
+                it’s live.
+              </p>
+            </div>
+            <PosterField value={state.poster ?? null} onChange={(poster) => update((s) => ({ ...s, poster }))} />
+          </section>
+        )}
       </div>
 
       {/* Your submission */}
@@ -742,7 +759,8 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
           <SummaryRow term="Location" value={summary.location} />
           <SummaryRow term="People" value={summary.people} />
           <SummaryRow term="Credits" value={String(summary.credits)} />
-          <SummaryRow term="Performances" value={String(summary.performances)} last />
+          <SummaryRow term="Performances" value={String(summary.performances)} />
+          <SummaryRow term="Poster" value={summary.poster} last />
         </dl>
         <p className="m-0 text-sm text-muted">
           A moderator reviews new submissions before they go live. You’ll earn points when it’s approved.
@@ -789,7 +807,7 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
 }
 
 function SummaryRow({ term, value, last }: { term: string; value: string; last?: boolean }) {
-  const isNew = value === "New";
+  const isNew = value === "New" || value === "Added";
   return (
     <div className={`flex justify-between gap-3 py-2.5 ${last ? "" : "border-b border-rule"}`}>
       <dt>{term}</dt>

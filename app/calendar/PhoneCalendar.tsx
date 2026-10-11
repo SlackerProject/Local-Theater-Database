@@ -67,7 +67,7 @@ export function SubscribeLink() {
         Your private link <span className="font-normal text-muted">(anyone with it can see your Going dates)</span>
       </label>
       <div className="flex gap-2">
-        <input id="feed-url" readOnly value={https} onFocus={(e) => e.target.select()} className="field min-w-0 flex-1 text-sm" />
+        <input id="feed-url" readOnly value={https} onFocus={(e) => e.target.select()} className="field h-12 min-w-0 flex-1 px-3 text-sm" />
         <button
           type="button"
           onClick={() => navigator.clipboard.writeText(https).then(() => setCopied(true), () => setError("Couldn’t copy. Select the link and copy it."))}

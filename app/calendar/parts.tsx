@@ -44,11 +44,39 @@ export type Going = {
   startsAt: string;
 };
 
+// A session of auditions you asked to be reminded about
+export type AuditionEvent = {
+  id: string;
+  slug: string;
+  title: string; // "Little Women (2026)"
+  showTitle: string;
+  date: string;
+  startsAt: string;
+  place: string | null;
+};
+
+const auditionChip =
+  "link-quiet mx-1 mt-0.5 flex h-[26px] items-center overflow-hidden whitespace-nowrap rounded-md border border-dotted border-ink bg-soft px-2 text-[12.5px] font-bold";
+
 // ---------------------------------------------------------------------
 // One week of the desktop grid: day numbers, then bars in lanes, then
-// going chips
+// going chips, then audition sessions
 // ---------------------------------------------------------------------
-export function Week({ week, month, today, runs, going }: { week: string[]; month: string; today: string; runs: Run[]; going: Going[] }) {
+export function Week({
+  week,
+  month,
+  today,
+  runs,
+  going,
+  auditions = [],
+}: {
+  week: string[];
+  month: string;
+  today: string;
+  runs: Run[];
+  going: Going[];
+  auditions?: AuditionEvent[];
+}) {
   const [start, end] = [week[0], week[6]];
   const segments = runs
     .filter((r) => r.start <= end && r.end >= start)
@@ -67,7 +95,10 @@ export function Week({ week, month, today, runs, going }: { week: string[]; mont
     return { ...s, lane };
   });
   const chips = going.filter((g) => g.date >= start && g.date <= end);
-  const rows = 1 + lanes.length + (chips.length ? 1 : 0);
+  const sessions = auditions.filter((a) => a.date >= start && a.date <= end);
+  const chipRow = 2 + lanes.length;
+  const auditionRow = chipRow + (chips.length ? 1 : 0);
+  const rows = 1 + lanes.length + (chips.length ? 1 : 0) + (sessions.length ? 1 : 0);
 
   return (
     <div className="grid min-h-[124px] grid-cols-7 content-start gap-y-1 border-t border-rule pb-2.5">
@@ -122,7 +153,7 @@ export function Week({ week, month, today, runs, going }: { week: string[]; mont
             href={`/production/${g.run.slug}`}
             title={`You’re going: ${g.run.title}`}
             className="link-quiet mx-1 mt-0.5 flex h-[30px] items-center gap-[5px] overflow-hidden whitespace-nowrap rounded-md border-2 border-ink px-2 text-[12.5px] font-bold"
-            style={{ gridColumn: dayOfWeek(g.date) + 1, gridRow: rows, background: sw.background, color: sw.ink }}
+            style={{ gridColumn: dayOfWeek(g.date) + 1, gridRow: chipRow, background: sw.background, color: sw.ink }}
           >
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-none">
               <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -131,15 +162,59 @@ export function Week({ week, month, today, runs, going }: { week: string[]; mont
           </Link>
         );
       })}
+      {sessions.map((a) => (
+        <Link
+          key={a.id}
+          href={`/production/${a.slug}`}
+          title={`Auditions: ${a.title} · ${localTime(a.startsAt)}${a.place ? ` · ${a.place}` : ""}`}
+          className={auditionChip}
+          style={{ gridColumn: dayOfWeek(a.date) + 1, gridRow: auditionRow }}
+        >
+          <span className="overflow-hidden text-ellipsis">
+            Auditions · {a.showTitle} · {localTime(a.startsAt)}
+          </span>
+        </Link>
+      ))}
     </div>
+  );
+}
+
+// Phone: the list under the month
+export function AuditionRowItem({ a }: { a: AuditionEvent }) {
+  return (
+    <Link href={`/production/${a.slug}`} className="link-quiet flex items-stretch gap-3 border-b border-rule py-3">
+      <span aria-hidden="true" className="w-2 flex-none rounded-[3px] border border-dotted border-ink bg-soft" />
+      <span className="flex min-w-0 flex-col">
+        <span className="font-bold">Auditions: {a.title}</span>
+        <span className="text-sm text-muted">
+          {localDay(a.startsAt)} · {localTime(a.startsAt)}
+          {a.place && ` · ${a.place}`}
+        </span>
+      </span>
+    </Link>
   );
 }
 
 // ---------------------------------------------------------------------
 // Phone: compact month with a dot per run on each day
 // ---------------------------------------------------------------------
-export function MiniMonth({ weeks, month, today, runs, going }: { weeks: string[][]; month: string; today: string; runs: Run[]; going: Going[] }) {
+export function MiniMonth({
+  weeks,
+  month,
+  today,
+  runs,
+  going,
+  auditions = [],
+}: {
+  weeks: string[][];
+  month: string;
+  today: string;
+  runs: Run[];
+  going: Going[];
+  auditions?: AuditionEvent[];
+}) {
   const goingByDay = new Map(going.map((g) => [g.date, g]));
+  const auditionDays = new Set(auditions.map((a) => a.date));
   return (
     <div className="grid grid-cols-7 gap-y-1.5">
       {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
@@ -182,6 +257,7 @@ export function MiniMonth({ weeks, month, today, runs, going }: { weeks: string[
                   <span key={r.id} className="h-[7px] w-[7px] rounded-full border" style={{ background: s.background, borderColor: s.borderColor }} />
                 );
               })}
+              {inMonth && auditionDays.has(d) && <span className="h-[7px] w-[7px] rounded-[2px] border border-dotted border-ink bg-soft" />}
             </span>
           </div>
         );

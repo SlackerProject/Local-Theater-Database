@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { hasRole, type CurrentUser } from "@/lib/auth";
 import { describeChanges, type Revision } from "@/lib/changes";
-import { ClaimButtons, DisputeButtons, SuggestionButtons } from "./ModerationButtons";
+import { AuditionButtons, ClaimButtons, DisputeButtons, SuggestionButtons } from "./ModerationButtons";
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
@@ -125,6 +125,83 @@ export async function DisputesSection() {
               <p className="m-0 text-sm text-muted">No reason given.</p>
             )}
             <DisputeButtons id={d.id} canUndo={!!d.revision && UNDOABLE.has(`${d.revision.entity_table}:${d.revision.action}`)} />
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Audition dates sent in by members (trusted editors publish directly)
+// ---------------------------------------------------------------------
+type AuditionChanges = {
+  sessions?: { date: string; start: string; end: string; place: string }[];
+  note?: string;
+  url?: string;
+};
+
+const sessionText = (s: { date: string; start: string; end: string }) => {
+  const day = new Date(`${s.date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const t = (hhmm: string) => new Date(`2000-01-01T${hhmm}:00Z`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" });
+  return `${day}${s.start ? ` · ${t(s.start)}` : ""}${s.end ? ` – ${t(s.end)}` : ""}`;
+};
+
+export async function AuditionsSection() {
+  const supabase = await createClient();
+  const { data: proposals } = await supabase
+    .from("edit_proposals")
+    .select("id, entity_id, changes, created_at, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
+    .eq("entity_table", "auditions")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  const ids = [...new Set((proposals ?? []).map((p) => p.entity_id).filter((x): x is string => !!x))];
+  const { data: prods } = ids.length
+    ? await supabase.from("productions").select("id, slug, year, title_override, show:shows(title)").in("id", ids)
+    : { data: [] };
+  const prodFor = new Map((prods ?? []).map((p) => [p.id, p]));
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="heading">Audition dates</h2>
+      {!proposals?.length && <p className="m-0 text-muted">No audition dates waiting for review.</p>}
+      {proposals?.map((p) => {
+        const prod = p.entity_id ? prodFor.get(p.entity_id) : undefined;
+        const c = (p.changes ?? {}) as AuditionChanges;
+        return (
+          <article key={p.id} className={item}>
+            <p className="m-0 text-lg">
+              <strong>{p.proposer?.display_name}</strong> sent audition details for{" "}
+              {prod ? (
+                <Link href={`/production/${prod.slug}`} className="font-bold">
+                  {prod.title_override ?? prod.show?.title} ({prod.year})
+                </Link>
+              ) : (
+                "a production"
+              )}
+              .
+            </p>
+            <span className="text-sm text-muted">Sent {when(p.created_at)}. Publishing replaces the current audition details.</span>
+            {c.sessions?.length ? (
+              <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                {c.sessions.map((s, i) => (
+                  <li key={i}>
+                    {sessionText(s)}
+                    {s.place && <span className="text-muted"> · {s.place}</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="m-0">No dates (the page will say “Audition dates: TBD”).</p>
+            )}
+            {c.note && <p className="callout m-0 whitespace-pre-line text-[15px]">{c.note}</p>}
+            {c.url && (
+              <a href={c.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-[15px] font-semibold">
+                {c.url}
+              </a>
+            )}
+            <AuditionButtons id={p.id} />
           </article>
         );
       })}

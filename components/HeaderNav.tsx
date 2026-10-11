@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/app/auth-actions";
 
-type User = { displayName: string; canModerate: boolean; unread: number } | null;
+type User = { displayName: string; canModerate: boolean; unread: number; pageSlug: string | null } | null;
 
 const BROWSE = [
   { href: "/shows", label: "Shows" },
@@ -15,6 +15,8 @@ const BROWSE = [
 
 function accountLinks(user: NonNullable<User>) {
   return [
+    ...(user.pageSlug ? [{ href: `/person/${user.pageSlug}`, label: "Your page" }] : []),
+    { href: "/following", label: "Shows & follows" },
     { href: "/add", label: "Add a production" },
     { href: "/submissions", label: "Your submissions" },
     ...(user.canModerate ? [{ href: "/moderate", label: "Moderate" }] : []),

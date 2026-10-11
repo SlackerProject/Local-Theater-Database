@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { describeChanges, type Revision } from "@/lib/changes";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
-import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement } from "@/lib/announcements";
+import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement, announcementContext, auditionOffer } from "@/lib/announcements";
 import { AnnouncementActions, AnnouncementText } from "@/components/Announcement";
 import { KeepAllButton, NotificationActions } from "./NotificationActions";
 
@@ -37,7 +37,7 @@ async function Notifications() {
   if (!user) redirect("/signin?next=/notifications");
 
   const supabase = await createClient();
-  const [{ data: rows }, { data: page }, { data: news }, { data: saved }] = await Promise.all([
+  const [{ data: rows }, { data: page }, { data: news }] = await Promise.all([
     supabase
       .from("notifications")
       .select("id, status, resolution, dispute_note, created_at, revision:revisions(id, entity_table, entity_id, action, before, after, changed_by, changed_at)")
@@ -53,9 +53,12 @@ async function Notifications() {
       .in("kind", [...ANNOUNCEMENT_KINDS])
       .order("created_at", { ascending: false })
       .limit(100),
-    supabase.from("watch_list").select("production_id").eq("user_id", user.id),
   ]);
-  const savedIds = new Set((saved ?? []).map((s) => s.production_id));
+  const ctx = await announcementContext(
+    supabase,
+    user.id,
+    (news ?? []).flatMap((n) => (n.production ? [n.production.id] : [])),
+  );
 
   return (
     <>
@@ -76,7 +79,16 @@ async function Notifications() {
                       {unread && <span className="sr-only"> (new)</span>}
                     </span>
                     <span className="text-sm text-muted">{formatWhen(n.created_at)}</span>
-                    {unread && <AnnouncementActions id={n.id} productionId={a.productionId} saved={savedIds.has(a.productionId)} />}
+                    {unread && (
+                      <AnnouncementActions
+                        id={n.id}
+                        kind={a.kind}
+                        productionId={a.productionId}
+                        productionHref={a.production.href}
+                        saved={ctx.saved.has(a.productionId)}
+                        auditions={auditionOffer(a.kind, a.productionId, ctx)}
+                      />
+                    )}
                   </div>
                 </li>
               );
@@ -84,8 +96,8 @@ async function Notifications() {
           </ul>
         ) : (
           <p className="m-0 text-muted">
-            Follow people and companies from their pages. When one of them is cast in a show or announces a production,
-            it will appear here.
+            Follow people and companies from their pages. When one of them is cast in a show, announces a production or
+            posts audition dates, it will appear here.
           </p>
         )}
       </section>

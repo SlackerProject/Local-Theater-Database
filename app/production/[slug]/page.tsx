@@ -8,11 +8,13 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { PhotoUploader, PosterUploader } from "@/components/uploads/UploadPanels";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
 import { PHOTO_LIMIT, mediaUrl } from "@/lib/media";
-import { currentTime, googleCalendarUrl, localDate, localDay, localTime, TIME_ZONE } from "@/lib/calendar";
+import { currentTime, googleCalendarUrl, localDate, localDay, localHHMM, localTime, TIME_ZONE } from "@/lib/calendar";
+import { Auditions, type AuditionRow } from "./Auditions";
 import { siteOrigin } from "@/lib/site";
 import { HeroActions, type PerformanceRow } from "./HeroActions";
+import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {
   return (
@@ -49,7 +51,8 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const { data: p } = await supabase
     .from("productions")
     .select(
-      `id, slug, year, title_override, opening_date, closing_date, description,
+      `id, slug, year, title_override, opening_date, closing_date, description, audition_note, audition_url,
+       auditions(id, starts_at, ends_at, place),
        color_ground, color_ground_2, color_ink, color_soft, color_accent,
        poster:media!productions_poster_fk(thumb_key, storage_key, width, height),
        show:shows(id, slug, title, subtitle, type, authors),
@@ -82,9 +85,21 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
       .order("created_at", { ascending: true }),
     getCurrentUser(),
   ]);
-  const { data: watch } = user
-    ? await supabase.from("watch_list").select("status, performance_id").eq("user_id", user.id).eq("production_id", p.id).maybeSingle()
-    : { data: null };
+  const [{ data: watch }, { data: auditionFollow }, { data: myAuditionProposal }] = user
+    ? await Promise.all([
+        supabase.from("watch_list").select("status, performance_id").eq("user_id", user.id).eq("production_id", p.id).maybeSingle(),
+        supabase.from("audition_follows").select("production_id").eq("user_id", user.id).eq("production_id", p.id).maybeSingle(),
+        supabase
+          .from("edit_proposals")
+          .select("id")
+          .eq("entity_table", "auditions")
+          .eq("entity_id", p.id)
+          .eq("proposed_by", user.id)
+          .eq("status", "pending")
+          .limit(1)
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }, { data: null }];
   const approvedPhotos = (photoRows ?? []).filter((m) => m.status === "approved");
   const myPending = (photoRows ?? []).filter((m) => m.status === "pending" && m.uploaded_by === user?.id).length;
   // Others' pending photos aren't visible here, so this can overcount the room left; the database has the final say
@@ -139,6 +154,18 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const closed = p.closing_date
     ? p.closing_date < today
     : performances.length > 0 && performances.every((pf) => pf.past);
+
+  // Pre-cast until any cast is credited; auditions show while pre-cast or
+  // while sessions are still ahead
+  const precast = cast.length === 0 && !closed;
+  const auditionSessions = [...(p.auditions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const auditionRows: AuditionRow[] = auditionSessions.map((a) => ({
+    id: a.id,
+    when: `${localDay(a.starts_at)} · ${localTime(a.starts_at)}${a.ends_at ? ` – ${localTime(a.ends_at)}` : ""}`,
+    place: a.place,
+    past: new Date(a.starts_at).getTime() < now,
+  }));
+  const showAuditions = precast || auditionRows.some((a) => !a.past);
 
   // Section heading rule takes the show's accent (ink when there's no poster)
   const sectionRule = { borderBottom: `2px solid ${c.accent}` };
@@ -216,6 +243,26 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
 
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-wrap items-start gap-12 px-4 pb-16 pt-7 md:px-8 md:pt-11">
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-10">
+          {showAuditions && (
+            <Auditions
+              productionId={p.id}
+              path={path}
+              signedIn={!!user}
+              precast={precast}
+              sessions={auditionRows}
+              editable={auditionSessions.map((a) => ({
+                date: localDate(a.starts_at),
+                start: localHHMM(a.starts_at),
+                end: a.ends_at ? localHHMM(a.ends_at) : "",
+                place: a.place ?? "",
+              }))}
+              note={p.audition_note}
+              url={p.audition_url}
+              following={!!auditionFollow}
+              pendingMine={!!myAuditionProposal}
+              canPublish={hasRole(user, "trusted")}
+            />
+          )}
           <section className="flex flex-col gap-3.5">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4">
               <h2 className="heading">Photos</h2>
@@ -310,6 +357,8 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
               ))
             )}
           </section>
+
+          <ModeratorDeleteSection table="productions" id={p.id} name={`${title} (${p.year})`} afterDelete="/shows" />
         </div>
 
         <aside className="flex min-w-0 flex-[1_1_280px] flex-col gap-8">

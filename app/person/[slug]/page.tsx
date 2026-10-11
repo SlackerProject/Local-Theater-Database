@@ -8,6 +8,7 @@ import { mediaUrl } from "@/lib/media";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
 import { FollowButton } from "@/components/FollowButton";
+import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { HeadshotUploader } from "@/components/uploads/UploadPanels";
 import type { PageLink } from "./actions";
 import {
@@ -465,6 +466,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             <HidePageButton slug={person.slug} />
           </section>
         )}
+        <ModeratorDeleteSection table="people" id={person.id} name={person.display_name} afterDelete="/people" />
       </main>
     </>
   );

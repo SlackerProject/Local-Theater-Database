@@ -105,6 +105,14 @@ export function HeroActions({
           </button>
         </p>
       )}
+      {closed && signedIn && status !== "seen" && !askSeen && (
+        <p className="m-0 flex flex-wrap items-center gap-x-3 text-[15px]">
+          <span>You said you didn’t see it.</span>
+          <button type="button" onClick={() => setAskSeen(true)} className="btn-text min-h-11 text-[15px]" style={{ color: ink }}>
+            Change your answer
+          </button>
+        </p>
+      )}
       {closed && signedIn && status !== "seen" && askSeen && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="font-bold">Did you see it?</span>
@@ -114,7 +122,10 @@ export function HeroActions({
           <button
             type="button"
             disabled={pending}
-            onClick={() => (status ? choose({ status: "none" }) : setAskSeen(false))}
+            onClick={() => {
+              setAskSeen(false);
+              if (status) choose({ status: "none" });
+            }}
             className="btn-secondary min-h-11 px-5"
             style={outline}
           >

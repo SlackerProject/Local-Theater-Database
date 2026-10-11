@@ -127,6 +127,11 @@ export function localTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", { timeZone: TIME_ZONE, hour: "numeric", minute: "2-digit" });
 }
 
+// "19:30" (24-hour, for time inputs)
+export function localHHMM(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
 // "Sat, Oct 17"
 export function localDay(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { timeZone: TIME_ZONE, weekday: "short", month: "short", day: "numeric" });

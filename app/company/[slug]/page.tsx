@@ -7,6 +7,7 @@ import { ProductionsByYear } from "@/components/ProductionsByYear";
 import { mediaUrl } from "@/lib/media";
 import { getCurrentUser } from "@/lib/auth";
 import { FollowButton } from "@/components/FollowButton";
+import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -123,6 +124,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
           </section>
         </aside>
       </div>
+      <ModeratorDeleteSection table="organizations" id={org.id} name={org.name} afterDelete="/companies" />
     </>
   );
 }

@@ -86,6 +86,52 @@ export async function setWatch(productionId: string, choice: WatchChoice, path: 
 }
 
 // ---------------------------------------------------------------------
+// "Remind me about auditions" for a production
+// ---------------------------------------------------------------------
+export async function setAuditionFollow(productionId: string, follow: boolean, path: string): Promise<Result> {
+  const { supabase, userId } = await signedIn();
+  if (!userId) return fail("Sign in first.");
+  if (follow) {
+    const { error } = await supabase.from("audition_follows").insert({ user_id: userId, production_id: productionId });
+    if (error && !/duplicate key/.test(error.message)) return fail(error.message);
+  } else {
+    const { error } = await supabase.from("audition_follows").delete().eq("user_id", userId).eq("production_id", productionId);
+    if (error) return fail(error.message);
+  }
+  return done([path, "/calendar", "/following"]);
+}
+
+// ---------------------------------------------------------------------
+// Audition dates: trusted editors and moderators publish right away;
+// everyone else's go to the moderation queue (submit_auditions())
+// ---------------------------------------------------------------------
+export type AuditionSession = { date: string; start: string; end: string; place: string };
+
+export async function submitAuditions(
+  productionId: string,
+  sessions: AuditionSession[],
+  note: string,
+  url: string,
+  path: string,
+): Promise<{ ok: true; published: boolean } | { ok: false; error: string }> {
+  const { supabase, userId } = await signedIn();
+  if (!userId) return { ok: false, error: "Sign in first." };
+  const cleaned = sessions.filter((s) => s.date || s.start || s.end || s.place.trim());
+  if (cleaned.some((s) => !s.date)) return { ok: false, error: "Each audition session needs a date." };
+  const link = url.trim();
+  if (link && !/^https?:\/\/\S+\.\S+/i.test(link)) return { ok: false, error: "The sign-up link should start with https://" };
+  const { data, error } = await supabase.rpc("submit_auditions", {
+    p_production_id: productionId,
+    p_sessions: cleaned,
+    p_note: note,
+    p_url: link,
+  });
+  if (error) return { ok: false, error: error.message };
+  for (const p of [path, "/calendar", "/moderate"]) revalidatePath(p);
+  return { ok: true, published: data === "published" };
+}
+
+// ---------------------------------------------------------------------
 // Announcements: "Want to see" right from the notification, or dismiss
 // ---------------------------------------------------------------------
 export async function dismissNotification(id: string): Promise<Result> {

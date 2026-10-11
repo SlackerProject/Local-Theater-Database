@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
+import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { mediaUrl } from "@/lib/media";
 
 export default function VenuePage({ params }: PageProps<"/venue/[slug]">) {
@@ -99,6 +100,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
           )}
         </aside>
       </div>
+      <ModeratorDeleteSection table="locations" id={venue.id} name={venue.name} afterDelete="/" />
     </>
   );
 }

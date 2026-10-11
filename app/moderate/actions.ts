@@ -88,6 +88,43 @@ export async function reviewSuggestion(id: string, approve: boolean, note = ""):
   return call(() => supabase.rpc("approve_person_edit", { p_proposal_id: id, p_approve: approve, p_note: note }));
 }
 
+export async function reviewAuditions(id: string, approve: boolean, note = ""): Promise<Done> {
+  const supabase = await createClient();
+  return call(() => supabase.rpc("review_auditions", { p_proposal_id: id, p_approve: approve, p_note: note }));
+}
+
+// Permanently delete a page (moderator_delete() checks the role and blocks
+// companies, shows and venues that productions still use). Photos and
+// headshots are removed from storage too.
+export type DeleteTable = "productions" | "people" | "organizations" | "shows" | "locations";
+
+export async function deletePage(table: DeleteTable, id: string, withLeftovers: boolean): Promise<Done> {
+  const supabase = await createClient();
+
+  // Files that will be orphaned: the production's photos and posters, or
+  // the person's headshots (plus leftovers' headshots)
+  const files: string[] = [];
+  const personIds = table === "people" ? [id] : [];
+  if (table === "productions") {
+    const { data: media } = await supabase.from("media").select("storage_key, thumb_key").eq("production_id", id);
+    for (const m of media ?? []) files.push(m.storage_key, ...(m.thumb_key ? [m.thumb_key] : []));
+    if (withLeftovers) {
+      const { data: leftovers } = await supabase.rpc("production_orphans", { p_production_id: id });
+      personIds.push(...(leftovers ?? []).filter((l) => l.entity_table === "people").map((l) => l.entity_id));
+    }
+  }
+  if (personIds.length) {
+    const { data: media } = await supabase.from("media").select("storage_key, thumb_key").in("person_id", personIds);
+    for (const m of media ?? []) files.push(m.storage_key, ...(m.thumb_key ? [m.thumb_key] : []));
+  }
+
+  const { error } = await supabase.rpc("moderator_delete", { p_table: table, p_id: id, p_with_orphans: withLeftovers });
+  if (error) return { ok: false, error: error.message };
+  if (files.length) await supabase.storage.from(MEDIA_BUCKET).remove(files);
+  for (const p of ["/", "/shows", "/people", "/companies", "/calendar"]) revalidatePath(p);
+  return { ok: true };
+}
+
 export async function rejectSubmission(id: string, note: string): Promise<ReviewResult | void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("reject_submission", { p_proposal_id: id, p_note: note });

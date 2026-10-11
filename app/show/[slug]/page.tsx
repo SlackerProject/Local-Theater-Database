@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SHOW_TYPES } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
+import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { mediaUrl } from "@/lib/media";
 
 export default function ShowPage({ params }: PageProps<"/show/[slug]">) {
@@ -73,6 +74,7 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
           </div>
         )}
       </section>
+      <ModeratorDeleteSection table="shows" id={show.id} name={show.title} afterDelete="/shows" />
     </>
   );
 }

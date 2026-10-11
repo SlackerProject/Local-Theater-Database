@@ -1,7 +1,28 @@
 // Follower notifications (migration 0009): "someone you follow was cast"
 // and "a company you follow announced a production".
 
-export const ANNOUNCEMENT_KINDS = ["cast_announcement", "company_announcement"] as const;
+export const ANNOUNCEMENT_KINDS = ["cast_announcement", "company_announcement", "auditions_announced"] as const;
+
+// What the member has already done about each announced production, so the
+// buttons fit: saved it, following its auditions, and whether it's cast yet
+export async function announcementContext(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  userId: string,
+  productionIds: string[],
+) {
+  const ids = [...new Set(productionIds)];
+  if (!ids.length) return { saved: new Set<string>(), auditions: new Set<string>(), cast: new Set<string>() };
+  const [{ data: saved }, { data: follows }, { data: cast }] = await Promise.all([
+    supabase.from("watch_list").select("production_id").eq("user_id", userId).in("production_id", ids),
+    supabase.from("audition_follows").select("production_id").eq("user_id", userId).in("production_id", ids),
+    supabase.from("credits").select("production_id").eq("kind", "cast").in("production_id", ids),
+  ]);
+  return {
+    saved: new Set((saved ?? []).map((r) => r.production_id)),
+    auditions: new Set((follows ?? []).map((r) => r.production_id)),
+    cast: new Set((cast ?? []).map((r) => r.production_id)),
+  };
+}
 
 // For supabase.from("notifications").select(...)
 export const ANNOUNCEMENT_SELECT = `id, kind, status, created_at,
@@ -22,6 +43,18 @@ type Row = {
   person: { slug: string; display_name: string } | null;
   credit: { kind: string; role_name: string | null; character: { name: string } | null } | null;
 };
+
+// Whether to offer "Remind me about auditions": for productions that are
+// still casting (or just posted dates) and that the member isn't following
+export function auditionOffer(
+  kind: string,
+  productionId: string,
+  ctx: Awaited<ReturnType<typeof announcementContext>>,
+): "offer" | "following" | null {
+  if (ctx.auditions.has(productionId)) return "following";
+  if (kind === "auditions_announced" || (kind === "company_announcement" && !ctx.cast.has(productionId))) return "offer";
+  return null;
+}
 
 // The pieces of the sentence, so pages can link each name:
 // "{Name} was just cast as {Role} in {Show} ({Year}) at {Company}"

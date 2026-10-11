@@ -7,9 +7,22 @@ import { createClient } from "@/lib/supabase/server";
 import { showColors } from "@/lib/palette";
 import { mediaUrl } from "@/lib/media";
 import { currentTime, googleCalendarUrl, localDate, localDay, localTime } from "@/lib/calendar";
-import { addDays, dayOfWeek, GoingCard, MiniMonth, monthName, RunRow, shiftMonth, Week, type Going, type Run } from "./parts";
+import {
+  addDays,
+  AuditionRowItem,
+  dayOfWeek,
+  GoingCard,
+  MiniMonth,
+  monthName,
+  RunRow,
+  shiftMonth,
+  Week,
+  type AuditionEvent,
+  type Going,
+  type Run,
+} from "./parts";
 import { siteOrigin } from "@/lib/site";
-import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement } from "@/lib/announcements";
+import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement, announcementContext, auditionOffer } from "@/lib/announcements";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AnnouncementActions, AnnouncementText } from "@/components/Announcement";
 import { CalendarFilters } from "./CalendarFilters";
@@ -98,7 +111,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
   const gridEnd = addDays(last, 6 - dayOfWeek(last));
 
   // ---- Your saved runs, and the nights you're going
-  const [{ data: watch }, { data: follows }, { data: news }] = await Promise.all([
+  const [{ data: watch }, { data: follows }, { data: news }, { data: auditionFollows }] = await Promise.all([
     supabase.from("watch_list").select(`status, performance_id, production:productions(${PROD_SELECT})`).eq("user_id", user.id),
     supabase
       .from("follows")
@@ -112,7 +125,33 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
       .eq("status", "unread")
       .order("created_at", { ascending: false })
       .limit(3),
+    supabase
+      .from("audition_follows")
+      .select("production:productions(slug, year, title_override, is_hidden, show:shows(title), auditions(id, starts_at, place))")
+      .eq("user_id", user.id),
   ]);
+
+  // ---- Audition sessions you asked to be reminded about
+  const auditionEvents: AuditionEvent[] = (auditionFollows ?? []).flatMap((f) => {
+    const p = f.production;
+    if (!p?.show || p.is_hidden) return [];
+    const showTitle = p.title_override ?? p.show.title;
+    return (p.auditions ?? []).map((a) => ({
+      id: a.id,
+      slug: p.slug,
+      title: `${showTitle} (${p.year})`,
+      showTitle,
+      date: localDate(a.starts_at),
+      startsAt: a.starts_at,
+      place: a.place,
+    }));
+  });
+  const auditionsInGrid = auditionEvents.filter((a) => a.date >= gridStart && a.date <= gridEnd);
+  const ctx = await announcementContext(
+    supabase,
+    user.id,
+    (news ?? []).flatMap((n) => (n.production ? [n.production.id] : [])),
+  );
 
   const savedRuns: Run[] = [];
   const going: Going[] = [];
@@ -196,6 +235,9 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
 
   const monthRuns = runs.filter(inMonth);
   const monthGoing = going.filter((g) => g.date >= first && g.date <= last).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const monthAuditions = auditionEvents
+    .filter((a) => a.date >= first && a.date <= last)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
   return (
     <>
@@ -233,6 +275,10 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
           <span aria-hidden="true" className="h-3.5 w-7 rounded-[3px] border-[1.5px] border-dashed border-[#A8A8A8]" />
           Runs with people you follow
         </span>
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-3.5 w-7 rounded-[3px] border border-dotted border-ink bg-soft" />
+          Auditions you’re watching
+        </span>
       </div>
 
       <div className="flex flex-wrap items-start gap-10">
@@ -247,13 +293,13 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
               ))}
             </div>
             {weeks.map((week) => (
-              <Week key={week[0]} week={week} month={month} today={today} runs={runs} going={goingThisGrid} />
+              <Week key={week[0]} week={week} month={month} today={today} runs={runs} going={goingThisGrid} auditions={auditionsInGrid} />
             ))}
           </div>
 
           {/* Phone: compact month with dots, then lists */}
           <div className="md:hidden">
-            <MiniMonth weeks={weeks} month={month} today={today} runs={runs} going={going} />
+            <MiniMonth weeks={weeks} month={month} today={today} runs={runs} going={going} auditions={auditionsInGrid} />
             <section className="mt-6 flex flex-col gap-3">
               <h2 className="subheading">You’re going</h2>
               {monthGoing.length ? (
@@ -272,9 +318,17 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
                 <p className="m-0 text-[15px] text-muted">Shows you save, and shows with people you follow, will appear here.</p>
               )}
             </section>
+            {monthAuditions.length > 0 && (
+              <section className="mt-7 flex flex-col">
+                <h2 className="subheading mb-1">Auditions this month</h2>
+                {monthAuditions.map((a) => (
+                  <AuditionRowItem key={a.id} a={a} />
+                ))}
+              </section>
+            )}
           </div>
 
-          {runs.length === 0 && (
+          {runs.length === 0 && auditionsInGrid.length === 0 && (
             <p className="mt-4 hidden text-muted md:block">
               Nothing on your calendar this month. Press “Want to see” on a production page, or follow people and companies,
               and their runs will appear here.
@@ -323,7 +377,14 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
                   return (
                     <div key={n.id} className="flex flex-col gap-2.5 border-b border-rule py-3.5 last:border-b-0">
                       <AnnouncementText a={a} />
-                      <AnnouncementActions id={n.id} productionId={a.productionId} saved={savedIds.has(a.productionId)} />
+                      <AnnouncementActions
+                        id={n.id}
+                        kind={a.kind}
+                        productionId={a.productionId}
+                        productionHref={a.production.href}
+                        saved={savedIds.has(a.productionId)}
+                        auditions={auditionOffer(a.kind, a.productionId, ctx)}
+                      />
                     </div>
                   );
                 })}

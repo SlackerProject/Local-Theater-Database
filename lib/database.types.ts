@@ -39,6 +39,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      audition_follows: {
+        Row: {
+          created_at: string
+          production_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          production_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          production_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audition_follows_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audition_follows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auditions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          place: string | null
+          production_id: string
+          starts_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          place?: string | null
+          production_id: string
+          starts_at: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          place?: string | null
+          production_id?: string
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auditions_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       award_bodies: {
         Row: {
           id: string
@@ -260,6 +338,44 @@ export type Database = {
             columns: ["production_id"]
             isOneToOne: false
             referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deletions: {
+        Row: {
+          deleted_at: string
+          deleted_by: string | null
+          entity_id: string
+          entity_table: string
+          id: number
+          label: string | null
+          snapshot: Json
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by?: string | null
+          entity_id: string
+          entity_table: string
+          id?: never
+          label?: string | null
+          snapshot: Json
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by?: string | null
+          entity_id?: string
+          entity_table?: string
+          id?: never
+          label?: string | null
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deletions_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -955,6 +1071,8 @@ export type Database = {
       }
       productions: {
         Row: {
+          audition_note: string | null
+          audition_url: string | null
           closing_date: string | null
           color_accent: string | null
           color_edge: string | null
@@ -979,6 +1097,8 @@ export type Database = {
           year: number
         }
         Insert: {
+          audition_note?: string | null
+          audition_url?: string | null
           closing_date?: string | null
           color_accent?: string | null
           color_edge?: string | null
@@ -1003,6 +1123,8 @@ export type Database = {
           year: number
         }
         Update: {
+          audition_note?: string | null
+          audition_url?: string | null
           closing_date?: string | null
           color_accent?: string | null
           color_edge?: string | null
@@ -1316,6 +1438,7 @@ export type Database = {
       }
     }
     Functions: {
+      apply_auditions: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_poster: {
         Args: { p_media: string; p_production: string }
         Returns: undefined
@@ -1361,6 +1484,13 @@ export type Database = {
         Returns: string
       }
       claim_state: { Args: { p_person_id: string }; Returns: string }
+      deletion_blockers: {
+        Args: { p_id: string; p_table: string }
+        Returns: {
+          label: string
+          slug: string
+        }[]
+      }
       dismiss_notification: { Args: { p_id: string }; Returns: undefined }
       edge_for: { Args: { p_ground: string }; Returns: string }
       follower_count: {
@@ -1398,6 +1528,10 @@ export type Database = {
           label: string
           slug: string
         }[]
+      }
+      moderator_delete: {
+        Args: { p_id: string; p_table: string; p_with_orphans?: boolean }
+        Returns: number
       }
       my_calendar_feed: { Args: { p_reset?: boolean }; Returns: string }
       my_person_id: { Args: never; Returns: string }
@@ -1443,6 +1577,14 @@ export type Database = {
         Args: { p: Database["public"]["Tables"]["productions"]["Row"] }
         Returns: string
       }
+      production_orphans: {
+        Args: { p_production_id: string }
+        Returns: {
+          entity_id: string
+          entity_table: string
+          label: string
+        }[]
+      }
       record_view: {
         Args: { p_id: string; p_table: string; p_visitor_hash: string }
         Returns: undefined
@@ -1460,6 +1602,10 @@ export type Database = {
         Returns: undefined
       }
       revert_revision: { Args: { p_revision_id: number }; Returns: undefined }
+      review_auditions: {
+        Args: { p_approve: boolean; p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
       review_claim: {
         Args: { p_claim_id: string; p_verify: boolean }
         Returns: undefined
@@ -1489,6 +1635,16 @@ export type Database = {
           status: string
           title: string
         }[]
+      }
+      submit_auditions: {
+        Args: {
+          p_comment?: string
+          p_note: string
+          p_production_id: string
+          p_sessions: Json
+          p_url: string
+        }
+        Returns: string
       }
       unaccent: { Args: { "": string }; Returns: string }
       unique_slug: {

@@ -253,7 +253,9 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   let missingRole = 0;
 
   for (const c of s.credits) {
-    if (isBlankCredit(c)) continue;
+    // Rows without a person are skipped: roles filled in from the show's
+    // known characters are only suggestions until someone is named
+    if (!clean(c.person)) continue;
     if (!clean(c.role)) missingRole++;
 
     let mapKey: string | null = null;
@@ -337,7 +339,7 @@ export function summarize(s: FormState) {
   const status = (c: Choice, hasText: boolean) =>
     c.kind === "existing" ? "Existing" : c.kind === "new" && hasText ? "New" : "—";
 
-  const rows = s.credits.filter((c) => !isBlankCredit(c));
+  const rows = s.credits.filter((c) => clean(c.person));
   const newNames = new Set<string>();
   const existingIds = new Set<string>();
   let pending = 0;

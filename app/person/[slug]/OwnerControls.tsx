@@ -325,23 +325,25 @@ export function AddCreditForm({ slug }: { slug: string }) {
 }
 
 // ---------------------------------------------------------------------
-// Per-credit controls: correct the role, hide or show it
+// Per-credit controls for the credits table: the role is editable in its
+// cell, and an eye button hides or shows the credit on the owner's page
 // ---------------------------------------------------------------------
-export function CreditControls({ slug, creditId, role, hidden }: { slug: string; creditId: string; role: string; hidden: boolean }) {
+const iconButton =
+  "flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-muted hover:bg-soft hover:text-ink";
+
+export function EditableRole({ slug, creditId, role }: { slug: string; creditId: string; role: string }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(role);
   const { pending, error, run } = useAction();
 
-  const icon = "flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-muted hover:bg-soft hover:text-ink";
-
   if (editing)
     return (
-      <div className="mt-2 flex w-full flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor={`role-${creditId}`}>
-            Role
-          </label>
-          <input id={`role-${creditId}`} value={value} onChange={(e) => setValue(e.target.value)} className="field h-12 w-[260px] max-w-full px-3" />
+      <div className="flex flex-col gap-2">
+        <label className="sr-only" htmlFor={`role-${creditId}`}>
+          Role
+        </label>
+        <input id={`role-${creditId}`} value={value} onChange={(e) => setValue(e.target.value)} className="field h-12 w-full min-w-[160px] px-3" />
+        <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => setOwnCreditRole(slug, creditId, value), () => setEditing(false))}>
             Save
           </button>
@@ -353,18 +355,27 @@ export function CreditControls({ slug, creditId, role, hidden }: { slug: string;
       </div>
     );
   return (
-    <span className="flex flex-none gap-0.5">
-      <button type="button" aria-label={`Edit the role (${role})`} title="Edit the role" className={icon} onClick={() => setEditing(true)}>
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <span className="inline-flex items-center gap-1">
+      {role}
+      <button type="button" aria-label={`Edit the role (${role})`} title="Edit the role" className={`${iconButton} -my-2.5`} onClick={() => setEditing(true)}>
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 20h4L19 9l-4-4L4 16v4z" />
           <path d="M13.5 6.5l4 4" />
         </svg>
       </button>
+    </span>
+  );
+}
+
+export function HideCreditToggle({ slug, creditId, hidden }: { slug: string; creditId: string; hidden: boolean }) {
+  const { pending, error, run } = useAction();
+  return (
+    <>
       <button
         type="button"
         aria-label={hidden ? "Show this credit on your page" : "Hide this credit from your page"}
         title={hidden ? "Show on your page" : "Hide from your page"}
-        className={icon}
+        className={`${iconButton} -my-2.5 ml-auto`}
         disabled={pending}
         onClick={() => run(() => setOwnCreditHidden(slug, creditId, !hidden))}
       >
@@ -379,8 +390,12 @@ export function CreditControls({ slug, creditId, role, hidden }: { slug: string;
           </svg>
         )}
       </button>
-      {error && <span role="alert" className="sr-only">{error}</span>}
-    </span>
+      {error && (
+        <span role="alert" className="sr-only">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 

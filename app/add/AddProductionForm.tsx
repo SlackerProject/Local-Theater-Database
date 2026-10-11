@@ -22,6 +22,7 @@ import { discardDraft, saveDraft, submitProduction } from "./actions";
 import { NewPill, PickedLine, TypeAhead, lookup } from "./TypeAhead";
 import { PosterField } from "@/components/uploads/UploadPanels";
 import { ShareWithCast } from "@/components/ShareWithCast";
+import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------
 // Small presentational pieces shared by the sections
@@ -199,6 +200,36 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
     void checkPeople(rows.filter((r) => r.person));
   }
 
+  // An existing show: fill the cast with its known roles (people left blank).
+  // Rows that already name someone stay; empty rows are replaced, and roles
+  // already filled aren't repeated. Unfilled rows are skipped on submit.
+  async function prefillRoles(show: Match) {
+    const { data } = await createClient()
+      .from("show_characters")
+      .select("name, sort_order")
+      .eq("show_id", show.id)
+      .order("sort_order")
+      .order("name");
+    const names = (data ?? []).map((c) => c.name);
+    if (!names.length) return;
+    const merge = (credits: CreditRow[]) => {
+      const keep = credits.filter((c) => c.kind === "crew" || c.person.trim());
+      const used = new Set(keep.filter((c) => c.kind === "cast").map((c) => c.role.trim().toLowerCase()));
+      return { keep, roles: names.filter((n) => !used.has(n.toLowerCase())) };
+    };
+    const added = merge(state.credits).roles.length; // for the message; the update below uses the latest rows
+    update((s) => {
+      const { keep, roles } = merge(s.credits);
+      return { ...s, credits: [...keep, ...roles.map((role) => ({ ...emptyCredit("cast"), role }))] };
+    });
+    if (added) {
+      setTab("cast");
+      setNotice(
+        `Added ${added} ${added === 1 ? "role" : "roles"} from ${show.label}. Fill in who played each one; roles left blank are skipped.`,
+      );
+    }
+  }
+
   // ----- performances -----
   const setPerformance = (id: string, patch: Partial<Performance>) =>
     update((s) => ({ ...s, performances: s.performances.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
@@ -340,7 +371,10 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
               onQueryChange={(query) =>
                 update((s) => ({ ...s, show: { ...s.show, query, choice: { kind: "none" }, editing: true } }))
               }
-              onPick={(match) => update((s) => ({ ...s, show: { ...s.show, query: match.label, choice: { kind: "existing", match } } }))}
+              onPick={(match) => {
+                update((s) => ({ ...s, show: { ...s.show, query: match.label, choice: { kind: "existing", match } } }));
+                void prefillRoles(match);
+              }}
               onAddNew={() => update((s) => ({ ...s, show: { ...s.show, choice: { kind: "new" } } }))}
               onLeaveUnresolved={(matches) => {
                 if (!matches.length) update((s) => ({ ...s, show: { ...s.show, choice: { kind: "new" } } }));

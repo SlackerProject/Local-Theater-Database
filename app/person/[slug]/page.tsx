@@ -13,8 +13,9 @@ import {
   AddCreditForm,
   BioLinksEditor,
   ClaimPanel,
-  CreditControls,
+  EditableRole,
   HeadshotChooser,
+  HideCreditToggle,
   HidePageButton,
   RestorePageButton,
   SuggestCorrection,
@@ -297,8 +298,9 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
           )}
         </section>
 
-        <div className="flex flex-wrap items-start gap-12">
-          <section className="min-w-0 flex-[999_1_560px]">
+        {/* Credits read like a résumé, so the table gets the full width */}
+        <div className="flex flex-col gap-12">
+          <section className="min-w-0">
             <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-4">
               <h2 className="heading">Credits</h2>
               {editing && <AddCreditForm slug={person.slug} />}
@@ -306,56 +308,101 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             {listed.length === 0 ? (
               <p className="m-0 text-muted">Credits will appear here as productions are added.</p>
             ) : (
-              <ul className="m-0 list-none p-0">
-                {listed.map((c) => {
-                  const colors = showColors(c.prod);
-                  const org = c.prod.organization;
-                  const venue = c.prod.location;
-                  const production = (
-                    <Link href={`/production/${c.prod.slug}`} className="font-bold">
-                      {c.title} ({c.prod.year})
-                    </Link>
-                  );
-                  const company = org ? <Link href={`/company/${org.slug}`}>{org.name}</Link> : "an unknown company";
-                  return (
-                    <li key={c.id} className={`flex flex-wrap items-start gap-x-3.5 border-b border-rule py-3.5 ${c.hidden_on_person_page ? "text-muted" : ""}`}>
-                      <span
-                        aria-hidden="true"
-                        className="mt-2 h-2.5 w-2.5 flex-none rounded-full"
-                        style={{ background: colors.hasPalette && !c.hidden_on_person_page ? colors.accent : NO_POSTER_DOT }}
-                      />
-                      <span className="min-w-0 flex-1">
-                        {c.kind === "cast" ? (
-                          <>
-                            Played <strong>{c.role}</strong> in {company}’s production of {production}
-                          </>
-                        ) : (
-                          <>
-                            <strong>{c.role}</strong> for {company}’s production of {production}
-                          </>
-                        )}
-                        {venue && (
-                          <>
-                            {" "}at <Link href={`/venue/${venue.slug}`}>{venue.name}</Link>
-                          </>
-                        )}
-                        .
-                        {c.added_by_owner && (
-                          <span className="block text-[13px] text-muted">Added by {owner?.display_name ?? "the performer"}</span>
-                        )}
-                        {editing && c.hidden_on_person_page && (
-                          <span className="block text-[13px] font-semibold">Hidden from your page</span>
-                        )}
-                      </span>
-                      {editing && <CreditControls slug={person.slug} creditId={c.id} role={c.role} hidden={c.hidden_on_person_page} />}
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="flex flex-col gap-8">
+                {(["cast", "crew"] as const)
+                  .map((kind) => ({ kind, rows: listed.filter((c) => c.kind === kind) }))
+                  .filter((g) => g.rows.length > 0)
+                  .map((g, _, groups) => (
+                    <div key={g.kind} className="flex flex-col gap-1">
+                      {groups.length > 1 && (
+                        <h3 id={`credits-${g.kind}`} className="subheading">
+                          {g.kind === "cast" ? "Cast" : "Crew"}
+                        </h3>
+                      )}
+                      {/* A résumé-style table. On phones, company and year move under the production. */}
+                      <table aria-labelledby={groups.length > 1 ? `credits-${g.kind}` : undefined} className="w-full border-collapse text-left">
+                        <thead>
+                          <tr className="border-b-2 border-ink text-sm text-muted">
+                            <th scope="col" className="py-2 pr-4 font-semibold">Production</th>
+                            <th scope="col" className="py-2 pr-4 font-semibold">{g.kind === "cast" ? "Role" : "Position"}</th>
+                            <th scope="col" className="hidden py-2 pr-4 font-semibold md:table-cell">Company</th>
+                            <th scope="col" className="hidden py-2 pr-4 font-semibold lg:table-cell">Venue</th>
+                            <th scope="col" className="hidden py-2 text-right font-semibold md:table-cell">Year</th>
+                            {editing && (
+                              <th scope="col" className="w-11 py-2">
+                                <span className="sr-only">Show or hide</span>
+                              </th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {g.rows.map((c) => {
+                            const colors = showColors(c.prod);
+                            const org = c.prod.organization;
+                            const venue = c.prod.location;
+                            const hidden = c.hidden_on_person_page;
+                            return (
+                              <tr key={c.id} className={`border-b border-rule align-top ${hidden ? "text-muted" : ""}`}>
+                                <td className="py-3 pr-4">
+                                  <span className="flex items-start gap-2.5">
+                                    <span
+                                      aria-hidden="true"
+                                      className="mt-[7px] h-2.5 w-2.5 flex-none rounded-full"
+                                      style={{ background: colors.hasPalette && !hidden ? colors.accent : NO_POSTER_DOT }}
+                                    />
+                                    <span className="flex min-w-0 flex-col">
+                                      <Link href={`/production/${c.prod.slug}`} className="link-quiet font-bold">
+                                        {c.title}
+                                      </Link>
+                                      <span className="text-sm text-muted md:hidden">
+                                        {[org?.name, c.prod.year].filter(Boolean).join(" · ")}
+                                      </span>
+                                      {c.added_by_owner && (
+                                        <span className="text-[13px] text-muted">Added by {owner?.display_name ?? "the performer"}</span>
+                                      )}
+                                      {editing && hidden && <span className="text-[13px] font-semibold">Hidden from your page</span>}
+                                    </span>
+                                  </span>
+                                </td>
+                                <td className="py-3 pr-4">
+                                  {editing ? <EditableRole slug={person.slug} creditId={c.id} role={c.role} /> : c.role}
+                                </td>
+                                <td className="hidden py-3 pr-4 md:table-cell">
+                                  {org ? (
+                                    <Link href={`/company/${org.slug}`} className="link-quiet">
+                                      {org.name}
+                                    </Link>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </td>
+                                <td className="hidden py-3 pr-4 lg:table-cell">
+                                  {venue ? (
+                                    <Link href={`/venue/${venue.slug}`} className="link-quiet">
+                                      {venue.name}
+                                    </Link>
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
+                                <td className="hidden whitespace-nowrap py-3 text-right tabular-nums text-muted md:table-cell">{c.prod.year}</td>
+                                {editing && (
+                                  <td className="py-3">
+                                    <HideCreditToggle slug={person.slug} creditId={c.id} hidden={hidden} />
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+              </div>
             )}
           </section>
 
-          <aside className="flex min-w-0 flex-[1_1_280px] flex-col gap-7">
+          <aside className="grid min-w-0 grid-cols-1 gap-8 border-t border-rule pt-8 md:grid-cols-3">
             {editing && (
               <section className="flex flex-col gap-3">
                 <h2 className="subheading">Your headshots</h2>

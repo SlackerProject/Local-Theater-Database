@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { badgeMessage, LEVELS } from "@/lib/badges";
 import { HeaderNav } from "./HeaderNav";
+import { BadgeMessage } from "./badges/BadgeMessage";
 
 export const SITE_NAME = "Local Theater Database";
 
@@ -53,37 +55,57 @@ async function UserNav() {
   const user = await getCurrentUser();
   let unread = 0;
   let pageSlug: string | null = null;
+  let news: string[] = [];
   if (user) {
     const supabase = await createClient();
-    const [{ count }, { data: page }] = await Promise.all([
+    const [{ count }, { data: page }, { data: badges }] = await Promise.all([
       supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "unread"),
       supabase.from("people").select("slug").eq("verified_owner_id", user.id).maybeSingle(),
+      supabase.from("user_badges").select("badge, earned_at").eq("user_id", user.id).is("seen_at", null).order("earned_at", { ascending: false }),
     ]);
     unread = count ?? 0;
     pageSlug = page?.slug ?? null;
+    // Newly earned levels and badges, highest level first
+    news = (badges ?? [])
+      .map((b) => b.badge)
+      .sort((a, b) => LEVELS.findIndex((l) => l.key === b) - LEVELS.findIndex((l) => l.key === a))
+      .map(badgeMessage)
+      .filter((m): m is string => !!m);
   }
   return (
-    <HeaderNav
-      user={
-        user
-          ? {
-              displayName: user.displayName,
-              // Trusted editors see the moderation page too (they can vouch for claims)
-              canModerate: hasRole(user, "trusted"),
-              unread,
-              pageSlug,
-            }
-          : null
-      }
-    />
+    <>
+      <HeaderNav
+        user={
+          user
+            ? {
+                displayName: user.displayName,
+                username: user.username,
+                // Trusted editors see the moderation page too (they can vouch for claims)
+                canModerate: hasRole(user, "trusted"),
+                unread,
+                pageSlug,
+              }
+            : null
+        }
+      />
+      {user && news.length > 0 && <BadgeMessage messages={news} profileHref={`/u/${user.username}`} />}
+    </>
   );
 }
 
 export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-rule">
-      <div className="mx-auto max-w-[1180px] px-4 py-6 text-sm text-muted md:px-8">
-        Community-built. Anyone can add or correct a page.
+      <div className="mx-auto flex max-w-[1180px] flex-wrap justify-between gap-x-6 gap-y-2 px-4 py-6 text-sm text-muted md:px-8">
+        <span>Community-built. Anyone can add or correct a page.</span>
+        <span className="flex gap-5">
+          <Link href="/hotlist" className="link-quiet">
+            Hotlist
+          </Link>
+          <Link href="/awards" className="link-quiet">
+            Awards
+          </Link>
+        </span>
       </div>
     </footer>
   );

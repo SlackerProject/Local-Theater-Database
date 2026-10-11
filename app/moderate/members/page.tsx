@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
 import { MemberActions } from "./MemberActions";
+import { FoundingSwitch } from "./FoundingSwitch";
 
 export const metadata: Metadata = { title: "Members · Moderation · Local Theater Database" };
 
@@ -40,11 +41,16 @@ async function Members({ searchParams }: Pick<PageProps<"/moderate/members">, "s
   const { q } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const supabase = await createClient();
-  const { data: members, error } = await supabase.rpc("member_overview", { p_query: query });
+  const [{ data: members, error }, { data: founding }] = await Promise.all([
+    supabase.rpc("member_overview", { p_query: query }),
+    supabase.from("site_settings").select("value").eq("key", "founding").maybeSingle(),
+  ]);
   const isAdmin = hasRole(user, "admin");
+  const foundingValue = (founding?.value ?? { open: true, closed_at: null }) as { open: boolean; closed_at: string | null };
 
   return (
     <>
+      {isAdmin && <FoundingSwitch open={foundingValue.open} closedAt={foundingValue.closed_at} />}
       <p className="m-0 max-w-[760px] text-[15px] text-muted">
         Everyone with an account, most recently active first.{" "}
         {isAdmin ? "As the admin, you can change roles. " : ""}Moderators can suspend accounts below their own role; a
@@ -85,7 +91,9 @@ async function Members({ searchParams }: Pick<PageProps<"/moderate/members">, "s
                 return (
                   <tr key={m.id} className={m.banned_at ? "bg-[#FFF0F0]" : ""}>
                     <td className={cell}>
-                      <span className="block font-bold">{m.display_name}</span>
+                      <Link href={`/u/${m.username}`} className="block font-bold">
+                        {m.display_name}
+                      </Link>
                       <span className="block text-sm text-muted">@{m.username} · joined {day(m.joined)}</span>
                       {m.banned_at && (
                         <span className="mt-1 block text-sm font-semibold">

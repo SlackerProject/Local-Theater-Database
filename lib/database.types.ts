@@ -489,6 +489,27 @@ export type Database = {
           },
         ]
       }
+      hotlist_snapshots: {
+        Row: {
+          day: string
+          entity_id: string
+          entity_table: string
+          rank: number
+        }
+        Insert: {
+          day: string
+          entity_id: string
+          entity_table: string
+          rank: number
+        }
+        Update: {
+          day?: string
+          entity_id?: string
+          entity_table?: string
+          rank?: number
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           created_at: string
@@ -1197,6 +1218,7 @@ export type Database = {
           id: string
           person_id: string | null
           role: Database["public"]["Enums"]["user_role"]
+          show_seen: boolean
           updated_at: string
           username: string
         }
@@ -1210,6 +1232,7 @@ export type Database = {
           id: string
           person_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          show_seen?: boolean
           updated_at?: string
           username: string
         }
@@ -1223,6 +1246,7 @@ export type Database = {
           id?: string
           person_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          show_seen?: boolean
           updated_at?: string
           username?: string
         }
@@ -1355,6 +1379,35 @@ export type Database = {
           },
         ]
       }
+      site_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submission_drafts: {
         Row: {
           data: Json
@@ -1376,6 +1429,35 @@ export type Database = {
             foreignKeyName: "submission_drafts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          badge: string
+          earned_at: string
+          seen_at: string | null
+          user_id: string
+        }
+        Insert: {
+          badge: string
+          earned_at?: string
+          seen_at?: string | null
+          user_id: string
+        }
+        Update: {
+          badge?: string
+          earned_at?: string
+          seen_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1455,6 +1537,7 @@ export type Database = {
     }
     Functions: {
       apply_auditions: { Args: { p_proposal_id: string }; Returns: undefined }
+      apply_award: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_correction: {
         Args: { p_accept: string[]; p_proposal_id: string }
         Returns: number
@@ -1532,8 +1615,25 @@ export type Database = {
         Args: { min_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      hotlist: {
+        Args: { p_limit?: number; p_table: string }
+        Returns: {
+          entity_id: string
+          has_history: boolean
+          last_week_rank: number
+          rank: number
+          visitors: number
+        }[]
+      }
       is_banned: { Args: never; Returns: boolean }
       keep_all_notifications: { Args: never; Returns: undefined }
+      level_thresholds: {
+        Args: never
+        Returns: {
+          badge: string
+          points: number
+        }[]
+      }
       lookup: {
         Args: { max_results?: number; p_kind: string; p_query: string }
         Returns: {
@@ -1552,6 +1652,7 @@ export type Database = {
           slug: string
         }[]
       }
+      mark_badges_seen: { Args: never; Returns: undefined }
       member_overview: {
         Args: { p_query?: string }
         Returns: {
@@ -1625,10 +1726,43 @@ export type Database = {
           label: string
         }[]
       }
+      profile_seen: {
+        Args: { p_user: string }
+        Returns: {
+          production_id: string
+          seen_on: string
+        }[]
+      }
+      profile_stats: {
+        Args: { p_user: string }
+        Returns: {
+          contributions: number
+          photos: number
+          points: number
+          seen: number
+        }[]
+      }
+      recent_contributions: {
+        Args: { p_limit?: number; p_user: string }
+        Returns: {
+          amount: number
+          credits: number
+          draft_title: string
+          earned_at: string
+          entity_id: string
+          entity_table: string
+          kind: string
+          media_kind: string
+          person_id: string
+          production_id: string
+          reason: string
+        }[]
+      }
       record_view: {
         Args: { p_id: string; p_table: string; p_visitor_hash: string }
         Returns: undefined
       }
+      refresh_badges: { Args: { p_user: string }; Returns: undefined }
       reject_submission: {
         Args: { p_note?: string; p_proposal_id: string }
         Returns: undefined
@@ -1648,6 +1782,10 @@ export type Database = {
       restore_member: { Args: { p_user: string }; Returns: undefined }
       revert_revision: { Args: { p_revision_id: number }; Returns: undefined }
       review_auditions: {
+        Args: { p_approve: boolean; p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
+      review_award: {
         Args: { p_approve: boolean; p_note?: string; p_proposal_id: string }
         Returns: undefined
       }
@@ -1674,6 +1812,7 @@ export type Database = {
         }[]
       }
       seen_count: { Args: { p_person_id: string }; Returns: number }
+      set_founding_open: { Args: { p_open: boolean }; Returns: undefined }
       set_member_role: {
         Args: {
           p_role: Database["public"]["Enums"]["user_role"]
@@ -1684,6 +1823,7 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       slugify: { Args: { p_text: string }; Returns: string }
+      snapshot_hotlist: { Args: never; Returns: undefined }
       sort_name_for: { Args: { p_name: string }; Returns: string }
       submission_destination: {
         Args: { p_proposal_id: string }
@@ -1693,6 +1833,7 @@ export type Database = {
           title: string
         }[]
       }
+      submission_earned_before: { Args: { p_changes: Json }; Returns: boolean }
       submit_auditions: {
         Args: {
           p_comment?: string
@@ -1701,6 +1842,10 @@ export type Database = {
           p_sessions: Json
           p_url: string
         }
+        Returns: string
+      }
+      submit_award: {
+        Args: { p_award: Json; p_note?: string }
         Returns: string
       }
       submit_correction: {

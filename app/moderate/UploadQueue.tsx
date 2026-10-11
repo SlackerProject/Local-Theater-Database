@@ -15,6 +15,7 @@ export type QueueItem = {
   credit: string | null;
   palette: MediaPalette | null;
   uploader: string;
+  uploaderMedal?: React.ReactNode;
   uploadedAt: string;
 };
 
@@ -110,7 +111,7 @@ function UploadCard({
       <div className="flex flex-col gap-0.5 text-sm">
         <span>
           <span className="tag mr-1.5">{KIND[item.kind]}</span>
-          by {item.uploader} · {item.uploadedAt}
+          by {item.uploader} {item.uploaderMedal} · {item.uploadedAt}
         </span>
         {item.credit && <span className="text-muted">Photo credit: {item.credit}</span>}
         <span className="text-muted">Rights and 18+ confirmed by the uploader.</span>

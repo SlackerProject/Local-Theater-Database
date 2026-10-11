@@ -68,11 +68,13 @@ export function ReviewCard({
   submitted,
   submittedBy,
   submittedAt,
+  medal,
 }: {
   id: string;
   submitted: Bundle;
   submittedBy: string;
   submittedAt: string;
+  medal?: React.ReactNode; // the contributor's small medal
 }) {
   const addTo = isAddTo(submitted);
   const [show, setShow] = useState(addTo ? null : submitted.show);
@@ -164,7 +166,7 @@ export function ReviewCard({
         {addTo && <span className="tag self-start">Additions to a live production</span>}
         <h2 className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</h2>
         <span className="text-sm text-muted">
-          Submitted by {submittedBy} on {submittedAt}. Correct anything that’s wrong, untick anything you can’t approve.
+          Submitted by {submittedBy} {medal} on {submittedAt}. Correct anything that’s wrong, untick anything you can’t approve.
         </span>
       </div>
 

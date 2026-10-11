@@ -12,6 +12,7 @@ import {
 import { SHOW_TYPES } from "@/lib/submission";
 import { localDate, localHHMM } from "@/lib/calendar";
 import { CorrectionReview, type ReviewRow } from "./CorrectionReview";
+import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
 
 const TABLES = Object.keys(KIND_FOR_TABLE) as PageTable[];
 
@@ -40,6 +41,7 @@ export async function CorrectionsSection() {
     .order("created_at", { ascending: true });
 
   const cards = await Promise.all((proposals ?? []).map((p) => buildCard(supabase, p)));
+  const points = await pointsFor((proposals ?? []).map((p) => p.proposed_by));
 
   return (
     <section className="flex flex-col gap-4">
@@ -51,7 +53,7 @@ export async function CorrectionsSection() {
             <Link href={`/moderate/members?q=${encodeURIComponent(c.username)}`} className="font-bold">
               {c.who}
             </Link>{" "}
-            sent a correction for{" "}
+            <ContributorMedal points={points.get(c.proposedBy)} /> sent a correction for{" "}
             {c.page ? (
               <Link href={c.page.href} className="font-bold">
                 {c.page.label}
@@ -82,6 +84,7 @@ type Proposal = {
   changes: unknown;
   note: string | null;
   created_at: string;
+  proposed_by: string;
   proposer: { username: string; display_name: string } | null;
 };
 
@@ -179,6 +182,7 @@ async function buildCard(supabase: Supabase, p: Proposal) {
   return {
     id: p.id,
     who: p.proposer?.display_name ?? "Someone",
+    proposedBy: p.proposed_by,
     username: p.proposer?.username ?? "",
     noun: KINDS[kind].noun,
     page: now ? { href: `/${kind}/${now.slug}`, label } : null,

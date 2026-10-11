@@ -10,6 +10,9 @@ import { PosterTile } from "@/components/PosterTile";
 import { FollowButton } from "@/components/FollowButton";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
+import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
+import { ViewTracker } from "@/components/ViewTracker";
+import { AWARD_SELECT, awardSentence, productionTitle, sortAwards, type AwardRow } from "@/lib/awards";
 import { HeadshotUploader } from "@/components/uploads/UploadPanels";
 import type { PageLink } from "./actions";
 import {
@@ -97,7 +100,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
   ] = await Promise.all([
       supabase.rpc("frequent_collaborators", { p_person_id: person.id }),
       person.verified_owner_id
-        ? supabase.from("profiles").select("display_name").eq("id", person.verified_owner_id).maybeSingle()
+        ? supabase.from("profiles").select("display_name, username").eq("id", person.verified_owner_id).maybeSingle()
         : Promise.resolve({ data: null }),
       supabase.rpc("claim_state", { p_person_id: person.id }),
       user
@@ -119,6 +122,9 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
       person.verified_owner_id ? supabase.rpc("seen_count", { p_person_id: person.id }) : Promise.resolve({ data: 0 }),
     ]);
 
+  const { data: awardRows } = await supabase.from("award_entries").select(AWARD_SELECT).eq("person_id", person.id);
+  const awards = sortAwards((awardRows ?? []) as unknown as AwardRow[]);
+  const ownerPoints = person.verified_owner_id ? (await pointsFor([person.verified_owner_id])).get(person.verified_owner_id) : undefined;
   const headshot = person.headshot;
   const pendingHeadshots = myUploads?.length ?? 0;
   const links = asLinks(person.links);
@@ -248,6 +254,14 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                 <>
                   {" · "}
                   <VerifiedMark />
+                  {owner?.username && (
+                    <>
+                      {" · "}
+                      <Link href={`/u/${owner.username}`} className="font-semibold text-ink">
+                        Contributor profile
+                      </Link>
+                    </>
+                  )}
                 </>
               )}
             </p>
@@ -400,7 +414,17 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                                         {[org?.name, c.prod.year].filter(Boolean).join(" · ")}
                                       </span>
                                       {c.added_by_owner && (
-                                        <span className="text-[13px] text-muted">Added by {owner?.display_name ?? "the performer"}</span>
+                                        <span className="inline-flex items-center gap-1 text-[13px] text-muted">
+                                          Added by{" "}
+                                          {owner?.username ? (
+                                            <Link href={`/u/${owner.username}`} className="font-semibold text-ink">
+                                              {owner.display_name}
+                                            </Link>
+                                          ) : (
+                                            "the performer"
+                                          )}
+                                          <ContributorMedal points={ownerPoints} />
+                                        </span>
                                       )}
                                       {editing && hidden && <span className="text-[13px] font-semibold">Hidden from your page</span>}
                                     </span>
@@ -470,7 +494,23 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             </section>
             <section className="flex flex-col gap-1.5">
               <h2 className="subheading">Awards</h2>
-              <p className="m-0 text-[15px] text-muted">None recorded yet.</p>
+              {awards.length ? (
+                <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[15px]">
+                  {awards.map((a) => (
+                    <li key={a.id}>
+                      <span className={a.result === "won" ? "font-bold" : ""}>{awardSentence(a)}</span>
+                      {a.production && (
+                        <>
+                          {" · "}
+                          <Link href={`/production/${a.production.slug}`}>{productionTitle(a)}</Link>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="m-0 text-[15px] text-muted">None recorded yet.</p>
+              )}
             </section>
           </aside>
         </div>
@@ -481,6 +521,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
           </section>
         )}
         {!isOwner && <SuggestEdit kind="person" slug={person.slug} signedIn={!!user} />}
+        {!person.is_hidden && <ViewTracker table="people" id={person.id} />}
         <ModeratorDeleteSection table="people" id={person.id} name={person.display_name} afterDelete="/people" />
       </main>
     </>

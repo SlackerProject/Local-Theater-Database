@@ -8,6 +8,7 @@ import { describeChanges, type Revision } from "@/lib/changes";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement, announcementContext, auditionOffer } from "@/lib/announcements";
 import { AnnouncementActions, AnnouncementText } from "@/components/Announcement";
+import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
 import { KeepAllButton, NotificationActions } from "./NotificationActions";
 
 export const metadata: Metadata = { title: "Notifications · Local Theater Database" };
@@ -128,7 +129,7 @@ type ChangeRow = {
   revision: Revision | null;
 };
 
-function ChangesToYourPage({
+async function ChangesToYourPage({
   rows,
   page,
   described,
@@ -138,6 +139,7 @@ function ChangesToYourPage({
   described: Awaited<ReturnType<typeof describeChanges>>;
 }) {
   const unread = rows.filter((r) => r.status === "unread").length;
+  const points = await pointsFor(rows.map((r) => r.revision?.changed_by));
 
   return (
     <section className="flex flex-col gap-3">
@@ -167,7 +169,8 @@ function ChangesToYourPage({
                   <span className={n.status === "unread" ? "font-semibold" : ""}>
                     {change ? (
                       <>
-                        {change.who} {change.summary}.
+                        {change.who} <ContributorMedal points={n.revision?.changed_by ? points.get(n.revision.changed_by) : undefined} />{" "}
+                        {change.summary}.
                       </>
                     ) : (
                       "Your page was changed."

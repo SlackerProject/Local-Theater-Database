@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { KIND_FOR_TABLE, type PageTable } from "@/lib/corrections";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
+import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
 
 export const metadata: Metadata = { title: "Recent changes · Moderation · Local Theater Database" };
 
@@ -34,6 +35,7 @@ const KIND_TEXT: Record<string, string> = {
   shows: "Corrected a show",
   locations: "Corrected a venue",
   auditions: "Audition dates",
+  award_entries: "Added an award",
 };
 const MEDIA_TEXT: Record<string, string> = { poster: "Uploaded a poster", production_photo: "Uploaded a photo", headshot: "Uploaded a headshot" };
 const STATUS: Record<string, string> = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
@@ -120,6 +122,7 @@ async function Changes({ searchParams }: Pick<PageProps<"/moderate/changes">, "s
       status: STATUS[m.status] ?? m.status,
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
+  const points = await pointsFor(items.map((it) => it.who?.id));
 
   return (
     <>
@@ -160,7 +163,16 @@ async function Changes({ searchParams }: Pick<PageProps<"/moderate/changes">, "s
               {items.map((it, i) => (
                 <tr key={i}>
                   <td className={`${cell} whitespace-nowrap text-muted`}>{when(it.at)}</td>
-                  <td className={cell}>{it.who ? <Link href={`/moderate/changes?user=${it.who.id}`}>{it.who.name}</Link> : "—"}</td>
+                  <td className={cell}>
+                    {it.who ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Link href={`/moderate/changes?user=${it.who.id}`}>{it.who.name}</Link>
+                        <ContributorMedal points={points.get(it.who.id)} />
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className={cell}>{it.what}</td>
                   <td className={cell}>{it.page ? <Link href={it.page.href}>{it.page.label}</Link> : <span className="text-muted">—</span>}</td>
                   <td className={`${cell} ${it.status === "Waiting" ? "font-bold" : ""}`}>{it.status}</td>

@@ -8,9 +8,10 @@ import type { Bundle } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ReviewCard } from "./ReviewCard";
 import { UploadQueue, type QueueGroup } from "./UploadQueue";
-import { AuditionsSection, ClaimsSection, DisputesSection } from "./sections";
+import { AuditionsSection, AwardsSection, ClaimsSection, DisputesSection } from "./sections";
 import { CorrectionsSection } from "./corrections";
 import { ModerationNav } from "./ModerationNav";
+import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
 import { mediaUrl, type MediaPalette } from "@/lib/media";
 
 export const metadata: Metadata = { title: "Moderation queue · Local Theater Database" };
@@ -44,14 +45,14 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
   const [{ data: proposals, error }, { data: uploads }] = await Promise.all([
     supabase
       .from("edit_proposals")
-      .select("id, changes, created_at, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
+      .select("id, changes, created_at, proposed_by, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
       .eq("entity_table", "production_submission")
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
     supabase
       .from("media")
       .select(
-        `id, kind, storage_key, thumb_key, photographer_credit, palette, created_at,
+        `id, kind, storage_key, thumb_key, photographer_credit, palette, created_at, uploaded_by,
          uploader:profiles!media_uploaded_by_fkey(username, display_name),
          production:productions!media_production_id_fkey(id, slug, year, title_override, show:shows(title)),
          person:people!media_person_id_fkey(id, slug, display_name)`,
@@ -59,6 +60,9 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
   ]);
+
+  // Contributors' medals (moderation is a contribution context)
+  const points = await pointsFor([...(proposals ?? []).map((p) => p.proposed_by), ...(uploads ?? []).map((m) => m.uploaded_by)]);
 
   // Group uploads by the production or person they're for
   const groups = new Map<string, QueueGroup>();
@@ -82,6 +86,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       credit: m.photographer_credit,
       palette: (m.palette as MediaPalette | null) ?? null,
       uploader: `${m.uploader?.display_name} (@${m.uploader?.username})`,
+      uploaderMedal: <ContributorMedal points={points.get(m.uploaded_by)} />,
       uploadedAt: new Date(m.created_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }),
     });
     groups.set(target.key, group);
@@ -94,6 +99,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       <DisputesSection />
       <CorrectionsSection />
       <AuditionsSection />
+      <AwardsSection />
       <h2 className="heading -mb-2 mt-4">Production submissions</h2>
       {typeof params.approved === "string" && (
         <Banner>
@@ -115,6 +121,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
           id={p.id}
           submitted={p.changes as unknown as Bundle}
           submittedBy={`${p.proposer?.display_name} (@${p.proposer?.username})`}
+          medal={<ContributorMedal points={points.get(p.proposed_by)} />}
           submittedAt={new Date(p.created_at).toLocaleString("en-US", {
             timeZone: "America/New_York",
             dateStyle: "medium",

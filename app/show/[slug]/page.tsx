@@ -6,6 +6,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
+import { ViewTracker } from "@/components/ViewTracker";
 import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
 
@@ -81,6 +82,7 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
         )}
       </section>
       <SuggestEdit kind="show" slug={slug} signedIn={!!user} />
+      <ViewTracker table="shows" id={show.id} />
       <ModeratorDeleteSection table="shows" id={show.id} name={show.title} afterDelete="/shows" />
     </>
   );

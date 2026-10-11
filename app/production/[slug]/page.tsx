@@ -16,6 +16,8 @@ import { siteOrigin } from "@/lib/site";
 import { HeroActions, type PerformanceRow } from "./HeroActions";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { AddThemLink, EditButton, SuggestEdit } from "@/components/SuggestEdit";
+import { ViewTracker } from "@/components/ViewTracker";
+import { AWARD_SELECT, awardSentence, sortAwards, type AwardRow } from "@/lib/awards";
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {
   return (
@@ -86,6 +88,8 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
       .order("created_at", { ascending: true }),
     getCurrentUser(),
   ]);
+  const { data: awardRows } = await supabase.from("award_entries").select(AWARD_SELECT).eq("production_id", p.id);
+  const awards = sortAwards((awardRows ?? []) as unknown as AwardRow[]);
   const [{ data: watch }, { data: auditionFollow }, { data: myAuditionProposal }] = user
     ? await Promise.all([
         supabase.from("watch_list").select("status, performance_id").eq("user_id", user.id).eq("production_id", p.id).maybeSingle(),
@@ -375,6 +379,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
           </section>
 
           <SuggestEdit kind="production" slug={p.slug} signedIn={!!user} />
+          <ViewTracker table="productions" id={p.id} />
           <ModeratorDeleteSection table="productions" id={p.id} name={`${title} (${p.year})`} afterDelete="/shows" />
         </div>
 
@@ -406,7 +411,23 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
           </section>
           <section className="flex flex-col gap-1.5">
             <h2 className="subheading">Awards</h2>
-            <p className="m-0 text-[15px] text-muted">None recorded yet. EMACT nominations and wins will appear here.</p>
+            {awards.length ? (
+              <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[15px]">
+                {awards.map((a) => (
+                  <li key={a.id}>
+                    <span className={a.result === "won" ? "font-bold" : ""}>{awardSentence(a)}</span>
+                    {a.person && !a.person.is_hidden && (
+                      <>
+                        {" · "}
+                        <Link href={`/person/${a.person.slug}`}>{a.person.display_name}</Link>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="m-0 text-[15px] text-muted">None recorded yet. EMACT nominations and wins will appear here.</p>
+            )}
           </section>
         </aside>
       </main>

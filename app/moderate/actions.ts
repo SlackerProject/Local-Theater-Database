@@ -119,6 +119,15 @@ export async function restoreMember(userId: string): Promise<Done> {
   return r;
 }
 
+// The founding-member period (admin only): while open, every account is a
+// founding member; closing it keeps the badge for accounts made before then
+export async function setFoundingOpen(open: boolean): Promise<Done> {
+  const supabase = await createClient();
+  const r = await call(() => supabase.rpc("set_founding_open", { p_open: open }));
+  revalidatePath("/moderate/members");
+  return r;
+}
+
 // Corrections: approve the ticked changes (none = rejected). A note-only
 // correction is "marked done" instead.
 export async function reviewCorrection(id: string, accept: string[], note: string, noteOnlyDone: boolean): Promise<Done> {

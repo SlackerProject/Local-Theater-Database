@@ -2,7 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { hasRole, type CurrentUser } from "@/lib/auth";
 import { describeChanges, type Revision } from "@/lib/changes";
-import { AuditionButtons, ClaimButtons, DisputeButtons } from "./ModerationButtons";
+import { AuditionButtons, AwardButtons, ClaimButtons, DisputeButtons } from "./ModerationButtons";
+import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
@@ -151,7 +152,7 @@ export async function AuditionsSection() {
   const supabase = await createClient();
   const { data: proposals } = await supabase
     .from("edit_proposals")
-    .select("id, entity_id, changes, created_at, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
+    .select("id, entity_id, changes, created_at, proposed_by, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
     .eq("entity_table", "auditions")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
@@ -161,6 +162,7 @@ export async function AuditionsSection() {
     ? await supabase.from("productions").select("id, slug, year, title_override, show:shows(title)").in("id", ids)
     : { data: [] };
   const prodFor = new Map((prods ?? []).map((p) => [p.id, p]));
+  const points = await pointsFor((proposals ?? []).map((p) => p.proposed_by));
 
   return (
     <section className="flex flex-col gap-4">
@@ -172,7 +174,8 @@ export async function AuditionsSection() {
         return (
           <article key={p.id} className={item}>
             <p className="m-0 text-lg">
-              <strong>{p.proposer?.display_name}</strong> sent audition details for{" "}
+              <strong>{p.proposer?.display_name}</strong> <ContributorMedal points={points.get(p.proposed_by)} /> sent audition
+              details for{" "}
               {prod ? (
                 <Link href={`/production/${prod.slug}`} className="font-bold">
                   {prod.title_override ?? prod.show?.title} ({prod.year})
@@ -209,3 +212,73 @@ export async function AuditionsSection() {
   );
 }
 
+
+// ---------------------------------------------------------------------
+// Award entries from trusted editors (moderators' entries publish at once)
+// ---------------------------------------------------------------------
+type AwardChanges = {
+  body_id?: string;
+  new_body?: string;
+  year?: string;
+  category_id?: string;
+  new_category?: string;
+  production_id?: string;
+  credit_id?: string;
+  result?: "nominated" | "won";
+};
+
+export async function AwardsSection() {
+  const supabase = await createClient();
+  const { data: proposals } = await supabase
+    .from("edit_proposals")
+    .select("id, changes, note, created_at, proposed_by, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
+    .eq("entity_table", "award_entries")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+  if (!proposals?.length) return null;
+
+  const all = proposals.map((p) => (p.changes ?? {}) as AwardChanges);
+  const pick = (k: keyof AwardChanges) => [...new Set(all.map((c) => c[k]).filter((x): x is string => !!x))];
+  const [{ data: bodies }, { data: cats }, { data: prods }, { data: credits }] = await Promise.all([
+    supabase.from("award_bodies").select("id, name").in("id", pick("body_id").length ? pick("body_id") : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("award_categories").select("id, name").in("id", pick("category_id").length ? pick("category_id") : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("productions").select("id, slug, year, title_override, show:shows(title)").in("id", pick("production_id").length ? pick("production_id") : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("credits").select("id, role_name, person:people(display_name), character:show_characters(name)").in("id", pick("credit_id").length ? pick("credit_id") : ["00000000-0000-0000-0000-000000000000"]),
+  ]);
+  const points = await pointsFor(proposals.map((p) => p.proposed_by));
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="heading">Awards</h2>
+      {proposals.map((p) => {
+        const c = (p.changes ?? {}) as AwardChanges;
+        const body = c.body_id ? bodies?.find((b) => b.id === c.body_id)?.name : `${c.new_body} (new)`;
+        const cat = c.category_id ? cats?.find((x) => x.id === c.category_id)?.name : `${c.new_category} (new category)`;
+        const prod = prods?.find((x) => x.id === c.production_id);
+        const credit = credits?.find((x) => x.id === c.credit_id);
+        return (
+          <article key={p.id} className={item}>
+            <p className="m-0 text-lg">
+              <strong>{p.proposer?.display_name}</strong> <ContributorMedal points={points.get(p.proposed_by)} /> added an award
+            </p>
+            <span className="text-sm text-muted">Sent {when(p.created_at)}</span>
+            <p className="m-0">
+              <strong>{c.result === "won" ? "Won" : "Nominated"}</strong>, {cat}, {body} awards {c.year}
+              {prod && (
+                <>
+                  {" · "}
+                  <Link href={`/production/${prod.slug}`}>
+                    {prod.title_override ?? prod.show?.title} ({prod.year})
+                  </Link>
+                </>
+              )}
+              {credit && ` · ${credit.person?.display_name} (${credit.character?.name ?? credit.role_name})`}
+            </p>
+            {p.note && <p className="callout m-0 whitespace-pre-line text-[15px]">{p.note}</p>}
+            <AwardButtons id={p.id} />
+          </article>
+        );
+      })}
+    </section>
+  );
+}

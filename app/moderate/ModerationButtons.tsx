@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { resolveDispute, resolveSuggestion, reviewAuditions, reviewClaim, reviewSuggestion, vouchForClaim } from "./actions";
+import { reviewAward } from "../awards/actions";
 
 type Done = { ok: boolean; error?: string };
 
@@ -80,6 +81,17 @@ export function DisputeButtons({ id, canUndo }: { id: string; canUndo: boolean }
       buttons={[
         ...(canUndo ? [{ label: "Undo the change", primary: true, run: () => resolveDispute(id, true) }] : []),
         { label: canUndo ? "Keep the change" : "Mark resolved", run: () => resolveDispute(id, false) },
+      ]}
+    />
+  );
+}
+
+export function AwardButtons({ id }: { id: string }) {
+  return (
+    <ActionRow
+      buttons={[
+        { label: "Approve", primary: true, run: () => reviewAward(id, true) },
+        { label: "Reject", run: () => reviewAward(id, false) },
       ]}
     />
   );

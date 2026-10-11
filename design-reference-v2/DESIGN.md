@@ -10,6 +10,8 @@ Reference files:
 - `production-little-women-mobile.html`: production page at phone width
 - `person-michael.html`: person page (visitor view of a verified person)
 - `calendar.html`, `calendar-mobile.html`: the signed-in calendar
+- `contributor-profile.html`: an account's public profile with badges and shows seen
+- `badges.html`: the five contributor medals, in color and grayscale, and levels I-III
 
 ## Principles
 
@@ -93,7 +95,7 @@ Examples from the references: Little Women is ground `#F3E0C8`, ink `#18140F`, a
 represented by a swatch outside its own page, use ground, never accent, so the show looks
 the same on every screen:
 - calendar run bars, the "going" chip, and the day dots on the phone calendar;
-- the dot beside that production's name in the credits table on person pages;
+- the dot beside that production's credit sentence on person pages;
 - list swatches (e.g. "Running this month");
 - the background behind that production's poster wherever it is shown as a tile.
 
@@ -123,31 +125,19 @@ cast, creative team; sidebar: other productions of the same show, awards.
 
 ## Person page
 
-Follow `person-michael.html` for the header and the On stage shelf. Two signature pieces:
+Follow `person-michael.html`. Two signature pieces:
 
 **On stage**: a shelf of poster tiles for every production the person is credited in, newest
 first, with the role under each tile.
 
-**Credits as a résumé table** (this replaces the credit sentences in `person-michael.html`).
-It reads like a clean, simple résumé and gets the full content width:
-- Columns: Production · Role (crew: Position) · Company · Venue · Year. Newest first. Every
-  production, company and venue name is a link (no underline until hover).
-- Header row in 14px muted text over a 2px ink rule; rows separated by 1px `rule` lines;
-  Year right-aligned in muted tabular figures. Nothing wraps on desktop.
-- When a person has both kinds of credit, show two tables with sidebar-style headings:
-  "Cast" and "Crew".
-- The show-color dot sits beside the production name: the show's ground with its 1px edge
-  (without a poster: `soft` with the `#949494` edge, as on the calendar).
-- Phones: Company and Year move under the production name in muted text; Venue is
-  dropped. Columns are Production and Role only.
-- "Added by {name}" in muted 13px text under the production for credits the owner added.
-  Credits the owner has hidden do not appear to visitors.
-- Owner view: a pencil beside the role edits it in place; an eye button at the end of
-  each row hides or shows the credit (hidden rows stay visible to the owner, muted, marked
-  "Hidden from your page").
+**Credits as sentences**, each with every name linked:
+- Cast: "Played **{role}** in {Company}'s production of **{Show} ({Year})** at {Venue}."
+- Crew: "**{Job}** for {Company}'s production of **{Show} ({Year})** at {Venue}."
+- Omit "at {Venue}" when the venue is unknown. Add "Added by {name}" in muted text for
+  credits the owner added. Credits the owner has hidden do not appear.
 
-Below the table, in a row of columns: Frequent collaborators (people sharing two or more
-productions, via the `frequent_collaborators()` function), then Awards.
+Sidebar: Frequent collaborators (people sharing two or more productions, via the
+`frequent_collaborators()` function), then Awards.
 
 ## Pages without mockups yet
 
@@ -155,8 +145,9 @@ Build these in the same frame, using the same section headings, rules and tiles.
 
 **Show page** (the work, e.g. Little Women the Musical): title (72px/800), type and authors
 in muted text. Then "Productions", a poster-tile grid of every production of this show,
-newest first, each captioned "{Company} · {Year}". Nothing else: no characters list. No
-show color in the frame; the posters carry it.
+newest first, each captioned "{Company} · {Year}". Then "Characters", a list where each
+character links to the people who have played them, with a count. No show color in the
+frame; the posters carry it.
 
 **Company page**: name, town, website link, and a Follow button (ink). Then productions
 grouped by year (year as a section heading, poster-tile grid beneath, newest year first).
@@ -188,3 +179,55 @@ No box around it.
 - Every tap target at least 44 by 44px.
 - Every input has a visible label.
 - Poster images have alt text: "{Show} poster".
+
+## Badges and points
+
+**Points** come only from approved contributions: 10 per production submission, 3 per poster,
+2 per photo, 2 per correction or smaller edit. A submission earns points the first time it is
+approved (partial approval counts); resubmissions earn nothing extra. Self-reported activity
+(Want to see, Seen) never earns points.
+
+**Contributor medal** (the most important badge). Five metals, each a different *shape* so they
+work without color (see `badges.html`): Bronze plain coin, Silver ringed coin, Gold serrated
+medal, Platinum ribboned rosette, Diamond faceted gem with rays. Bronze to Platinum have levels
+I, II, III, shown as one to three dots under the medal. Thresholds:
+Bronze 10 / 25 / 50, Silver 100 / 150 / 225, Gold 300 / 400 / 550,
+Platinum 750 / 1,000 / 1,300, Diamond 2,000. Always pair the medal with its text name.
+
+**Collectible badges**: smaller, black and white, on a `soft` tile: Moderator (shield),
+Verified performer (mask), Founding member (flag), Shows seen 10 / 25 / 50 / 100 / 250
+(ticket stubs printed with the number), Photos added 10 / 50 (camera). Unearned ones appear
+grayed out on the profile ("Badges collected, 5 of 12").
+
+**Where badges appear**: the full medal, progress bar, ladder and collection only on the
+account profile (`contributor-profile.html`). Elsewhere, only an 18px medal beside a
+contributor's name in contribution contexts: "Added by", edit history, moderation. Never on
+cast lists, production pages, person pages or search results. When someone earns a new level
+or badge, show one brief, dismissible message ("You reached Silver III") once, then never again.
+
+**Shows seen** on the profile is hidden by default; the owner can choose to show it. Going and
+Want to see are never public.
+
+## Hotlist page
+
+Two ranked lists side by side on desktop (stacked on phones): **People** and **Productions**,
+ranked by unique visitors over the last 7 days (the existing `hotlist_7d` view), top 25 each.
+Each row: a large rank number (800 weight, muted), the headshot or poster tile (poster tile uses
+the show's ground and edge), the name, and one muted line (people: their most recent credit;
+productions: company and dates). A small "New" or up/down marker compared with last week if
+that history exists; otherwise nothing. A one-line explainer at the top: "The most-visited
+pages this week, counted once per visitor per day." Hidden people never appear.
+
+## Awards (EMACT)
+
+**Awards page** (`/awards`): pick a year (newest first). For each category, list the nominees
+as rows: the person (linked), their role, and the production (linked, with its poster swatch).
+Winners are marked with the word "Winner" in 700 weight beside the name, plus a small ink check;
+never by color alone.
+
+**On person and production pages**, the existing Awards sections list nominations and wins as
+sentences: "Nominated, [Category], EMACT awards [Year]" / "Won, ...".
+
+**Entering awards**: trusted editors and moderators get an "Add awards" form: award body,
+year, category (type-ahead, add new), production (type-ahead), optional person and the credit
+being honored, and Nominated or Won. It goes through the normal review rules.

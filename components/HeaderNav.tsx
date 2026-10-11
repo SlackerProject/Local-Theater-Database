@@ -5,17 +5,19 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/app/auth-actions";
 
-type User = { displayName: string; canModerate: boolean; unread: number; pageSlug: string | null } | null;
+type User = { displayName: string; username: string; canModerate: boolean; unread: number; pageSlug: string | null } | null;
 
 const BROWSE = [
   { href: "/shows", label: "Shows" },
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
+  { href: "/hotlist", label: "Hotlist" },
 ];
 
 function accountLinks(user: NonNullable<User>) {
   return [
-    ...(user.pageSlug ? [{ href: `/person/${user.pageSlug}`, label: "Your page" }] : []),
+    { href: `/u/${user.username}`, label: "Your profile" },
+    ...(user.pageSlug ? [{ href: `/person/${user.pageSlug}`, label: "Your page on stage" }] : []),
     { href: "/following", label: "Shows & follows" },
     { href: "/add", label: "Add a production" },
     { href: "/submissions", label: "Your submissions" },

@@ -180,6 +180,11 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
     past: new Date(a.starts_at).getTime() < now,
   }));
   const showAuditions = precast || auditionRows.some((a) => !a.past);
+  // Before anyone's cast, the show's roles stand in for the cast list
+  const { data: roleRows } = cast.length
+    ? { data: [] }
+    : await supabase.from("show_characters").select("id, name").eq("show_id", p.show.id).order("sort_order").order("name");
+  const showRoles = roleRows ?? [];
   // The "Where" choices in the audition form (members only)
   const { data: locationRows } =
     showAuditions && user ? await supabase.from("locations").select("id, name, town").order("name") : { data: [] };
@@ -331,12 +336,27 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
               <h2 className="heading">Cast</h2>
             </div>
             {cast.length === 0 ? (
-              <p className="m-0 pt-3 text-muted">
-                The cast will appear here once it’s added.{" "}
-                <AddThemLink slug={p.slug} signedIn={!!user} section="cast">
-                  Know who’s in the cast? Add them.
-                </AddThemLink>
-              </p>
+              <>
+                {showRoles.length > 0 && (
+                  <ul className="m-0 grid list-none grid-cols-1 gap-x-10 p-0 md:grid-cols-2">
+                    {showRoles.map((r) => (
+                      <li key={r.id} className="flex items-center gap-3 border-b border-rule py-2.5">
+                        <span aria-hidden="true" className="h-11 w-11 flex-none rounded-full border border-dashed border-[#A8A8A8]" />
+                        <span className="flex min-w-0 flex-col">
+                          <span className="font-bold">{r.name}</span>
+                          <span className="text-sm text-muted">{closed ? "Not listed" : "Not cast yet"}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="m-0 pt-3 text-muted">
+                  {showRoles.length ? "Names will appear here once the cast is added." : "The cast will appear here once it’s added."}{" "}
+                  <AddThemLink slug={p.slug} signedIn={!!user} section="cast">
+                    Know who’s in the cast? Add them.
+                  </AddThemLink>
+                </p>
+              </>
             ) : (
               <ul className="m-0 grid list-none grid-cols-1 gap-x-10 p-0 md:grid-cols-2">
                 {cast.map((x) => (

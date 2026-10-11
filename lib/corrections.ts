@@ -81,16 +81,20 @@ export type CreditAdd = {
 };
 export type PerformanceEdit = { id?: string; date: string; time: string; label: string; cancelled?: boolean };
 
+// A show's roles (show_characters), cast or not; shared by its productions
+export type RoleChanges = { add?: string[]; rename?: { id: string; name: string }[]; remove?: string[] };
+
 export type Changes = {
   fields?: Record<string, FieldValue>;
   credits?: { add?: CreditAdd[]; remove?: string[]; update?: { id: string; role: string }[] };
   performances?: { add?: PerformanceEdit[]; remove?: string[]; update?: (PerformanceEdit & { id: string })[] };
+  roles?: RoleChanges;
 };
 
 // Older person suggestions stored {"display_name": ...} at the top level
 export function normalizeChanges(raw: unknown): Changes {
   const c = (raw ?? {}) as Record<string, unknown>;
-  if ("fields" in c || "credits" in c || "performances" in c) return c as Changes;
+  if ("fields" in c || "credits" in c || "performances" in c || "roles" in c) return c as Changes;
   return { fields: c as Record<string, FieldValue> };
 }
 
@@ -102,7 +106,10 @@ export function hasChanges(c: Changes) {
     !!c.credits?.update?.length ||
     !!c.performances?.add?.length ||
     !!c.performances?.remove?.length ||
-    !!c.performances?.update?.length
+    !!c.performances?.update?.length ||
+    !!c.roles?.add?.length ||
+    !!c.roles?.rename?.length ||
+    !!c.roles?.remove?.length
   );
 }
 

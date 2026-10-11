@@ -130,6 +130,22 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
     rows.push({ key: `field:${f.key}`, what: f.label, current: pretty(f.key, now?.[f.key]), proposed: pretty(f.key, proposed[f.key]) });
   }
 
+  // The show's roles (from the show's page or one of its productions)
+  if (c.roles) {
+    const ids = [...(c.roles.remove ?? []), ...(c.roles.rename ?? []).map((r) => r.id)];
+    const { data: chars } = ids.length ? await supabase.from("show_characters").select("id, name").in("id", ids) : { data: [] };
+    const charName = new Map((chars ?? []).map((ch) => [ch.id, ch.name]));
+    for (const id of c.roles.remove ?? []) {
+      rows.push({ key: `role:remove:${id}`, what: "Remove role", current: charName.get(id) ?? "(already gone)", proposed: "Removed" });
+    }
+    for (const r of c.roles.rename ?? []) {
+      rows.push({ key: `role:rename:${r.id}`, what: "Rename role", current: charName.get(r.id) ?? "(role is gone)", proposed: r.name });
+    }
+    (c.roles.add ?? []).forEach((name, i) => {
+      rows.push({ key: `role:add:${i}`, what: "Add role", current: "", proposed: name });
+    });
+  }
+
   if (table === "productions" && p.entity_id) {
     const creditIds = [...(c.credits?.remove ?? []), ...(c.credits?.update ?? []).map((u) => u.id)];
     const { data: credits } = creditIds.length

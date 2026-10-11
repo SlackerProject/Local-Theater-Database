@@ -21,6 +21,8 @@ import { maTown } from "@/lib/ma-towns";
 
 export type CreditLine = { id: string; kind: "cast" | "crew"; person: string; role: string };
 export type PerformanceLine = { id: string; date: string; time: string; label: string; cancelled: boolean };
+// One of the show's roles; inUse = someone is credited in it (any production)
+export type RoleLine = { id: string; name: string; inUse: boolean };
 
 // Plain and clear over stylish: a bordered table, a label column, and
 // buttons that say what they do.
@@ -52,6 +54,8 @@ export function CorrectionForm({
   locked,
   credits,
   performances,
+  roles,
+  showTitle,
   isModerator,
 }: {
   table: PageTable;
@@ -63,6 +67,8 @@ export function CorrectionForm({
   locked: Record<string, string>;
   credits?: CreditLine[];
   performances?: PerformanceLine[];
+  roles?: RoleLine[];
+  showTitle?: string;
   isModerator: boolean;
 }) {
   // Only what has changed is kept
@@ -74,6 +80,9 @@ export function CorrectionForm({
   const [removedPerfs, setRemovedPerfs] = useState<Set<string>>(new Set());
   const [perfChanges, setPerfChanges] = useState<Record<string, PerformanceEdit & { id: string }>>({});
   const [addedPerfs, setAddedPerfs] = useState<PerformanceEdit[]>([]);
+  const [addedRoles, setAddedRoles] = useState<string[]>([]);
+  const [renamedRoles, setRenamedRoles] = useState<Record<string, string>>({});
+  const [removedRoles, setRemovedRoles] = useState<Set<string>>(new Set());
   const [note, setNote] = useState("");
   const [result, setResult] = useState<"published" | "pending" | null>(null);
   const [error, setError] = useState("");
@@ -89,8 +98,20 @@ export function CorrectionForm({
       },
       performances: { add: addedPerfs, remove: [...removedPerfs], update: Object.values(perfChanges) },
     }),
+    ...(roles && {
+      roles: {
+        add: addedRoles,
+        rename: Object.entries(renamedRoles).map(([rid, name]) => ({ id: rid, name })),
+        remove: [...removedRoles],
+      },
+    }),
   };
   const changed = hasChanges(changes);
+  // The show's roles as they'll be: suggestions for the cast's Role box
+  const roleNames = [
+    ...(roles ?? []).filter((r) => !removedRoles.has(r.id)).map((r) => renamedRoles[r.id] ?? r.name),
+    ...addedRoles,
+  ];
 
   function submit() {
     setError("");
@@ -168,12 +189,53 @@ export function CorrectionForm({
             />
           ))}
 
+          {roles && (
+            <RolesRow
+              showTitle={showTitle ?? "this show"}
+              lines={roles}
+              added={addedRoles}
+              renamed={renamedRoles}
+              removed={removedRoles}
+              onAdd={(names) =>
+                setAddedRoles((list) => {
+                  const taken = new Set([...roleNames, ...list].map((n) => n.toLowerCase()));
+                  const fresh: string[] = [];
+                  for (const n of names) {
+                    if (!taken.has(n.toLowerCase())) {
+                      taken.add(n.toLowerCase());
+                      fresh.push(n);
+                    }
+                  }
+                  return [...list, ...fresh];
+                })
+              }
+              onRemoveAdded={(i) => setAddedRoles((list) => list.filter((_, j) => j !== i))}
+              onRename={(rid, name, original) =>
+                setRenamedRoles((r) => {
+                  const next = { ...r };
+                  if (!name || name === original) delete next[rid];
+                  else next[rid] = name;
+                  return next;
+                })
+              }
+              onToggleRemove={(rid) =>
+                setRemovedRoles((s) => {
+                  const next = new Set(s);
+                  if (next.has(rid)) next.delete(rid);
+                  else next.add(rid);
+                  return next;
+                })
+              }
+            />
+          )}
+
           {credits && (
             <>
               {(["cast", "crew"] as const).map((kind) => (
                 <CreditsRow
                   key={kind}
                   kind={kind}
+                  roleNames={roleNames}
                   lines={credits.filter((c) => c.kind === kind)}
                   removed={removedCredits}
                   roleChanges={roleChanges}
@@ -532,6 +594,7 @@ function Picker({
 // ---------------------------------------------------------------------
 function CreditsRow({
   kind,
+  roleNames,
   lines,
   removed,
   roleChanges,
@@ -543,6 +606,7 @@ function CreditsRow({
   onRemoveAdded,
 }: {
   kind: "cast" | "crew";
+  roleNames: string[]; // the show's roles, suggested in the cast's Role box
   lines: CreditLine[];
   removed: Set<string>;
   roleChanges: Record<string, string>;
@@ -566,6 +630,13 @@ function CreditsRow({
         <span className="mt-1 block text-sm font-normal text-muted">{kind === "cast" ? "Who played which role." : "Director, music director, stage manager…"}</span>
       </th>
       <td className={td}>
+        {kind === "cast" && (
+          <datalist id="show-roles">
+            {roleNames.map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
+        )}
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           {lines.map((l) => {
             const gone = removed.has(l.id);
@@ -584,7 +655,13 @@ function CreditsRow({
                     {kind === "crew" ? (
                       <PositionSelect id={`role-${l.id}`} value={roleDraft} onChange={setRoleDraft} className={`${input} max-w-[260px]`} />
                     ) : (
-                      <input id={`role-${l.id}`} value={roleDraft} onChange={(e) => setRoleDraft(e.target.value)} className={`${input} max-w-[240px]`} />
+                      <input
+                        id={`role-${l.id}`}
+                        list="show-roles"
+                        value={roleDraft}
+                        onChange={(e) => setRoleDraft(e.target.value)}
+                        className={`${input} max-w-[240px]`}
+                      />
                     )}
                     <button
                       type="button"
@@ -654,6 +731,151 @@ function CreditsRow({
             </button>
           )}
         </div>
+      </td>
+    </tr>
+  );
+}
+
+// ---------------------------------------------------------------------
+// The show's roles, cast or not (shared by all its productions)
+// ---------------------------------------------------------------------
+function RolesRow({
+  showTitle,
+  lines,
+  added,
+  renamed,
+  removed,
+  onAdd,
+  onRemoveAdded,
+  onRename,
+  onToggleRemove,
+}: {
+  showTitle: string;
+  lines: RoleLine[];
+  added: string[];
+  renamed: Record<string, string>;
+  removed: Set<string>;
+  onAdd: (names: string[]) => void;
+  onRemoveAdded: (i: number) => void;
+  onRename: (id: string, name: string, original: string) => void;
+  onToggleRemove: (id: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const any = added.length > 0 || removed.size > 0 || Object.keys(renamed).length > 0;
+
+  function addDraft() {
+    const names = draft
+      .split("\n")
+      .map((n) => n.trim().replace(/\s+/g, " ").slice(0, 100))
+      .filter(Boolean);
+    if (!names.length) return;
+    onAdd(names);
+    setDraft("");
+  }
+
+  return (
+    <tr id="roles" className={any ? changedRow : ""}>
+      <th scope="row" className={th}>
+        Roles
+        <span className="mt-1 block text-sm font-normal text-muted">
+          Every role in {showTitle}, cast or not. Shared by all its productions.
+        </span>
+      </th>
+      <td className={td}>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {lines.map((l) => {
+            const gone = removed.has(l.id);
+            const name = renamed[l.id] ?? l.name;
+            if (editing === l.id) {
+              return (
+                <li key={l.id} className="flex flex-wrap items-center gap-2">
+                  <label className="sr-only" htmlFor={`rename-${l.id}`}>
+                    New name for {l.name}
+                  </label>
+                  <input
+                    id={`rename-${l.id}`}
+                    value={nameDraft}
+                    maxLength={100}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    className={`${input} max-w-[300px]`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRename(l.id, nameDraft.trim().replace(/\s+/g, " "), l.name);
+                      setEditing(null);
+                    }}
+                    className={small}
+                  >
+                    Done
+                  </button>
+                  <button type="button" onClick={() => setEditing(null)} className={small}>
+                    Cancel
+                  </button>
+                </li>
+              );
+            }
+            return (
+              <li key={l.id} className="flex flex-wrap items-center gap-2">
+                {l.inUse ? (
+                  <span className="inline-flex min-h-9 items-center px-1 text-sm text-muted">Cast</span>
+                ) : (
+                  <button type="button" onClick={() => onToggleRemove(l.id)} aria-label={gone ? `Keep ${l.name}` : `Remove ${l.name}`} className={small}>
+                    <Icon d={gone ? UNDO : CROSS} /> {gone ? "Undo" : "Remove"}
+                  </button>
+                )}
+                <span className={`${gone ? "text-muted line-through" : ""} ${l.id in renamed ? "font-bold" : "font-semibold"}`}>{name}</span>
+                {l.id in renamed && <span className="text-sm text-muted">was {l.name}</span>}
+                {gone ? (
+                  <span className="text-sm font-semibold">Will be removed</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameDraft(name);
+                      setEditing(l.id);
+                    }}
+                    aria-label={`Rename ${l.name}`}
+                    className={small}
+                  >
+                    <Icon d={PENCIL} /> Rename
+                  </button>
+                )}
+              </li>
+            );
+          })}
+          {added.map((n, i) => (
+            <li key={`new-${i}`} className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => onRemoveAdded(i)} aria-label={`Don’t add ${n}`} className={small}>
+                <Icon d={CROSS} /> Remove
+              </button>
+              <span className="tag">Adding</span>
+              <span className="font-bold">{n}</span>
+            </li>
+          ))}
+          {lines.length === 0 && added.length === 0 && <li className="text-muted">No roles listed yet.</li>}
+        </ul>
+        <div className="mt-3 flex max-w-[460px] flex-col gap-2">
+          <label htmlFor="add-roles" className="text-sm font-bold">
+            Add roles <span className="font-normal text-muted">(one per line)</span>
+          </label>
+          <textarea
+            id="add-roles"
+            rows={3}
+            value={draft}
+            placeholder={"Monty Navarro\nSibella Hallward"}
+            onChange={(e) => setDraft(e.target.value)}
+            className="field w-full p-3"
+          />
+          <button type="button" onClick={addDraft} className={`${small} self-start`}>
+            <Icon d={PLUS} /> Add these roles
+          </button>
+        </div>
+        {lines.some((l) => l.inUse) && (
+          <p className="m-0 mt-2 text-sm text-muted">Roles marked “Cast” have someone credited in them, so they can be renamed but not removed.</p>
+        )}
       </td>
     </tr>
   );
@@ -782,6 +1004,7 @@ function AddPerson({
         ) : (
           <input
             id={`add-${kind}-role`}
+            list="show-roles"
             value={role}
             onChange={(e) => setRole(e.target.value)}
             placeholder="e.g. Jo March"

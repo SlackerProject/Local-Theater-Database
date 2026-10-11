@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FIELDS, KINDS, type FieldValue, type PageKind } from "@/lib/corrections";
 import { localDate, localHHMM } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
-import { CorrectionForm, type CreditLine, type PerformanceLine } from "./CorrectionForm";
+import { CorrectionForm, type CreditLine, type PerformanceLine, type RoleLine } from "./CorrectionForm";
 
 export const metadata: Metadata = { title: "Correction" };
 
@@ -49,18 +49,21 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   let name = String(record.display_name ?? record.name ?? record.title ?? slug);
   let credits: CreditLine[] | undefined;
   let performances: PerformanceLine[] | undefined;
+  // Productions and shows edit the show's roles
+  let roleShow: { id: string; title: string } | null = table === "shows" ? { id: record.id, title: name } : null;
 
   if (table === "productions") {
     const { data: p } = await supabase
       .from("productions")
       .select(
-        `year, title_override, show:shows(title), organization:organizations(name), location:locations(name),
+        `year, title_override, show:shows(id, title), organization:organizations(name), location:locations(name),
          credits(id, kind, role_name, billing_order, person:people(display_name), character:show_characters(name)),
          performances(id, starts_at, label, is_cancelled)`,
       )
       .eq("id", record.id)
       .single();
     name = `${p?.title_override ?? p?.show?.title} (${p?.year})`;
+    if (p?.show) roleShow = { id: p.show.id, title: p.show.title };
     if (p?.organization) labels.organization_id = p.organization.name;
     if (p?.location) labels.location_id = p.location.name;
     credits = (p?.credits ?? [])
@@ -90,6 +93,17 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
       );
     }
     if (pe?.verified_owner_id) locked.bio = "Verified people write their own bio.";
+  }
+
+  let roles: RoleLine[] | undefined;
+  if (roleShow) {
+    const { data: chars } = await supabase
+      .from("show_characters")
+      .select("id, name, sort_order, credits(count)")
+      .eq("show_id", roleShow.id)
+      .order("sort_order")
+      .order("name");
+    roles = (chars ?? []).map((ch) => ({ id: ch.id, name: ch.name, inUse: (ch.credits?.[0]?.count ?? 0) > 0 }));
   }
 
   const isModerator = hasRole(user, "moderator");
@@ -127,6 +141,8 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         locked={locked}
         credits={credits}
         performances={performances}
+        roles={roles}
+        showTitle={roleShow?.title}
         isModerator={isModerator}
       />
     </>

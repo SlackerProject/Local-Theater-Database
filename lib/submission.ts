@@ -3,6 +3,8 @@
 // draft" stores; buildBundle() turns it into the bundle that
 // approve_submission() reads (see migrations 0003 and 0004).
 
+import { maTown } from "@/lib/ma-towns";
+
 export type ShowType = "musical" | "play" | "opera" | "revue" | "other";
 export const SHOW_TYPES: { value: ShowType; label: string }[] = [
   { value: "musical", label: "Musical" },
@@ -196,10 +198,12 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
       if (website && !/^https?:\/\/\S+\.\S+/i.test(website)) {
         problems.push("The company website should start with https://");
       }
+      const orgTown = maTown(s.organization.town);
+      if (!orgTown) problems.push("Choose the company’s city or town from the Massachusetts list.");
       organization = {
         new: {
           name: clean(s.organization.query),
-          ...(clean(s.organization.town) && { town: clean(s.organization.town) }),
+          ...(orgTown && { town: orgTown }),
           ...(website && { website_url: website }),
         },
       };
@@ -214,11 +218,13 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
     if (s.location.choice.kind === "existing") {
       location = { id: s.location.choice.match.id, label: s.location.choice.match.label };
     } else if (s.location.choice.kind === "new" && clean(s.location.query)) {
+      const locTown = maTown(s.location.town);
+      if (!locTown) problems.push("Choose the location’s city or town from the Massachusetts list.");
       location = {
         new: {
           name: clean(s.location.query),
           ...(clean(s.location.address) && { street_address: clean(s.location.address) }),
-          ...(clean(s.location.town) && { town: clean(s.location.town) }),
+          ...(locTown && { town: locTown }),
         },
       };
     } else if (clean(s.location.query)) {

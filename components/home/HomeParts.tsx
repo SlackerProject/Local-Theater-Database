@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Tile } from "@/lib/home";
-import { getHotlist } from "@/lib/hotlist";
+import { getHotProductions } from "@/lib/hotlist";
 import { latestUpdates, postDate } from "@/lib/updates";
 
 // Pieces of the home page (home.html / home-mobile.html)
@@ -52,20 +52,19 @@ export function PlayingNow({ tiles }: { tiles: Tile[] }) {
   );
 }
 
-// "This week's Hotlist": Productions first, then People, top 5 each
+// "This week's Hotlist": the top 10 productions
 export async function HotlistBox() {
-  const { people, productions } = await getHotlist(5);
+  const productions = await getHotProductions(10);
   const row = "link-quiet flex items-center gap-3 border-b border-rule py-2.5 text-ink";
   const rank = "w-[22px] flex-none text-right text-xl font-extrabold text-muted";
 
   return (
-    <aside aria-label="This week's Hotlist" className="flex min-w-0 flex-col gap-[22px] rounded-[10px] border border-rule p-6">
+    <aside aria-label="This week's Hotlist" className="flex min-w-0 flex-col gap-[18px] rounded-[10px] border border-rule p-6">
       <div className="flex flex-col gap-0.5">
         <h2 className="heading">This week’s Hotlist</h2>
-        <span className="text-[13px] text-muted">The most-visited pages, counted once per visitor per day.</span>
+        <span className="text-[13px] text-muted">The most-visited productions, counted once per visitor per day.</span>
       </div>
       <section>
-        <h3 className="m-0 mb-0.5 text-[15px] font-extrabold">Productions</h3>
         {productions.length ? (
           productions.map((p) => (
             <Link key={p.id} href={p.href} className={row}>
@@ -83,33 +82,25 @@ export async function HotlistBox() {
           <p className="m-0 py-2 text-sm text-muted">Production pages visited this week will appear here.</p>
         )}
       </section>
-      <section>
-        <h3 className="m-0 mb-0.5 text-[15px] font-extrabold">People</h3>
-        {people.length ? (
-          people.map((p) => (
-            <Link key={p.id} href={p.href} className={row}>
-              <span className={rank}>{p.rank}</span>
-              {p.thumb ? (
-                <img src={p.thumb} alt="" className="h-10 w-10 flex-none rounded-full bg-soft object-cover" />
-              ) : (
-                <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#2B2B2B] font-bold text-white">
-                  {p.name.charAt(0).toUpperCase()}
-                </span>
-              )}
-              <span className="flex min-w-0 flex-col leading-[1.3]">
-                <span className="truncate font-bold">{p.name}</span>
-                {p.line && <span className="truncate text-[13px] text-muted">{p.line}</span>}
-              </span>
-            </Link>
-          ))
-        ) : (
-          <p className="m-0 py-2 text-sm text-muted">People pages visited this week will appear here.</p>
-        )}
-      </section>
       <Link href="/hotlist" className="btn-secondary min-h-12">
         See the full Hotlist
       </Link>
     </aside>
+  );
+}
+
+// Phones: the latest update as one line at the top of the home page
+export async function LatestUpdateBar() {
+  const [post] = await latestUpdates(1);
+  if (!post) return null;
+  return (
+    <Link href={`/updates/${post.slug}`} className="link-quiet flex items-center gap-2 rounded-lg bg-soft px-3.5 py-2.5 text-[15px] text-ink md:hidden">
+      <span className="flex-none rounded bg-ink px-1.5 text-[12px] font-bold leading-5 text-white">Update</span>
+      <span className="min-w-0 flex-1 truncate font-semibold">{post.title}</span>
+      <span aria-hidden="true" className="flex-none font-bold">
+        →
+      </span>
+    </Link>
   );
 }
 

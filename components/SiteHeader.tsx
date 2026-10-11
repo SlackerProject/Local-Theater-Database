@@ -85,6 +85,7 @@ async function UserNav() {
                 username: user.username,
                 // Trusted editors see the moderation page too (they can vouch for claims)
                 canModerate: hasRole(user, "trusted"),
+                canWriteUpdates: hasRole(user, "moderator"),
                 unread,
                 pageSlug,
               }

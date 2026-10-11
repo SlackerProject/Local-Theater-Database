@@ -115,7 +115,14 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const title = p.title_override ?? p.show.title;
   const credits = (p.credits ?? []).filter((x) => x.person).sort((a, b) => a.billing_order - b.billing_order);
   const cast = credits.filter((x) => x.kind === "cast");
-  const crew = credits.filter((x) => x.kind === "crew");
+  // Creative team in the positions' order (Director first); positions not
+  // on the list come last, then billing order
+  const { data: positionRows } = await supabase.from("crew_positions").select("name, rank");
+  const rankOf = new Map((positionRows ?? []).map((r) => [r.name.toLowerCase(), r.rank]));
+  const crewRank = (role: string | null) => rankOf.get((role ?? "").trim().toLowerCase()) ?? 10000;
+  const crew = credits
+    .filter((x) => x.kind === "crew")
+    .sort((a, b) => crewRank(a.role_name) - crewRank(b.role_name) || a.billing_order - b.billing_order);
   const typeLabel = SHOW_TYPES.find((t) => t.value === p.show!.type)?.label;
   const about = [p.show.subtitle ?? typeLabel, p.show.authors].filter(Boolean).join(" · ");
   const dates = dateRange(p.opening_date, p.closing_date);

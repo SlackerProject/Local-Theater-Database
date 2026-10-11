@@ -23,6 +23,7 @@ import { NewPill, PickedLine, TypeAhead, lookup } from "./TypeAhead";
 import { PosterField } from "@/components/uploads/UploadPanels";
 import { ShareWithCast } from "@/components/ShareWithCast";
 import { PositionSelect } from "@/components/PositionSelect";
+import { TownPicker } from "@/components/TownPicker";
 import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------
@@ -84,6 +85,19 @@ function NewSummary({ badge, details, onEdit }: { badge: string; details: string
       <button type="button" className={linkButton} onClick={onEdit}>
         Edit details
       </button>
+    </div>
+  );
+}
+
+// City or town, picked from Massachusetts' 351 (the state is always MA)
+function TownField({ value, onChange }: { value: string; onChange: (town: string) => void }) {
+  const id = useId();
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <label htmlFor={id} className="text-[15px] font-semibold">
+        City or town
+      </label>
+      <TownPicker id={id} value={value} onChange={onChange} className={smallField} />
     </div>
   );
 }
@@ -169,6 +183,7 @@ export function AddProductionForm({
   addingTo?: boolean; // opened from a production page's "Add cast, crew, dates or a poster"
 }) {
   const [state, setState] = useState<FormState>(initial ?? emptyFormState(defaultYear));
+  // Which list (cast or creative team) the "Paste a whole list" box is for
   const [tab, setTab] = useState<"cast" | "crew">(addingTo ? "crew" : "cast");
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
@@ -345,7 +360,6 @@ export function AddProductionForm({
     );
   }
 
-  const visibleCredits = state.credits.filter((c) => c.kind === tab);
   // Resubmitting left-out items: they join this live production
   const live = state.existingProduction;
 
@@ -493,8 +507,7 @@ export function AddProductionForm({
                 onDone={() => update((s) => ({ ...s, organization: { ...s.organization, editing: false } }))}
               >
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
-                  <SmallInput
-                    label="Town"
+                  <TownField
                     value={state.organization.town}
                     onChange={(town) => update((s) => ({ ...s, organization: { ...s.organization, town } }))}
                   />
@@ -556,11 +569,11 @@ export function AddProductionForm({
                     <SmallInput
                       label="Street address"
                       optional
+                      placeholder="Number and street, e.g. 2 Scout Road"
                       value={state.location.address}
                       onChange={(address) => update((s) => ({ ...s, location: { ...s.location, address } }))}
                     />
-                    <SmallInput
-                      label="Town"
+                    <TownField
                       value={state.location.town}
                       onChange={(town) => update((s) => ({ ...s, location: { ...s.location, town } }))}
                     />
@@ -699,83 +712,79 @@ export function AddProductionForm({
           </div>
         </section>
 
-        {/* 4 · Cast and crew */}
+        {/* 4 · Cast and crew: the cast, then the creative team, one after the other */}
         <section className={card} aria-labelledby="s-credits">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="s-credits" className="heading">{live ? "Cast and crew" : "4 · Cast and crew"}</h2>
-            <div role="tablist" aria-label="Credit type" className="inline-flex rounded-lg bg-soft p-1">
-              {(["cast", "crew"] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === k}
-                  onClick={() => {
-                    setTab(k);
-                    setPasteOpen(false);
-                  }}
-                  className={`h-10 min-w-[88px] cursor-pointer rounded-md border-0 px-[18px] text-[15px] font-semibold ${
-                    tab === k ? "bg-ink text-white" : "bg-transparent text-ink"
-                  }`}
-                >
-                  {k === "cast" ? "Cast" : "Crew"}
-                </button>
-              ))}
-            </div>
-          </div>
+          <h2 id="s-credits" className="heading">{live ? "Cast and crew" : "4 · Cast and crew"}</h2>
 
-          {visibleCredits.length === 0 && (
-            <p className="m-0 text-muted">No {tab} added yet.</p>
-          )}
+          {(["cast", "crew"] as const).map((k) => {
+            const rows = state.credits.filter((c) => c.kind === k);
+            const noun = k === "cast" ? "cast" : "creative team";
+            return (
+              <div key={k} className={`flex flex-col gap-1 ${k === "crew" ? "mt-4 border-t border-rule pt-5" : ""}`}>
+                <h3 className="subheading">{k === "cast" ? "Cast" : "Creative team & crew"}</h3>
 
-          {visibleCredits.map((c) => (
-            <CreditRowEditor
-              key={c.id}
-              row={c}
-              sameNewPersonAs={sameNewPersonAs(state.credits, c)}
-              onChange={(patch) => setCredit(c.id, patch)}
-              onRemove={() => update((s) => ({ ...s, credits: s.credits.filter((x) => x.id !== c.id) }))}
-            />
-          ))}
+                {rows.length === 0 && <p className="m-0 text-muted">No {noun} added yet.</p>}
 
-          {pasteOpen && (
-            <div className="flex flex-col gap-2.5 border-l-[3px] border-rule py-1 pl-4">
-              <label htmlFor="f-paste" className="font-semibold">
-                Paste the {tab} list, one per line
-              </label>
-              <span className="text-sm text-muted">
-                Like <em>{tab === "cast" ? "Jo March: Jane Doe" : "Director: Jane Doe"}</em>. We’ll check each name against the database.
-              </span>
-              <textarea
-                id="f-paste"
-                rows={6}
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                className="field p-3"
-              />
-              <div className="flex flex-wrap gap-2.5">
-                <button type="button" className={pillDark} onClick={addPastedRows}>
-                  Add these
-                </button>
-                <button type="button" className={pillLight} onClick={() => setPasteOpen(false)}>
-                  Cancel
-                </button>
+                {rows.map((c) => (
+                  <CreditRowEditor
+                    key={c.id}
+                    row={c}
+                    sameNewPersonAs={sameNewPersonAs(state.credits, c)}
+                    onChange={(patch) => setCredit(c.id, patch)}
+                    onRemove={() => update((s) => ({ ...s, credits: s.credits.filter((x) => x.id !== c.id) }))}
+                  />
+                ))}
+
+                {pasteOpen && tab === k && (
+                  <div className="flex flex-col gap-2.5 border-l-[3px] border-rule py-1 pl-4">
+                    <label htmlFor={`f-paste-${k}`} className="font-semibold">
+                      Paste the {noun} list, one per line
+                    </label>
+                    <span className="text-sm text-muted">
+                      Like <em>{k === "cast" ? "Jo March: Jane Doe" : "Director: Jane Doe"}</em>. We’ll check each name against the
+                      database.
+                    </span>
+                    <textarea
+                      id={`f-paste-${k}`}
+                      rows={6}
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                      className="field p-3"
+                    />
+                    <div className="flex flex-wrap gap-2.5">
+                      <button type="button" className={pillDark} onClick={addPastedRows}>
+                        Add these
+                      </button>
+                      <button type="button" className={pillLight} onClick={() => setPasteOpen(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-x-5 gap-y-1">
+                  <button
+                    type="button"
+                    className={linkButton}
+                    onClick={() => update((s) => ({ ...s, credits: [...s.credits, emptyCredit(k)] }))}
+                  >
+                    {k === "cast" ? "+ Add a cast member" : "+ Add someone to the creative team"}
+                  </button>
+                  <button
+                    type="button"
+                    className={linkButton}
+                    onClick={() => {
+                      setTab(k);
+                      setPasteText("");
+                      setPasteOpen(true);
+                    }}
+                  >
+                    + Paste a whole {noun} list
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-x-5 gap-y-1">
-            <button
-              type="button"
-              className={linkButton}
-              onClick={() => update((s) => ({ ...s, credits: [...s.credits, emptyCredit(tab)] }))}
-            >
-              + Add a {tab} member
-            </button>
-            <button type="button" className={linkButton} onClick={() => setPasteOpen(true)}>
-              + Paste a whole {tab} list
-            </button>
-          </div>
+            );
+          })}
         </section>
 
         {/* 5 · Poster */}

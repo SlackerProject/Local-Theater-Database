@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { reviewCorrection } from "./actions";
+import { addCrewPositions, reviewCorrection } from "./actions";
+import { NewPositions } from "./NewPositions";
 
 export type ReviewRow = { key: string; what: string; current: string; proposed: string };
 
@@ -10,9 +11,10 @@ const cell = "border border-[#CFCFCF] p-2.5 align-top text-left";
 
 // One correction: tick the changes to keep, then approve them; the rest
 // are left out. A correction that's only a note gets "Mark done".
-export function CorrectionReview({ id, rows }: { id: string; rows: ReviewRow[] }) {
+export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; rows: ReviewRow[]; newPositions?: string[] }) {
   const router = useRouter();
   const [keep, setKeep] = useState<Set<string>>(new Set(rows.map((r) => r.key)));
+  const [addPositions, setAddPositions] = useState<Set<string>>(new Set());
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
@@ -20,6 +22,11 @@ export function CorrectionReview({ id, rows }: { id: string; rows: ReviewRow[] }
   const run = (accept: string[], noteOnlyDone = false) =>
     start(async () => {
       setError("");
+      // Approving: ticked "Other…" positions join the list first
+      if (accept.length && addPositions.size) {
+        const added = await addCrewPositions([...addPositions]);
+        if (!added.ok) return setError(added.error ?? "Couldn’t add the new positions.");
+      }
       const r = await reviewCorrection(id, accept, reply, noteOnlyDone);
       if (r.ok) router.refresh();
       else setError(r.error ?? "That didn’t work.");
@@ -71,6 +78,7 @@ export function CorrectionReview({ id, rows }: { id: string; rows: ReviewRow[] }
       ) : (
         <p className="m-0 text-[15px] text-muted">Only a note. Make any change yourself, then mark it done.</p>
       )}
+      <NewPositions positions={newPositions} selected={addPositions} onChange={setAddPositions} />
       <label className="flex max-w-[620px] flex-col gap-1 text-sm font-semibold">
         Reply to the contributor <span className="font-normal text-muted">(optional, shown on their submissions page)</span>
         <input value={reply} onChange={(e) => setReply(e.target.value)} className="field h-11 px-3 text-base font-normal" />

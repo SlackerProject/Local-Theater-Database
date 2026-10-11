@@ -16,14 +16,16 @@ import {
 } from "@/lib/submission";
 import { mediaUrl } from "@/lib/media";
 import { PaletteSwatches } from "@/components/uploads/UploadPanels";
-import { approveSubmission, rejectSubmission } from "./actions";
+import { addCrewPositions, approveSubmission, rejectSubmission } from "./actions";
+import { unlistedPositions } from "@/lib/positions";
+import { NewPositions } from "./NewPositions";
 
 type Item<T> = { include: boolean; value: T };
 
 const LOCATION_FIELDS = [
   ["name", "Name"],
   ["street_address", "Street address"],
-  ["town", "Town"],
+  ["town", "City or town"],
 ] as const;
 
 // inputBase has no width, so rows can size each box; input fills its cell
@@ -69,12 +71,14 @@ export function ReviewCard({
   submittedBy,
   submittedAt,
   medal,
+  knownPositions,
 }: {
   id: string;
   submitted: Bundle;
   submittedBy: string;
   submittedAt: string;
   medal?: React.ReactNode; // the contributor's small medal
+  knownPositions: string[]; // the crew positions list
 }) {
   const addTo = isAddTo(submitted);
   const [show, setShow] = useState(addTo ? null : submitted.show);
@@ -96,6 +100,11 @@ export function ReviewCard({
   const [note, setNote] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  const [addPositions, setAddPositions] = useState<Set<string>>(new Set());
+  const newPositions = unlistedPositions(
+    credits.filter((c) => c.include && c.value.kind === "crew").map((c) => c.value.role),
+    knownPositions,
+  );
 
   const newLocation = location && "new" in location.value ? location.value.new : null;
   const showTitle = show ? ("new" in show ? show.new.title : show.label) : "";
@@ -148,6 +157,12 @@ export function ReviewCard({
   function approve() {
     const { bundle, leftOut } = build();
     startTransition(async () => {
+      // Ticked "Other…" positions join the list first
+      const add = newPositions.filter((p) => addPositions.has(p));
+      if (add.length) {
+        const r = await addCrewPositions(add);
+        if (!r.ok) return setProblems([r.error ?? "Couldn’t add the new positions."]);
+      }
       const result = await approveSubmission(id, bundle, leftOut, note);
       if (result && !result.ok) setProblems(result.problems);
     });
@@ -342,6 +357,8 @@ export function ReviewCard({
           )}
         </section>
       )}
+
+      <NewPositions positions={newPositions} selected={addPositions} onChange={setAddPositions} />
 
       {problems.length > 0 && (
         <div role="alert" className="callout text-[15px]">

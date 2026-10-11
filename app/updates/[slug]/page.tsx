@@ -36,7 +36,7 @@ async function Post({ params }: Pick<PageProps<"/updates/[slug]">, "params">) {
   const [user, supabase] = await Promise.all([getCurrentUser(), createClient()]);
   const { data: post } = await supabase.from("posts").select("id, slug, title, summary, body, status, published_at").eq("slug", slug).maybeSingle();
   if (!post) notFound();
-  const isAdmin = hasRole(user, "admin");
+  const isAdmin = hasRole(user, "moderator");
 
   return (
     <article className="flex max-w-[680px] flex-col gap-6">

@@ -9,7 +9,8 @@ import { showColors, swatch } from "@/lib/palette";
 import { mediaUrl } from "@/lib/media";
 import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement, announcementContext, auditionOffer } from "@/lib/announcements";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
-import { HotlistBox, PlayingNow, TileGrid, UpdatesBox } from "@/components/home/HomeParts";
+import { HotlistBox, LatestUpdateBar, PlayingNow, TileGrid, UpdatesBox } from "@/components/home/HomeParts";
+import { SITE_NAME } from "@/lib/brand";
 import { FindYourNameButton, HeroSearch } from "@/components/home/HeroSearch";
 import { AnnouncementActions, AnnouncementText } from "@/components/Announcement";
 import { SiteUpdateNotice } from "@/components/SiteUpdateNotice";
@@ -99,6 +100,7 @@ async function VisitorHome() {
       <SiteHeader hideSearch />
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-wrap items-start gap-12 px-4 pb-16 pt-6 md:px-8 md:pt-10">
         <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-9 md:gap-11">
+          <LatestUpdateBar />
           <section className="flex flex-col gap-5 md:pb-2 md:pt-5">
             <h1 className="m-0 max-w-[760px] text-[40px] font-extrabold leading-none tracking-[-0.035em] md:text-[64px]">Follow local theater.</h1>
             <p className="m-0 max-w-[640px] text-[17px] leading-[1.45] text-[#3F3F3F] md:text-[20px]">
@@ -124,7 +126,7 @@ async function VisitorHome() {
           </div>
 
           <section className="flex flex-col gap-5 border-t border-rule pt-7">
-            <h2 className="heading">What you get</h2>
+            <h2 className="heading">What’s great about {SITE_NAME}?</h2>
             <div className="grid grid-cols-1 gap-x-9 gap-y-7 md:grid-cols-2">
               {BENEFITS.map((b) => (
                 <div key={b.title} className="flex flex-col gap-2">
@@ -151,7 +153,7 @@ async function VisitorHome() {
             <FindYourNameButton />
           </section>
 
-          {/* On phones Updates come after the performer band */}
+          {/* Phones: all Updates after the performer band (the latest is at the top) */}
           <div className="md:hidden">
             <UpdatesBox />
           </div>
@@ -164,8 +166,8 @@ async function VisitorHome() {
         </div>
 
         <div className="hidden min-w-0 flex-[1_1_300px] flex-col gap-9 md:flex">
-          <HotlistBox />
           <UpdatesBox />
+          <HotlistBox />
         </div>
       </main>
       <SiteFooter />
@@ -185,6 +187,7 @@ async function MemberHome({ user }: { user: CurrentUser }) {
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-wrap items-start gap-12 px-4 pb-16 pt-6 md:px-8 md:pt-10">
         <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-10">
           <h1 className="sr-only">Home</h1>
+          <LatestUpdateBar />
           <NextShow userId={user.id} />
           <NewForYou userId={user.id} />
           <section className="flex flex-col gap-3.5">
@@ -206,8 +209,8 @@ async function MemberHome({ user }: { user: CurrentUser }) {
         </div>
 
         <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-9">
-          <HotlistBox />
           <UpdatesBox />
+          <HotlistBox />
         </div>
       </main>
       <SiteFooter />

@@ -16,6 +16,8 @@ import {
 } from "@/lib/corrections";
 import { submitCorrection } from "@/app/edit/actions";
 import { PositionSelect } from "@/components/PositionSelect";
+import { TownPicker } from "@/components/TownPicker";
+import { maTown } from "@/lib/ma-towns";
 
 export type CreditLine = { id: string; kind: "cast" | "crew"; person: string; role: string };
 export type PerformanceLine = { id: string; date: string; time: string; label: string; cancelled: boolean };
@@ -297,14 +299,22 @@ function FieldRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string>(value === null ? "" : String(value));
   const [draftLabel, setDraftLabel] = useState<string | undefined>(display);
+  const [problem, setProblem] = useState("");
   const shown = show(value, field.input === "showType" ? SHOW_TYPES.find((t) => t.value === value)?.label : display);
   const inputId = `f-${field.key}`;
 
   function done() {
-    const raw = draft.trim();
+    const raw = draft.trim().replace(/\s+/g, " ");
     let v: FieldValue = raw === "" ? null : raw;
+    setProblem("");
     if (field.input === "number" && raw !== "") v = Number(raw);
-    if (field.input === "state" && raw) v = raw.toUpperCase();
+    if (field.input === "state") v = "MA";
+    if (field.input === "town" && raw) {
+      const town = maTown(raw);
+      if (!town) return setProblem("Choose the city or town from the Massachusetts list.");
+      v = town;
+    }
+    if (field.input === "zip" && raw && !/^\d{5}(-\d{4})?$/.test(raw)) return setProblem("The ZIP code should be 5 digits, like 02081.");
     if (field.required && v === null) return;
     onChange(v, field.input === "company" || field.input === "venue" ? draftLabel : undefined);
     setEditing(false);
@@ -325,6 +335,11 @@ function FieldRow({
           <div className="flex flex-col gap-2">
             <FieldInputBox field={field} id={inputId} value={draft} label={draftLabel} onValue={setDraft} onLabel={setDraftLabel} />
             {field.required && !draft.trim() && <span className="text-sm font-semibold">This can’t be left empty.</span>}
+            {problem && (
+              <span role="alert" className="text-sm font-semibold">
+                {problem}
+              </span>
+            )}
             <div className="flex gap-2">
               <button type="button" onClick={done} className={small}>
                 Done
@@ -401,7 +416,20 @@ function FieldInputBox({
     case "url":
       return <input id={id} type="url" placeholder="https://" value={value} onChange={(e) => onValue(e.target.value)} className={input} />;
     case "state":
-      return <input id={id} maxLength={2} value={value} onChange={(e) => onValue(e.target.value)} className={`${input} max-w-[90px] uppercase`} />;
+      // Massachusetts only, for now
+      return (
+        <select id={id} value="MA" onChange={() => onValue("MA")} className={`${input} max-w-[110px]`}>
+          <option value="MA">MA</option>
+        </select>
+      );
+    case "town":
+      return <TownPicker id={id} value={value} onChange={onValue} className={`${input} max-w-[300px]`} />;
+    case "zip":
+      return (
+        <input id={id} inputMode="numeric" maxLength={10} placeholder="02081" value={value} onChange={(e) => onValue(e.target.value)} className={`${input} max-w-[140px]`} />
+      );
+    case "street":
+      return <input id={id} placeholder="e.g. 2 Scout Road" value={value} onChange={(e) => onValue(e.target.value)} className={input} />;
     case "showType":
       return (
         <select id={id} value={value} onChange={(e) => onValue(e.target.value)} className={`${input} max-w-[240px]`}>

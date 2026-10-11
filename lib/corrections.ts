@@ -21,7 +21,7 @@ export const KIND_FOR_TABLE: Record<PageTable, PageKind> = {
   locations: "venue",
 };
 
-export type FieldInput = "text" | "longtext" | "number" | "date" | "url" | "state" | "showType" | "company" | "venue";
+export type FieldInput = "text" | "longtext" | "number" | "date" | "url" | "state" | "town" | "zip" | "street" | "showType" | "company" | "venue";
 
 export type FieldDef = { key: string; label: string; input: FieldInput; hint?: string; required?: boolean };
 
@@ -44,7 +44,7 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
   organizations: [
     { key: "name", label: "Name", input: "text", required: true },
     { key: "short_name", label: "Short name", input: "text", hint: "e.g. initials people use, like WFL." },
-    { key: "town", label: "Town", input: "text" },
+    { key: "town", label: "City or town", input: "town", hint: "Pick from the Massachusetts list. Villages belong to their town (East Walpole is in Walpole)." },
     { key: "state", label: "State", input: "state" },
     { key: "website_url", label: "Website", input: "url" },
     { key: "founded_year", label: "Founded", input: "number" },
@@ -60,10 +60,10 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
   ],
   locations: [
     { key: "name", label: "Name", input: "text", required: true },
-    { key: "street_address", label: "Street address", input: "text" },
-    { key: "town", label: "Town", input: "text" },
+    { key: "street_address", label: "Street address", input: "street", hint: "Number and street only, e.g. 2 Scout Road. The town goes below." },
+    { key: "town", label: "City or town", input: "town", hint: "Pick from the Massachusetts list. Villages belong to their town (East Walpole is in Walpole)." },
     { key: "state", label: "State", input: "state" },
-    { key: "postal_code", label: "ZIP code", input: "text" },
+    { key: "postal_code", label: "ZIP code", input: "zip", hint: "5 digits, e.g. 02081." },
     { key: "seating_capacity", label: "Seats", input: "number" },
     { key: "description", label: "About", input: "longtext" },
   ],

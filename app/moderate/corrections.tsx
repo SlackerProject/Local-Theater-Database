@@ -12,6 +12,7 @@ import {
 import { SHOW_TYPES } from "@/lib/submission";
 import { localDate, localHHMM } from "@/lib/calendar";
 import { CorrectionReview, type ReviewRow } from "./CorrectionReview";
+import { unlistedPositions } from "@/lib/positions";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
 const TABLES = Object.keys(KIND_FOR_TABLE) as PageTable[];
@@ -40,7 +41,9 @@ export async function CorrectionsSection() {
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
-  const cards = await Promise.all((proposals ?? []).map((p) => buildCard(supabase, p)));
+  const { data: positionRows } = await supabase.from("crew_positions").select("name");
+  const knownPositions = (positionRows ?? []).map((p) => p.name);
+  const cards = await Promise.all((proposals ?? []).map((p) => buildCard(supabase, p, knownPositions)));
   const points = await pointsFor((proposals ?? []).map((p) => p.proposed_by));
 
   return (
@@ -70,7 +73,7 @@ export async function CorrectionsSection() {
               <span className="whitespace-pre-line">{c.note}</span>
             </div>
           )}
-          <CorrectionReview id={c.id} rows={c.rows} />
+          <CorrectionReview id={c.id} rows={c.rows} newPositions={c.newPositions} />
         </article>
       ))}
     </section>
@@ -88,12 +91,13 @@ type Proposal = {
   proposer: { username: string; display_name: string } | null;
 };
 
-async function buildCard(supabase: Supabase, p: Proposal) {
+async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string[]) {
   const table = p.entity_table as PageTable;
   const kind = KIND_FOR_TABLE[table];
   const c = normalizeChanges(p.changes);
   const fields = FIELDS[table];
   const rows: ReviewRow[] = [];
+  const crewRoles: string[] = (c.credits?.add ?? []).filter((a) => a.kind === "crew").map((a) => a.role);
 
   // The page as it is now
   const cols = ["id", "slug", ...fields.map((f) => f.key)].join(", ");
@@ -145,6 +149,7 @@ async function buildCard(supabase: Supabase, p: Proposal) {
     }
     for (const u of c.credits?.update ?? []) {
       const cr = credit.get(u.id);
+      if (cr?.kind === "crew") crewRoles.push(u.role);
       rows.push({
         key: `credit:update:${u.id}`,
         what: `Change ${cr?.kind === "crew" ? "position" : "role"}: ${cr?.person?.display_name ?? "?"}`,
@@ -189,5 +194,6 @@ async function buildCard(supabase: Supabase, p: Proposal) {
     sent: when(p.created_at),
     note: p.note,
     rows,
+    newPositions: unlistedPositions(crewRoles, knownPositions),
   };
 }

@@ -1,5 +1,8 @@
-// Creative team and crew positions offered in every crew dropdown. "Other…"
-// in the dropdown still allows anything not on the list.
+// Creative team and crew positions. The working list lives in the
+// database (crew_positions): dropdowns show it A to Z, and production pages
+// order the creative team by its rank (this order). Moderators can add
+// positions approved from "Other…"; new ones go to the end of the order.
+// This copy is the starting list, used until the database list loads.
 export const CREW_POSITIONS = [
   "Director",
   "Choreographer",
@@ -26,8 +29,17 @@ export const CREW_POSITIONS = [
   "Dresser",
 ] as const;
 
-// The list's own spelling for a typed position ("stage manager" -> "Stage Manager")
-export function knownPosition(value: string) {
-  const v = value.trim().toLowerCase();
-  return CREW_POSITIONS.find((p) => p.toLowerCase() === v) ?? null;
+// Positions in this set of roles that aren't on the list yet ("Fight
+// Captain"), for moderators to add when they approve
+export function unlistedPositions(roles: string[], known: string[]) {
+  const have = new Set(known.map((k) => k.toLowerCase()));
+  const seen = new Set<string>();
+  return roles
+    .map((r) => r.trim().replace(/\s+/g, " "))
+    .filter((r) => {
+      const k = r.toLowerCase();
+      if (r.length < 2 || have.has(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
 }

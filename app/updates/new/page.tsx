@@ -25,6 +25,6 @@ export default function NewUpdatePage() {
 async function Editor() {
   const user = await getCurrentUser();
   if (!user) redirect("/signin?next=/updates/new");
-  if (!hasRole(user, "admin")) return <p className="m-0 text-muted">Only the admin writes updates.</p>;
+  if (!hasRole(user, "moderator")) return <p className="m-0 text-muted">Only moderators write updates.</p>;
   return <PostEditor post={null} userId={user.id} />;
 }

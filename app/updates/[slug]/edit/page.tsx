@@ -27,7 +27,7 @@ async function Editor({ params }: Pick<PageProps<"/updates/[slug]/edit">, "param
   const { slug } = await params;
   const user = await getCurrentUser();
   if (!user) redirect(`/signin?next=/updates/${slug}/edit`);
-  if (!hasRole(user, "admin")) return <p className="m-0 text-muted">Only the admin writes updates.</p>;
+  if (!hasRole(user, "moderator")) return <p className="m-0 text-muted">Only moderators write updates.</p>;
   const supabase = await createClient();
   const { data: post } = await supabase.from("posts").select("id, slug, title, summary, body, status").eq("slug", slug).maybeSingle();
   if (!post) notFound();

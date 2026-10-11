@@ -393,6 +393,35 @@ export type Database = {
           },
         ]
       }
+      crew_positions: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          name: string
+          rank: number
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          name: string
+          rank: number
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          name?: string
+          rank?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_positions_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deletions: {
         Row: {
           deleted_at: string
@@ -619,6 +648,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ma_towns: {
+        Row: {
+          name: string
+        }
+        Insert: {
+          name: string
+        }
+        Update: {
+          name?: string
+        }
+        Relationships: []
       }
       media: {
         Row: {
@@ -1642,6 +1683,7 @@ export type Database = {
       }
     }
     Functions: {
+      add_crew_positions: { Args: { p_names: string[] }; Returns: number }
       apply_auditions: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_award: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_correction: {
@@ -1765,6 +1807,7 @@ export type Database = {
           slug: string
         }[]
       }
+      ma_town: { Args: { p_town: string }; Returns: string }
       mark_badges_seen: { Args: never; Returns: undefined }
       mark_update_read: { Args: { p_post_id: string }; Returns: undefined }
       member_overview: {

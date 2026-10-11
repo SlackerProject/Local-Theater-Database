@@ -5,7 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/app/auth-actions";
 
-type User = { displayName: string; username: string; canModerate: boolean; unread: number; pageSlug: string | null } | null;
+type User = {
+  displayName: string;
+  username: string;
+  canModerate: boolean;
+  canWriteUpdates: boolean; // moderators and the admin
+  unread: number;
+  pageSlug: string | null;
+} | null;
 
 const BROWSE = [
   { href: "/shows", label: "Shows" },
@@ -23,6 +30,7 @@ function accountLinks(user: NonNullable<User>) {
     { href: "/submissions", label: "Your submissions" },
     { href: "/settings", label: "Settings" },
     ...(user.canModerate ? [{ href: "/moderate", label: "Moderate" }] : []),
+    ...(user.canWriteUpdates ? [{ href: "/updates/new", label: "Write an update" }] : []),
   ];
 }
 

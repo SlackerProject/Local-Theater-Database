@@ -61,6 +61,9 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       .order("created_at", { ascending: true }),
   ]);
 
+  const { data: positionRows } = await supabase.from("crew_positions").select("name");
+  const knownPositions = (positionRows ?? []).map((p) => p.name);
+
   // Contributors' medals (moderation is a contribution context)
   const points = await pointsFor([...(proposals ?? []).map((p) => p.proposed_by), ...(uploads ?? []).map((m) => m.uploaded_by)]);
 
@@ -122,6 +125,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
           submitted={p.changes as unknown as Bundle}
           submittedBy={`${p.proposer?.display_name} (@${p.proposer?.username})`}
           medal={<ContributorTag points={points.get(p.proposed_by)} />}
+          knownPositions={knownPositions}
           submittedAt={new Date(p.created_at).toLocaleString("en-US", {
             timeZone: "America/New_York",
             dateStyle: "medium",

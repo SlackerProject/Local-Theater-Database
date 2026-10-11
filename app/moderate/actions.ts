@@ -138,6 +138,14 @@ export async function setHomeCounts(show: boolean): Promise<Done> {
   return r;
 }
 
+// Add positions (approved from "Other…") to the crew positions list
+export async function addCrewPositions(names: string[]): Promise<Done> {
+  if (!names.length) return { ok: true };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_crew_positions", { p_names: names });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 // Bug reports from the footer: fixed, dismissed, or reopened
 export async function resolveBug(id: string, status: "open" | "fixed" | "dismissed"): Promise<Done> {
   const supabase = await createClient();

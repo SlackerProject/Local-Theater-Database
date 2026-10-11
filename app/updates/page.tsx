@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { postDate } from "@/lib/updates";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
@@ -23,9 +22,9 @@ export default function UpdatesPage() {
 }
 
 async function Updates() {
-  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()]);
-  const isAdmin = hasRole(user, "admin");
-  // Row rules show drafts to the admin only
+  const supabase = await createClient();
+  // Row rules show drafts to moderators only; they write updates from the
+  // account menu ("Write an update")
   const { data: posts } = await supabase
     .from("posts")
     .select("id, slug, title, summary, status, published_at, updated_at")
@@ -39,11 +38,6 @@ async function Updates() {
           <h1 className="display text-[40px] md:text-[56px]">Updates</h1>
           <p className="m-0 text-muted">News about the site: new features and changes.</p>
         </div>
-        {isAdmin && (
-          <Link href="/updates/new" className="btn-primary">
-            Write an update
-          </Link>
-        )}
       </div>
       {!posts?.length ? (
         <p className="m-0 text-muted">Updates will appear here.</p>

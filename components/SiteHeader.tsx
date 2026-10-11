@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { badgeMessage, LEVELS } from "@/lib/badges";
 import { HeaderNav } from "./HeaderNav";
 import { BadgeMessage } from "./badges/BadgeMessage";
+import { BugReporter } from "./BugReporter";
 
 export const SITE_NAME = "Local Theater Database";
 
@@ -105,6 +106,7 @@ export function SiteFooter() {
           <Link href="/awards" className="link-quiet">
             Awards
           </Link>
+          <BugReporter />
         </span>
       </div>
     </footer>

@@ -18,8 +18,8 @@ export default function MembersPage({ searchParams }: PageProps<"/moderate/membe
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-6 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <h1 className="display text-[40px] md:text-[56px]">Moderation</h1>
-        <ModerationNav current="/moderate/members" />
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
+          <ModerationNav current="/moderate/members" />
           <Members searchParams={searchParams} />
         </Suspense>
       </main>

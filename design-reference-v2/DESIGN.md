@@ -12,6 +12,7 @@ Reference files:
 - `calendar.html`, `calendar-mobile.html`: the signed-in calendar
 - `contributor-profile.html`: an account's public profile with badges and shows seen
 - `badges.html`: the five contributor medals, in color and grayscale, and levels I-III
+- `home.html`, `home-mobile.html`: the home page for signed-out visitors
 
 ## Principles
 
@@ -183,8 +184,7 @@ No box around it.
 ## Badges and points
 
 **Points** come only from approved contributions: 10 per production submission, 3 per poster,
-2 per photo, 0.5 per correction (an approved edit to a production, person, company, show or
-venue), 2 per audition dates or award entry. A submission earns points the first time it is
+2 per photo, 2 per correction or smaller edit. A submission earns points the first time it is
 approved (partial approval counts); resubmissions earn nothing extra. Self-reported activity
 (Want to see, Seen) never earns points.
 
@@ -201,10 +201,8 @@ Verified performer (mask), Founding member (flag), Shows seen 10 / 25 / 50 / 100
 grayed out on the profile ("Badges collected, 5 of 12").
 
 **Where badges appear**: the full medal, progress bar, ladder and collection only on the
-account profile (`contributor-profile.html`). Elsewhere, only a small (22px) medal beside a
-contributor's name in contribution contexts: "Added by", edit history, moderation. At this size
-the level dots are drawn larger so I / II / III stays readable; the name and points show on
-hover. In moderation, accounts without a medal yet get a dashed gray outline. Never on
+account profile (`contributor-profile.html`). Elsewhere, only an 18px medal beside a
+contributor's name in contribution contexts: "Added by", edit history, moderation. Never on
 cast lists, production pages, person pages or search results. When someone earns a new level
 or badge, show one brief, dismissible message ("You reached Silver III") once, then never again.
 
@@ -234,3 +232,51 @@ sentences: "Nominated, [Category], EMACT awards [Year]" / "Won, ...".
 **Entering awards**: trusted editors and moderators get an "Add awards" form: award body,
 year, category (type-ahead, add new), production (type-ahead), optional person and the credit
 being honored, and Nominated or Won. It goes through the normal review rules.
+
+## Home page (signed out)
+
+Follow `home.html` and `home-mobile.html`. The page's job is to say what the site is within
+five seconds, show real content, and lead to one action.
+
+Main column, in order:
+1. Headline "Follow local theater." and the one-paragraph explainer.
+2. A large search field ("Search a friend, a show, or yourself") with a Search button.
+3. The single primary action, "Create a free account" (ink button). It also appears in the
+   header and at the end of the page; no other button on the page is ink-filled.
+   Beside it, the live counts line ("[n] productions · [n] people · [n] companies, and
+   counting"). Show it only when an admin setting is switched on, so it can stay hidden until
+   the numbers are worth showing.
+4. "Playing now and coming soon": up to 8 poster tiles of productions currently running or
+   opening in the next 60 days, soonest first, with company and dates. If there are fewer
+   than 4, fill with the most recently added productions.
+5. "What you get": the four benefits with their icons, copy exactly as in the reference.
+6. The dark performer band, "In a show? Your stage history may already be here.", with a
+   "Find your name" button that focuses the search field and searches people only.
+7. The closing line and the final "Create a free account".
+
+Right column on desktop (it moves below the posters on phones): "This week's Hotlist" with
+Productions first, then People, top 5 each, and "See the full Hotlist"; then "Updates" with the
+three latest posts and "All updates". On phones, Updates sits after the performer band.
+
+No carousels, no autoplay, and no animation on the headline or logo.
+
+## Home page (signed in)
+
+A signed-in member already knows what the site is, so their home page is personal. Same frame
+and right column (Hotlist, then Updates). Main column: "Your next show" (the next performance
+they are Going to, with poster, date, time and venue, or a prompt to find something if none);
+"New for you" (the latest unread notifications, with their Want to see buttons); "Coming up
+from people you follow" (poster tiles of upcoming runs involving people or companies they
+follow); then "Playing now and coming soon". No headline, benefits or performer band.
+
+## Updates (announcements)
+
+- `/updates`: every post, newest first: date, title, one-line summary, linking to the post.
+- `/updates/[slug]`: the post page, in the quiet frame, with a readable text width
+  (about 680px), the date, and simple formatting (headings, bold, links, images).
+- Writing posts: admin-only. A simple editor with title, a short summary (used on the home
+  page and the list), the body with basic formatting and image upload, Save draft, Preview,
+  and Publish. Admins can edit or unpublish later.
+- Notifications: publishing a post sends signed-in members one in-app notification,
+  "New update: {title}". Members can turn this off with a setting on their account settings
+  page, "Notify me about site updates", on by default.

@@ -128,6 +128,14 @@ export async function setFoundingOpen(open: boolean): Promise<Done> {
   return r;
 }
 
+// Bug reports from the footer: fixed, dismissed, or reopened
+export async function resolveBug(id: string, status: "open" | "fixed" | "dismissed"): Promise<Done> {
+  const supabase = await createClient();
+  const r = await call(() => supabase.rpc("resolve_bug", { p_id: id, p_status: status }));
+  revalidatePath("/moderate/bugs");
+  return r;
+}
+
 // Corrections: approve the ticked changes (none = rejected). A note-only
 // correction is "marked done" instead.
 export async function reviewCorrection(id: string, accept: string[], note: string, noteOnlyDone: boolean): Promise<Done> {

@@ -239,6 +239,57 @@ export type Database = {
           },
         ]
       }
+      bug_reports: {
+        Row: {
+          created_at: string
+          details: Json
+          id: string
+          message: string
+          page_url: string
+          reported_by: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          id?: string
+          message: string
+          page_url: string
+          reported_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string
+          page_url?: string
+          reported_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bug_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_feeds: {
         Row: {
           created_at: string
@@ -1764,6 +1815,14 @@ export type Database = {
       refresh_badges: { Args: { p_user: string }; Returns: undefined }
       reject_submission: {
         Args: { p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
+      report_bug: {
+        Args: { p_details?: Json; p_message: string; p_page_url: string }
+        Returns: undefined
+      }
+      resolve_bug: {
+        Args: { p_id: string; p_status: string }
         Returns: undefined
       }
       resolve_dispute: {

@@ -9,6 +9,7 @@ Reference files:
 - `production-leading-ladies.html`: the same template with a pink poster
 - `production-little-women-mobile.html`: production page at phone width
 - `person-michael.html`: person page (visitor view of a verified person)
+- `calendar.html`, `calendar-mobile.html`: the signed-in calendar
 
 ## Principles
 
@@ -74,7 +75,7 @@ Nav links live in the menu. No hover-only menus anywhere.
 
 Every production with a poster gets a palette computed once, on upload, and stored on the
 production (new columns, e.g. `color_ground`, `color_ground_2`, `color_ink`, `color_soft`,
-`color_accent`; this needs a migration):
+`color_accent`, `color_edge`; this needs a migration):
 
 - **ground**: the dominant large-area color of the poster.
 - **ground_2**: ground darkened about 6%; the hero is a vertical gradient ground to ground_2.
@@ -88,14 +89,25 @@ production (new columns, e.g. `color_ground`, `color_ground_2`, `color_ink`, `co
 Examples from the references: Little Women is ground `#F3E0C8`, ink `#18140F`, accent
 `#D7282F`. Leading Ladies is ground `#FFD5DB`, ink `#100F12`, accent `#B4465E`.
 
-Where show color appears, and nowhere else:
-- the production hero band (background, text, and the hero buttons, which use ink on ground);
-- the year in the production title;
-- the 2px rule under section headings on that production's page;
-- the dot beside that production's credit sentence on person pages;
+**A show's identifying color is its ground, everywhere.** Anywhere a production is
+represented by a swatch outside its own page, use ground, never accent, so the show looks
+the same on every screen:
+- calendar run bars, the "going" chip, and the day dots on the phone calendar;
+- the dot beside that production's name in the credits table on person pages;
+- list swatches (e.g. "Running this month");
 - the background behind that production's poster wherever it is shown as a tile.
 
-The site chrome (header, nav, forms, moderation) never takes show color.
+Light grounds (cream, pink) disappear on white, so every swatch gets a 1px **edge**: ground
+darkened until it reaches at least 3:1 against white (store it as `color_edge`). Examples:
+Little Women edge `#978B7C`, Leading Ladies edge `#9E8488`, no-poster edge `#949494`.
+
+"Going" is distinguished by shape, not a different color: the going chip and the circled
+going date use ground with a 2px ink border and a check mark.
+
+Accent appears only on the production's own page: the year in the title and the 2px rule
+under its section headings. The hero band uses ground, ground_2, ink and soft.
+
+The site chrome (header, nav, notification dot, forms, moderation) never takes show color.
 
 **No poster:** the hero is white with ink text, the accent is ink, and poster tiles are a
 `soft` box with a 1px `rule` border and the title in muted 800 weight. It should still look finished.
@@ -111,19 +123,31 @@ cast, creative team; sidebar: other productions of the same show, awards.
 
 ## Person page
 
-Follow `person-michael.html`. Two signature pieces:
+Follow `person-michael.html` for the header and the On stage shelf. Two signature pieces:
 
 **On stage**: a shelf of poster tiles for every production the person is credited in, newest
 first, with the role under each tile.
 
-**Credits as sentences**, each with every name linked:
-- Cast: "Played **{role}** in {Company}'s production of **{Show} ({Year})** at {Venue}."
-- Crew: "**{Job}** for {Company}'s production of **{Show} ({Year})** at {Venue}."
-- Omit "at {Venue}" when the venue is unknown. Add "Added by {name}" in muted text for
-  credits the owner added. Credits the owner has hidden do not appear.
+**Credits as a résumé table** (this replaces the credit sentences in `person-michael.html`).
+It reads like a clean, simple résumé and gets the full content width:
+- Columns: Production · Role (crew: Position) · Company · Venue · Year. Newest first. Every
+  production, company and venue name is a link (no underline until hover).
+- Header row in 14px muted text over a 2px ink rule; rows separated by 1px `rule` lines;
+  Year right-aligned in muted tabular figures. Nothing wraps on desktop.
+- When a person has both kinds of credit, show two tables with sidebar-style headings:
+  "Cast" and "Crew".
+- The show-color dot sits beside the production name: the show's ground with its 1px edge
+  (without a poster: `soft` with the `#949494` edge, as on the calendar).
+- Phones: Company and Year move under the production name in muted text; Venue is
+  dropped. Columns are Production and Role only.
+- "Added by {name}" in muted 13px text under the production for credits the owner added.
+  Credits the owner has hidden do not appear to visitors.
+- Owner view: a pencil beside the role edits it in place; an eye button at the end of
+  each row hides or shows the credit (hidden rows stay visible to the owner, muted, marked
+  "Hidden from your page").
 
-Sidebar: Frequent collaborators (people sharing two or more productions, via the
-`frequent_collaborators()` function), then Awards.
+Below the table, in a row of columns: Frequent collaborators (people sharing two or more
+productions, via the `frequent_collaborators()` function), then Awards.
 
 ## Pages without mockups yet
 
@@ -131,9 +155,8 @@ Build these in the same frame, using the same section headings, rules and tiles.
 
 **Show page** (the work, e.g. Little Women the Musical): title (72px/800), type and authors
 in muted text. Then "Productions", a poster-tile grid of every production of this show,
-newest first, each captioned "{Company} · {Year}". Then "Characters", a list where each
-character links to the people who have played them, with a count. No show color in the
-frame; the posters carry it.
+newest first, each captioned "{Company} · {Year}". Nothing else: no characters list. No
+show color in the frame; the posters carry it.
 
 **Company page**: name, town, website link, and a Follow button (ink). Then productions
 grouped by year (year as a section heading, poster-tile grid beneath, newest year first).

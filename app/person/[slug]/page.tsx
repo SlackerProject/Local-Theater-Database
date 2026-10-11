@@ -2,11 +2,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { showColors } from "@/lib/palette";
+import { showColors, swatch } from "@/lib/palette";
 import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
+import { FollowButton } from "@/components/FollowButton";
 import { HeadshotUploader } from "@/components/uploads/UploadPanels";
 import type { PageLink } from "./actions";
 import {
@@ -32,9 +33,6 @@ export default function PersonPage({ params, searchParams }: PageProps<"/person/
     </>
   );
 }
-
-// Dot color for a credit with no poster palette (from the reference)
-const NO_POSTER_DOT = "#BDBDBD";
 
 function asLinks(value: unknown): PageLink[] {
   if (!Array.isArray(value)) return [];
@@ -67,7 +65,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
        credits(id, kind, role_name, hidden_on_person_page, added_by_owner,
                character:show_characters(name),
                production:productions(id, slug, year, title_override, opening_date,
-                                      color_ground, color_ground_2, color_ink, color_soft, color_accent,
+                                      color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
                                       poster:media!productions_poster_fk(thumb_key),
                                       show:shows(title),
                                       organization:organizations(slug, name),
@@ -83,8 +81,17 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
   const editing = isOwner && query.view !== "visitor"; // "See it as visitors do" turns the controls off
   const pagePath = `/person/${person.slug}`;
 
-  const [{ data: collaborators }, { data: owner }, { data: claimState }, { data: myClaim }, { data: myUploads }, { data: headshots }, { count: unread }] =
-    await Promise.all([
+  const [
+    { data: collaborators },
+    { data: owner },
+    { data: claimState },
+    { data: myClaim },
+    { data: myUploads },
+    { data: headshots },
+    { count: unread },
+    { data: followers },
+    { data: myFollow },
+  ] = await Promise.all([
       supabase.rpc("frequent_collaborators", { p_person_id: person.id }),
       person.verified_owner_id
         ? supabase.from("profiles").select("display_name").eq("id", person.verified_owner_id).maybeSingle()
@@ -100,8 +107,12 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
         ? supabase.from("media").select("id, thumb_key, storage_key").eq("person_id", person.id).eq("kind", "headshot").eq("status", "approved").order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
       isOwner
-        ? supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user!.id).eq("status", "unread")
+        ? supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user!.id).eq("kind", "page_changed").eq("status", "unread")
         : Promise.resolve({ count: 0 }),
+      supabase.rpc("follower_count", { p_person_id: person.id }),
+      user && !isOwner
+        ? supabase.from("follows").select("id").eq("user_id", user.id).eq("person_id", person.id).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
   const headshot = person.headshot;
@@ -247,6 +258,22 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                 ))}
               </p>
             )}
+            {!isOwner && (
+              <div className="mt-1">
+                <FollowButton
+                  target={{ personId: person.id }}
+                  following={!!myFollow}
+                  count={followers ?? 0}
+                  path={pagePath}
+                  signedIn={!!user}
+                />
+              </div>
+            )}
+            {isOwner && (
+              <p className="m-0 text-sm text-muted">
+                {followers ?? 0} {followers === 1 ? "follower" : "followers"}
+              </p>
+            )}
             {editing && (
               <div className="mt-1 flex flex-col gap-3">
                 <BioLinksEditor slug={person.slug} bio={person.bio ?? ""} links={links} />
@@ -337,7 +364,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                         </thead>
                         <tbody>
                           {g.rows.map((c) => {
-                            const colors = showColors(c.prod);
+                            const dot = swatch(showColors(c.prod));
                             const org = c.prod.organization;
                             const venue = c.prod.location;
                             const hidden = c.hidden_on_person_page;
@@ -347,8 +374,8 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                                   <span className="flex items-start gap-2.5">
                                     <span
                                       aria-hidden="true"
-                                      className="mt-[7px] h-2.5 w-2.5 flex-none rounded-full"
-                                      style={{ background: colors.hasPalette && !hidden ? colors.accent : NO_POSTER_DOT }}
+                                      className={`mt-[7px] h-2.5 w-2.5 flex-none rounded-full border ${hidden ? "opacity-50" : ""}`}
+                                      style={{ background: dot.background, borderColor: dot.borderColor }}
                                     />
                                     <span className="flex min-w-0 flex-col">
                                       <Link href={`/production/${c.prod.slug}`} className="link-quiet font-bold">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/app/auth-actions";
 
@@ -20,22 +21,45 @@ function accountLinks(user: NonNullable<User>) {
   ];
 }
 
-function Bell({ count }: { count: number }) {
+function initial(name: string) {
+  return (name.trim()[0] ?? "?").toUpperCase();
+}
+
+const iconLink = "link-quiet relative flex h-11 w-11 items-center justify-center rounded-lg hover:bg-soft";
+
+// The current page gets a 2px ink bar under its icon
+function ActiveBar() {
+  return <span aria-hidden="true" className="absolute inset-x-2.5 bottom-0.5 h-0.5 bg-ink" />;
+}
+
+function CalendarLink({ active }: { active: boolean }) {
+  return (
+    <Link href="/calendar" aria-label="Your calendar" aria-current={active ? "page" : undefined} className={iconLink}>
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+        <path d="M3.5 10h17M8 3v4M16 3v4" />
+      </svg>
+      {active && <ActiveBar />}
+    </Link>
+  );
+}
+
+function Bell({ count, active }: { count: number; active: boolean }) {
   return (
     <Link
       href="/notifications"
       aria-label={count ? `Notifications, ${count} new` : "Notifications"}
-      className="link-quiet relative flex h-11 w-11 items-center justify-center rounded-lg hover:bg-soft"
+      aria-current={active ? "page" : undefined}
+      className={iconLink}
     >
-      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+        <path d="M10 20.5a2 2 0 0 0 4 0" />
       </svg>
       {count > 0 && (
-        <span aria-hidden="true" className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink px-1 text-[11px] font-bold leading-none text-white">
-          {count > 99 ? "99+" : count}
-        </span>
+        <span aria-hidden="true" className="absolute right-[9px] top-[9px] h-[9px] w-[9px] rounded-full bg-ink shadow-[0_0_0_2px_#fff]" />
       )}
+      {active && <ActiveBar />}
     </Link>
   );
 }
@@ -66,46 +90,51 @@ export function HeaderNav({ user }: { user: User }) {
   const [mobile, setMobile] = useState(false);
   const accountRef = useDismiss(account, () => setAccount(false));
   const mobileRef = useDismiss(mobile, () => setMobile(false));
+  const path = usePathname();
 
   return (
     <>
-      {/* Desktop: Shows, People, Companies, then Sign in or the account menu (at most five items) */}
+      {/* Desktop: Shows, People, Companies, then Sign in, or the calendar, bell and account menu */}
       <nav aria-label="Main" className="ml-auto hidden items-center gap-6 text-[15px] font-semibold md:flex">
         {BROWSE.map((l) => (
           <Link key={l.href} href={l.href} className="link-quiet whitespace-nowrap">
             {l.label}
           </Link>
         ))}
-        {user && <Bell count={user.unread} />}
         {user ? (
-          <div ref={accountRef} className="relative">
-            <button
-              type="button"
-              aria-expanded={account}
-              aria-haspopup="menu"
-              onClick={() => setAccount((v) => !v)}
-              className="btn-primary min-h-11 gap-2 px-[18px] text-[15px]"
-            >
-              {user.displayName}
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-            {account && (
-              <div role="menu" className="absolute right-0 top-full z-20 mt-2 flex w-56 flex-col rounded-lg border border-rule bg-page py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
-                {accountLinks(user).map((l) => (
-                  <Link key={l.href} href={l.href} role="menuitem" className={menuItem} onClick={() => setAccount(false)}>
-                    {l.label}
-                  </Link>
-                ))}
-                <form action={signOut} className="border-t border-rule pt-1.5">
-                  <button type="submit" role="menuitem" className={`${menuItem} w-full cursor-pointer border-0 bg-transparent text-left text-base`}>
-                    Sign out
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
+          <span className="flex items-center gap-1">
+            <CalendarLink active={path === "/calendar"} />
+            <Bell count={user.unread} active={path === "/notifications"} />
+            <div ref={accountRef} className="relative">
+              <button
+                type="button"
+                aria-label="Your account"
+                aria-expanded={account}
+                aria-haspopup="menu"
+                onClick={() => setAccount((v) => !v)}
+                className="flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
+              >
+                <span aria-hidden="true" className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#2B2B2B] text-sm font-bold text-white">
+                  {initial(user.displayName)}
+                </span>
+              </button>
+              {account && (
+                <div role="menu" className="absolute right-0 top-full z-20 mt-2 flex w-56 flex-col rounded-lg border border-rule bg-page py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+                  <span className="px-4 pb-1 pt-1 text-sm font-normal text-muted">Signed in as {user.displayName}</span>
+                  {accountLinks(user).map((l) => (
+                    <Link key={l.href} href={l.href} role="menuitem" className={menuItem} onClick={() => setAccount(false)}>
+                      {l.label}
+                    </Link>
+                  ))}
+                  <form action={signOut} className="border-t border-rule pt-1.5">
+                    <button type="submit" role="menuitem" className={`${menuItem} w-full cursor-pointer border-0 bg-transparent text-left text-base`}>
+                      Sign out
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          </span>
         ) : (
           <Link href="/signin" className="btn-primary min-h-11 px-[18px] text-[15px]">
             Sign in
@@ -113,8 +142,14 @@ export function HeaderNav({ user }: { user: User }) {
         )}
       </nav>
 
-      {/* Phones: a 44px menu button; links live in the menu */}
-      <div ref={mobileRef} className="ml-auto md:hidden">
+      {/* Phones: calendar and bell (signed in), then a 44px menu button; links live in the menu */}
+      <div ref={mobileRef} className="ml-auto flex items-center md:hidden">
+        {user && (
+          <>
+            <CalendarLink active={path === "/calendar"} />
+            <Bell count={user.unread} active={path === "/notifications"} />
+          </>
+        )}
         <button
           type="button"
           aria-label="Menu"
@@ -125,11 +160,6 @@ export function HeaderNav({ user }: { user: User }) {
           <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#141414" strokeWidth="2" strokeLinecap="round">
             {mobile ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
           </svg>
-          {!!user?.unread && !mobile && (
-            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-ink ring-2 ring-white">
-              <span className="sr-only">{user.unread} new notifications</span>
-            </span>
-          )}
         </button>
         {mobile && (
           <nav aria-label="Main" className="absolute inset-x-0 top-full z-20 flex flex-col border-b border-rule bg-page pb-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
@@ -142,6 +172,9 @@ export function HeaderNav({ user }: { user: User }) {
             {user ? (
               <>
                 <span className="px-4 pb-1 text-sm text-muted">Signed in as {user.displayName}</span>
+                <Link href="/calendar" className={menuItem} onClick={() => setMobile(false)}>
+                  Your calendar
+                </Link>
                 <Link href="/notifications" className={menuItem} onClick={() => setMobile(false)}>
                   Notifications
                   {user.unread > 0 && <span className="ml-2 rounded bg-ink px-1.5 text-[13px] font-bold text-white">{user.unread}</span>}

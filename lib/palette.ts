@@ -190,7 +190,9 @@ function prominentColor(pixels: Uint8ClampedArray, ground: string): string | nul
 // ---------------------------------------------------------------------
 // What pages use: the stored palette, or the plain "no poster" look
 // ---------------------------------------------------------------------
-export type ShowColors = Palette & { hasPalette: boolean };
+// `edge` outlines a show's swatches (calendar bars, dots) so light grounds
+// stay visible on white; computed by the database (edge_for()).
+export type ShowColors = Palette & { edge: string; hasPalette: boolean };
 
 export const NO_POSTER: ShowColors = {
   ground: WHITE,
@@ -198,8 +200,17 @@ export const NO_POSTER: ShowColors = {
   ink: SITE_INK,
   soft: "#5E5E5E",
   accent: SITE_INK,
+  edge: "#949494",
   hasPalette: false,
 };
+
+// A show's swatch everywhere outside its own page: ground with its edge
+// (no poster: the site's soft gray with the #949494 edge)
+export function swatch(c: ShowColors) {
+  return c.hasPalette
+    ? { background: c.ground, borderColor: c.edge, ink: c.ink }
+    : { background: "#F5F5F4", borderColor: NO_POSTER.edge, ink: SITE_INK };
+}
 
 export function showColors(row: {
   color_ground?: string | null;
@@ -207,6 +218,7 @@ export function showColors(row: {
   color_ink?: string | null;
   color_soft?: string | null;
   color_accent?: string | null;
+  color_edge?: string | null;
 }): ShowColors {
   if (!row.color_ground || !row.color_ground_2 || !row.color_ink || !row.color_soft || !row.color_accent) return NO_POSTER;
   return {
@@ -215,6 +227,7 @@ export function showColors(row: {
     ink: row.color_ink,
     soft: row.color_soft,
     accent: row.color_accent,
+    edge: row.color_edge ?? row.color_soft,
     hasPalette: true,
   };
 }

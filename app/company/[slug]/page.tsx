@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
 import { mediaUrl } from "@/lib/media";
+import { getCurrentUser } from "@/lib/auth";
+import { FollowButton } from "@/components/FollowButton";
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -36,6 +38,14 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
 
   if (!org) notFound();
 
+  const user = await getCurrentUser();
+  const [{ data: followers }, { data: myFollow }] = await Promise.all([
+    supabase.rpc("follower_count", { p_organization_id: org.id }),
+    user
+      ? supabase.from("follows").select("id").eq("user_id", user.id).eq("organization_id", org.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
   // Venues: those linked to the company plus any it has performed at
   const venues = new Map<string, { slug: string; name: string; town: string | null; home: boolean }>();
   for (const ol of org.organization_locations ?? []) {
@@ -63,6 +73,15 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
           )}
         </p>
         {org.description && <p className="m-0 max-w-[620px]">{org.description}</p>}
+        <div className="mt-1">
+          <FollowButton
+            target={{ organizationId: org.id }}
+            following={!!myFollow}
+            count={followers ?? 0}
+            path={`/company/${slug}`}
+            signedIn={!!user}
+          />
+        </div>
       </section>
 
       <div className="flex flex-wrap items-start gap-12">

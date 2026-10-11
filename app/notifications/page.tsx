@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { describeChanges, type Revision } from "@/lib/changes";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement } from "@/lib/announcements";
+import { AnnouncementActions, AnnouncementText } from "@/components/Announcement";
 import { KeepAllButton, NotificationActions } from "./NotificationActions";
 
 export const metadata: Metadata = { title: "Notifications · Local Theater Database" };
@@ -14,7 +16,7 @@ export default function NotificationsPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-6 px-4 pb-16 pt-8 md:px-8 md:pt-12">
+      <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-10 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <h1 className="display text-[40px] md:text-[56px]">Notifications</h1>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
           <Notifications />
@@ -35,45 +37,113 @@ async function Notifications() {
   if (!user) redirect("/signin?next=/notifications");
 
   const supabase = await createClient();
-  const [{ data: rows }, { data: page }] = await Promise.all([
+  const [{ data: rows }, { data: page }, { data: news }, { data: saved }] = await Promise.all([
     supabase
       .from("notifications")
       .select("id, status, resolution, dispute_note, created_at, revision:revisions(id, entity_table, entity_id, action, before, after, changed_by, changed_at)")
       .eq("user_id", user.id)
+      .eq("kind", "page_changed")
       .order("created_at", { ascending: false })
       .limit(200),
     supabase.from("people").select("slug, display_name").eq("verified_owner_id", user.id).maybeSingle(),
+    supabase
+      .from("notifications")
+      .select(ANNOUNCEMENT_SELECT)
+      .eq("user_id", user.id)
+      .in("kind", [...ANNOUNCEMENT_KINDS])
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase.from("watch_list").select("production_id").eq("user_id", user.id),
   ]);
-
-  if (!page) {
-    return (
-      <p className="m-0 text-muted">
-        Once you claim your person page and it’s verified, you’ll be told here whenever someone else changes your page or
-        credits.
-      </p>
-    );
-  }
-
-  const revisions = (rows ?? []).map((r) => r.revision).filter((r): r is Revision => !!r);
-  const described = await describeChanges(supabase, revisions);
-  const unread = (rows ?? []).filter((r) => r.status === "unread").length;
+  const savedIds = new Set((saved ?? []).map((s) => s.production_id));
 
   return (
     <>
+      <section className="flex flex-col gap-3">
+        <h2 className="heading">From people and companies you follow</h2>
+        {news?.length ? (
+          <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
+            {news.map((n) => {
+              const a = announcement(n);
+              if (!a) return null;
+              const unread = n.status === "unread";
+              return (
+                <li key={n.id} className="flex gap-3 border-b border-rule py-4">
+                  <span aria-hidden="true" className={`mt-2 h-2.5 w-2.5 flex-none rounded-full ${unread ? "bg-ink" : "bg-transparent"}`} />
+                  <div className={`flex min-w-0 flex-1 flex-col gap-2 ${unread ? "" : "text-muted"}`}>
+                    <span>
+                      <AnnouncementText a={a} />
+                      {unread && <span className="sr-only"> (new)</span>}
+                    </span>
+                    <span className="text-sm text-muted">{formatWhen(n.created_at)}</span>
+                    {unread && <AnnouncementActions id={n.id} productionId={a.productionId} saved={savedIds.has(a.productionId)} />}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="m-0 text-muted">
+            Follow people and companies from their pages. When one of them is cast in a show or announces a production,
+            it will appear here.
+          </p>
+        )}
+      </section>
+
+      {(page || !!rows?.length) && (
+        <ChangesToYourPage rows={rows ?? []} page={page} described={await describeChanges(supabase, (rows ?? []).map((r) => r.revision).filter((r): r is Revision => !!r))} />
+      )}
+      {!page && !rows?.length && (
+        <p className="m-0 border-t border-rule pt-5 text-[15px] text-muted">
+          Once you claim your person page and it’s verified, you’ll also be told here whenever someone else changes your
+          page or credits.
+        </p>
+      )}
+    </>
+  );
+}
+
+function formatWhen(iso: string) {
+  return new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+}
+
+type ChangeRow = {
+  id: string;
+  status: string;
+  resolution: string | null;
+  dispute_note: string | null;
+  created_at: string;
+  revision: Revision | null;
+};
+
+function ChangesToYourPage({
+  rows,
+  page,
+  described,
+}: {
+  rows: ChangeRow[];
+  page: { slug: string } | null;
+  described: Awaited<ReturnType<typeof describeChanges>>;
+}) {
+  const unread = rows.filter((r) => r.status === "unread").length;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="heading">Changes to your page</h2>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="m-0 text-muted">
-          Changes other people made to <Link href={`/person/${page.slug}`}>your page</Link>. Keep each one, or dispute it
-          and a moderator will take a look.
+          Changes other people made to {page ? <Link href={`/person/${page.slug}`}>your page</Link> : "your page"}. Keep
+          each one, or dispute it and a moderator will take a look.
         </p>
         {unread > 1 && <KeepAllButton count={unread} />}
       </div>
 
-      {!rows?.length && <p className="m-0 text-muted">No changes yet. When someone edits your page or credits, it will appear here.</p>}
+      {!rows.length && <p className="m-0 text-muted">No changes yet. When someone edits your page or credits, it will appear here.</p>}
 
       <ul className="m-0 flex list-none flex-col p-0">
-        {rows?.map((n) => {
+        {rows.map((n) => {
           const change = n.revision ? described.get(n.revision.id) : null;
-          const when = new Date(n.created_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+          const when = formatWhen(n.created_at);
           return (
             <li key={n.id} className="flex flex-col gap-2.5 border-b border-rule py-4">
               <div className="flex gap-3">
@@ -120,6 +190,6 @@ async function Notifications() {
           );
         })}
       </ul>
-    </>
+    </section>
   );
 }

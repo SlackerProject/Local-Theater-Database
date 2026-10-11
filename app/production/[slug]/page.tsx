@@ -10,7 +10,9 @@ import { PhotoGallery } from "@/components/PhotoGallery";
 import { PhotoUploader, PosterUploader } from "@/components/uploads/UploadPanels";
 import { getCurrentUser } from "@/lib/auth";
 import { PHOTO_LIMIT, mediaUrl } from "@/lib/media";
-import { AllPerformances } from "./AllPerformances";
+import { currentTime, googleCalendarUrl, localDate, localDay, localTime, TIME_ZONE } from "@/lib/calendar";
+import { siteOrigin } from "@/lib/site";
+import { HeroActions, type PerformanceRow } from "./HeroActions";
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {
   return (
@@ -52,8 +54,8 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
        poster:media!productions_poster_fk(thumb_key, storage_key, width, height),
        show:shows(id, slug, title, subtitle, type, authors),
        organization:organizations(slug, name),
-       location:locations(slug, name, town),
-       performances(starts_at, label, is_cancelled),
+       location:locations(slug, name, street_address, town, state),
+       performances(id, starts_at, label, is_cancelled),
        credits(id, kind, role_name, billing_order, is_understudy,
                person:people(slug, display_name, headshot:media!people_headshot_fk(thumb_key)),
                character:show_characters(name))`,
@@ -80,6 +82,9 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
       .order("created_at", { ascending: true }),
     getCurrentUser(),
   ]);
+  const { data: watch } = user
+    ? await supabase.from("watch_list").select("status, performance_id").eq("user_id", user.id).eq("production_id", p.id).maybeSingle()
+    : { data: null };
   const approvedPhotos = (photoRows ?? []).filter((m) => m.status === "approved");
   const myPending = (photoRows ?? []).filter((m) => m.status === "pending" && m.uploaded_by === user?.id).length;
   // Others' pending photos aren't visible here, so this can overcount the room left; the database has the final say
@@ -94,11 +99,16 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const typeLabel = SHOW_TYPES.find((t) => t.value === p.show!.type)?.label;
   const about = [p.show.subtitle ?? typeLabel, p.show.authors].filter(Boolean).join(" · ");
   const dates = dateRange(p.opening_date, p.closing_date);
-  const performances = [...(p.performances ?? [])]
+  const path = `/production/${p.slug}`;
+  const origin = await siteOrigin();
+  const now = currentTime().getTime();
+  const venueAddress = p.location ? [p.location.street_address, p.location.town, p.location.state].filter(Boolean).join(", ") : null;
+  const performances: PerformanceRow[] = [...(p.performances ?? [])]
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
     .map((pf) => ({
+      id: pf.id,
       when: new Date(pf.starts_at).toLocaleString("en-US", {
-        timeZone: "America/New_York",
+        timeZone: TIME_ZONE,
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -106,9 +116,29 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
         hour: "numeric",
         minute: "2-digit",
       }),
+      day: localDay(pf.starts_at),
+      time: localTime(pf.starts_at),
       label: pf.label,
       cancelled: pf.is_cancelled,
+      past: new Date(pf.starts_at).getTime() < now,
+      google: googleCalendarUrl({
+        id: pf.id,
+        startsAt: pf.starts_at,
+        title: `${title} (${p.year})`,
+        company: p.organization?.name,
+        label: pf.label,
+        venue: p.location?.name,
+        address: venueAddress,
+        url: origin + path,
+      }),
+      ics: `/calendar/performance/${pf.id}`,
     }));
+  // The run has closed once its closing date (or, without one, its last
+  // performance) is behind us
+  const today = localDate(new Date(now));
+  const closed = p.closing_date
+    ? p.closing_date < today
+    : performances.length > 0 && performances.every((pf) => pf.past);
 
   // Section heading rule takes the show's accent (ink when there's no poster)
   const sectionRule = { borderBottom: `2px solid ${c.accent}` };
@@ -160,7 +190,17 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
               </p>
             )}
             {p.description && <p className="m-0 max-w-[620px]">{p.description}</p>}
-            <AllPerformances performances={performances} ink={c.ink} ground={c.ground} />
+            <HeroActions
+              productionId={p.id}
+              path={path}
+              signedIn={!!user}
+              status={watch?.status ?? null}
+              goingId={watch?.performance_id ?? null}
+              performances={performances}
+              closed={closed}
+              ink={c.ink}
+              ground={c.ground}
+            />
             {user ? (
               <PosterUploader productionId={p.id} hasPoster={!!p.poster} ink={c.ink} />
             ) : (

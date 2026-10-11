@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -157,6 +157,32 @@ export type Database = {
             columns: ["production_id"]
             isOneToOne: false
             referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_feeds: {
+        Row: {
+          created_at: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_feeds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -504,9 +530,12 @@ export type Database = {
       notifications: {
         Row: {
           created_at: string
+          credit_id: string | null
           dispute_note: string | null
           id: string
           kind: string
+          person_id: string | null
+          production_id: string | null
           resolution: string | null
           resolved_at: string | null
           resolved_by: string | null
@@ -516,9 +545,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          credit_id?: string | null
           dispute_note?: string | null
           id?: string
           kind: string
+          person_id?: string | null
+          production_id?: string | null
           resolution?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -528,9 +560,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          credit_id?: string | null
           dispute_note?: string | null
           id?: string
           kind?: string
+          person_id?: string | null
+          production_id?: string | null
           resolution?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -539,6 +574,27 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_credit_id_fkey"
+            columns: ["credit_id"]
+            isOneToOne: false
+            referencedRelation: "credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_resolved_by_fkey"
             columns: ["resolved_by"]
@@ -901,6 +957,7 @@ export type Database = {
         Row: {
           closing_date: string | null
           color_accent: string | null
+          color_edge: string | null
           color_ground: string | null
           color_ground_2: string | null
           color_ink: string | null
@@ -924,6 +981,7 @@ export type Database = {
         Insert: {
           closing_date?: string | null
           color_accent?: string | null
+          color_edge?: string | null
           color_ground?: string | null
           color_ground_2?: string | null
           color_ink?: string | null
@@ -947,6 +1005,7 @@ export type Database = {
         Update: {
           closing_date?: string | null
           color_accent?: string | null
+          color_edge?: string | null
           color_ground?: string | null
           color_ground_2?: string | null
           color_ink?: string | null
@@ -1283,11 +1342,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      calendar_feed: {
+        Args: { p_token: string }
+        Returns: {
+          address: string
+          company: string
+          label: string
+          performance_id: string
+          production_slug: string
+          starts_at: string
+          title: string
+          venue: string
+          year: number
+        }[]
+      }
       character_for: {
         Args: { p_production_id: string; p_role: string }
         Returns: string
       }
       claim_state: { Args: { p_person_id: string }; Returns: string }
+      dismiss_notification: { Args: { p_id: string }; Returns: undefined }
+      edge_for: { Args: { p_ground: string }; Returns: string }
+      follower_count: {
+        Args: { p_organization_id?: string; p_person_id?: string }
+        Returns: number
+      }
       frequent_collaborators: {
         Args: { max_results?: number; p_person_id: string }
         Returns: {
@@ -1320,6 +1399,7 @@ export type Database = {
           slug: string
         }[]
       }
+      my_calendar_feed: { Args: { p_reset?: boolean }; Returns: string }
       my_person_id: { Args: never; Returns: string }
       owner_add_credit: {
         Args: {

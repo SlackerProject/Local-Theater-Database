@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AlphaList, ListPage } from "@/components/AlphaList";
 
-export const metadata: Metadata = { title: "Companies · Local Theater Database" };
+export const metadata: Metadata = { title: "Companies" };
 
 export default function CompaniesPage() {
   return (

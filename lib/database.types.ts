@@ -723,6 +723,7 @@ export type Database = {
           id: string
           kind: string
           person_id: string | null
+          post_id: string | null
           production_id: string | null
           resolution: string | null
           resolved_at: string | null
@@ -738,6 +739,7 @@ export type Database = {
           id?: string
           kind: string
           person_id?: string | null
+          post_id?: string | null
           production_id?: string | null
           resolution?: string | null
           resolved_at?: string | null
@@ -753,6 +755,7 @@ export type Database = {
           id?: string
           kind?: string
           person_id?: string | null
+          post_id?: string | null
           production_id?: string | null
           resolution?: string | null
           resolved_at?: string | null
@@ -774,6 +777,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
             referencedColumns: ["id"]
           },
           {
@@ -1141,6 +1151,56 @@ export type Database = {
           },
         ]
       }
+      posts: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notified_at: string | null
+          published_at: string | null
+          slug: string
+          status: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notified_at?: string | null
+          published_at?: string | null
+          slug: string
+          status?: string
+          summary?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notified_at?: string | null
+          published_at?: string | null
+          slug?: string
+          status?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       productions: {
         Row: {
           audition_note: string | null
@@ -1267,6 +1327,7 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          notify_updates: boolean
           person_id: string | null
           role: Database["public"]["Enums"]["user_role"]
           show_seen: boolean
@@ -1281,6 +1342,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id: string
+          notify_updates?: boolean
           person_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           show_seen?: boolean
@@ -1295,6 +1357,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          notify_updates?: boolean
           person_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           show_seen?: boolean
@@ -1703,6 +1766,7 @@ export type Database = {
         }[]
       }
       mark_badges_seen: { Args: never; Returns: undefined }
+      mark_update_read: { Args: { p_post_id: string }; Returns: undefined }
       member_overview: {
         Args: { p_query?: string }
         Returns: {
@@ -1792,6 +1856,7 @@ export type Database = {
           seen: number
         }[]
       }
+      publish_post: { Args: { p_id: string }; Returns: number }
       recent_contributions: {
         Args: { p_limit?: number; p_user: string }
         Returns: {
@@ -1859,6 +1924,15 @@ export type Database = {
         Args: { p_approve: boolean; p_media_id: string; p_note?: string }
         Returns: undefined
       }
+      save_post: {
+        Args: {
+          p_body: string
+          p_id: string
+          p_summary: string
+          p_title: string
+        }
+        Returns: string
+      }
       search_all: {
         Args: { max_results?: number; q: string }
         Returns: {
@@ -1871,6 +1945,7 @@ export type Database = {
       }
       seen_count: { Args: { p_person_id: string }; Returns: number }
       set_founding_open: { Args: { p_open: boolean }; Returns: undefined }
+      set_home_counts: { Args: { p_show: boolean }; Returns: undefined }
       set_member_role: {
         Args: {
           p_role: Database["public"]["Enums"]["user_role"]
@@ -1880,6 +1955,14 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      site_counts: {
+        Args: never
+        Returns: {
+          companies: number
+          people: number
+          productions: number
+        }[]
+      }
       slugify: { Args: { p_text: string }; Returns: string }
       snapshot_hotlist: { Args: never; Returns: undefined }
       sort_name_for: { Args: { p_name: string }; Returns: string }
@@ -1919,6 +2002,7 @@ export type Database = {
         Args: { p_table: string; p_text: string }
         Returns: string
       }
+      unpublish_post: { Args: { p_id: string }; Returns: undefined }
       vouch_claim: { Args: { p_claim_id: string }; Returns: undefined }
     }
     Enums: {

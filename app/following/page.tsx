@@ -9,7 +9,7 @@ import { currentTime, localDay, localTime } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { RemoveButton } from "./RemoveButton";
 
-export const metadata: Metadata = { title: "Shows & follows · Local Theater Database" };
+export const metadata: Metadata = { title: "Shows & follows" };
 
 export default function FollowingPage() {
   return (

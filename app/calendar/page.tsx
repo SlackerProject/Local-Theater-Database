@@ -28,7 +28,7 @@ import { AnnouncementActions, AnnouncementText } from "@/components/Announcement
 import { CalendarFilters } from "./CalendarFilters";
 import { PhoneCalendarLinks, SubscribeLink } from "./PhoneCalendar";
 
-export const metadata: Metadata = { title: "Your calendar · Local Theater Database" };
+export const metadata: Metadata = { title: "Your calendar" };
 
 export default function CalendarPage({ searchParams }: PageProps<"/calendar">) {
   return (

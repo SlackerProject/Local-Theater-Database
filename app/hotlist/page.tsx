@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { showColors, swatch } from "@/lib/palette";
-import { mediaUrl } from "@/lib/media";
+import { getHotlist, type Move } from "@/lib/hotlist";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 
-export const metadata: Metadata = { title: "Hotlist · Local Theater Database" };
+export const metadata: Metadata = { title: "Hotlist" };
 
 export default function HotlistPage() {
   return (
@@ -27,113 +25,33 @@ export default function HotlistPage() {
 }
 
 type Row = { id: string; rank: number; href: string; name: string; line: string; image: React.ReactNode; move: Move };
-type Move = { kind: "new" } | { kind: "up" | "down"; by: number } | null;
-
-function movement(rank: number, lastWeek: number | null, history: boolean): Move {
-  if (!history) return null;
-  if (lastWeek === null) return { kind: "new" };
-  if (lastWeek > rank) return { kind: "up", by: lastWeek - rank };
-  if (lastWeek < rank) return { kind: "down", by: rank - lastWeek };
-  return null;
-}
-
-const shortDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 async function Lists() {
-  const supabase = await createClient();
-  const [{ data: hotPeople }, { data: hotProds }] = await Promise.all([
-    supabase.rpc("hotlist", { p_table: "people", p_limit: 25 }),
-    supabase.rpc("hotlist", { p_table: "productions", p_limit: 25 }),
-  ]);
+  const { people, productions } = await getHotlist(25);
 
-  const personIds = (hotPeople ?? []).map((h) => h.entity_id);
-  const prodIds = (hotProds ?? []).map((h) => h.entity_id);
-  const [{ data: people }, { data: prods }] = await Promise.all([
-    personIds.length
-      ? supabase
-          .from("people")
-          .select(
-            `id, slug, display_name, headshot:media!people_headshot_fk(thumb_key),
-             credits(kind, role_name, hidden_on_person_page, character:show_characters(name),
-                     production:productions(year, opening_date, title_override, show:shows(title)))`,
-          )
-          .in("id", personIds)
-      : Promise.resolve({ data: [] }),
-    prodIds.length
-      ? supabase
-          .from("productions")
-          .select(
-            `id, slug, year, title_override, opening_date, closing_date,
-             color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
-             show:shows(title), organization:organizations(name), poster:media!productions_poster_fk(thumb_key)`,
-          )
-          .in("id", prodIds)
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  const peopleRows: Row[] = (hotPeople ?? []).flatMap((h) => {
-    const p = (people ?? []).find((x) => x.id === h.entity_id);
-    if (!p) return [];
-    // Their most recent credit
-    const latest = (p.credits ?? [])
-      .filter((c) => c.production?.show && !c.hidden_on_person_page)
-      .sort((a, b) => b.production!.year - a.production!.year || (b.production!.opening_date ?? "").localeCompare(a.production!.opening_date ?? ""))[0];
-    const role = latest ? (latest.character?.name ?? latest.role_name) : null;
-    const line = latest
-      ? `${role ? `${role} in ` : ""}${latest.production!.title_override ?? latest.production!.show!.title} (${latest.production!.year})`
-      : "";
-    const thumb = mediaUrl(p.headshot?.thumb_key);
-    return [
-      {
-        id: p.id,
-        rank: h.rank,
-        href: `/person/${p.slug}`,
-        name: p.display_name,
-        line,
-        move: movement(h.rank, h.last_week_rank, h.has_history),
-        image: thumb ? (
-          <img src={thumb} alt="" className="h-14 w-14 flex-none rounded-full bg-soft object-cover" />
+  const peopleRows: Row[] = people.map((p) => ({
+    ...p,
+    image: p.thumb ? (
+      <img src={p.thumb} alt="" className="h-14 w-14 flex-none rounded-full bg-soft object-cover" />
+    ) : (
+      <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-soft text-xl font-bold text-muted">
+        {p.name.charAt(0).toUpperCase()}
+      </span>
+    ),
+  }));
+  const prodRows: Row[] = productions.map((p) => ({
+    ...p,
+    line: [p.company, p.dates].filter(Boolean).join(" · "),
+    image: (
+      <span aria-hidden="true" className="flex h-[60px] w-12 flex-none overflow-hidden rounded-[4px] border" style={{ background: p.background, borderColor: p.borderColor }}>
+        {p.poster ? (
+          <img src={p.poster} alt="" className="block h-full w-full object-contain" />
         ) : (
-          <span aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-soft text-xl font-bold text-muted">
-            {p.display_name.charAt(0).toUpperCase()}
-          </span>
-        ),
-      },
-    ];
-  });
-
-  const prodRows: Row[] = (hotProds ?? []).flatMap((h) => {
-    const p = (prods ?? []).find((x) => x.id === h.entity_id);
-    if (!p?.show) return [];
-    const title = p.title_override ?? p.show.title;
-    const sw = swatch(showColors(p));
-    const poster = mediaUrl(p.poster?.thumb_key);
-    const dates =
-      p.opening_date && p.closing_date && p.opening_date !== p.closing_date
-        ? `${shortDate(p.opening_date)} – ${shortDate(p.closing_date)}`
-        : p.opening_date
-          ? shortDate(p.opening_date)
-          : String(p.year);
-    return [
-      {
-        id: p.id,
-        rank: h.rank,
-        href: `/production/${p.slug}`,
-        name: `${title} (${p.year})`,
-        line: [p.organization?.name, dates].filter(Boolean).join(" · "),
-        move: movement(h.rank, h.last_week_rank, h.has_history),
-        image: (
-          <span aria-hidden="true" className="flex h-[60px] w-12 flex-none overflow-hidden rounded-[4px] border" style={{ background: sw.background, borderColor: sw.borderColor }}>
-            {poster ? (
-              <img src={poster} alt="" className="block h-full w-full object-contain" />
-            ) : (
-              <span className="self-end p-1 text-[9px] font-extrabold leading-tight text-muted">{title}</span>
-            )}
-          </span>
-        ),
-      },
-    ];
-  });
+          <span className="self-end p-1 text-[9px] font-extrabold leading-tight text-muted">{p.showTitle}</span>
+        )}
+      </span>
+    ),
+  }));
 
   return (
     <div className="flex flex-wrap items-start gap-12">

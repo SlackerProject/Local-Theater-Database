@@ -9,7 +9,7 @@ import { localDate, localHHMM } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { CorrectionForm, type CreditLine, type PerformanceLine } from "./CorrectionForm";
 
-export const metadata: Metadata = { title: "Correction · Local Theater Database" };
+export const metadata: Metadata = { title: "Correction" };
 
 export default function EditPage({ params }: PageProps<"/edit/[kind]/[slug]">) {
   return (

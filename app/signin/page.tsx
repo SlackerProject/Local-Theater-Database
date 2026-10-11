@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { AuthCard } from "@/components/AuthCard";
 import { SignInForm } from "./SignInForm";
 
-export const metadata: Metadata = { title: "Sign in · Local Theater Database" };
+export const metadata: Metadata = { title: "Sign in" };
 
 export default function SignInPage({ searchParams }: PageProps<"/signin">) {
   return (

@@ -128,6 +128,16 @@ export async function setFoundingOpen(open: boolean): Promise<Done> {
   return r;
 }
 
+// The home page's "[n] productions · [n] people … and counting" line
+// (admin only; off until the numbers are worth showing)
+export async function setHomeCounts(show: boolean): Promise<Done> {
+  const supabase = await createClient();
+  const r = await call(() => supabase.rpc("set_home_counts", { p_show: show }));
+  revalidatePath("/moderate/members");
+  revalidatePath("/");
+  return r;
+}
+
 // Bug reports from the footer: fixed, dismissed, or reopened
 export async function resolveBug(id: string, status: "open" | "fixed" | "dismissed"): Promise<Done> {
   const supabase = await createClient();

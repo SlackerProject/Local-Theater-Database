@@ -7,7 +7,7 @@ import { AWARD_SELECT, productionTitle, type AwardRow } from "@/lib/awards";
 import { showColors, swatch } from "@/lib/palette";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 
-export const metadata: Metadata = { title: "Awards · Local Theater Database" };
+export const metadata: Metadata = { title: "Awards" };
 
 export default function AwardsPage({ searchParams }: PageProps<"/awards">) {
   return (

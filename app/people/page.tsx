@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AlphaList, ListPage } from "@/components/AlphaList";
 
-export const metadata: Metadata = { title: "People · Local Theater Database" };
+export const metadata: Metadata = { title: "People" };
 
 export default function PeoplePage() {
   return (

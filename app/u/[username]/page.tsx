@@ -12,7 +12,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { CollectibleIcon, Medal } from "@/components/badges/Medal";
 import { ShowSeenToggle } from "./ShowSeenToggle";
 
-export const metadata: Metadata = { title: "Contributor profile · Local Theater Database" };
+export const metadata: Metadata = { title: "Contributor profile" };
 
 export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
   return (

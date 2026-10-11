@@ -8,7 +8,7 @@ import { emptyCredit, emptyFormState, looksLikeFormState } from "@/lib/submissio
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AddProductionForm } from "./AddProductionForm";
 
-export const metadata: Metadata = { title: "Add a production · Local Theater Database" };
+export const metadata: Metadata = { title: "Add a production" };
 
 export default function AddProductionPage({ searchParams }: PageProps<"/add">) {
   return (

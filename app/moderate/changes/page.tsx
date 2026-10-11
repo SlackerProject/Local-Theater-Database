@@ -9,7 +9,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
-export const metadata: Metadata = { title: "Recent changes · Moderation · Local Theater Database" };
+export const metadata: Metadata = { title: "Recent changes · Moderation" };
 
 export default function ChangesPage({ searchParams }: PageProps<"/moderate/changes">) {
   return (

@@ -8,7 +8,7 @@ import { currentTime } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AddAwardForm } from "./AddAwardForm";
 
-export const metadata: Metadata = { title: "Add awards · Local Theater Database" };
+export const metadata: Metadata = { title: "Add awards" };
 
 export default function AddAwardsPage() {
   return (

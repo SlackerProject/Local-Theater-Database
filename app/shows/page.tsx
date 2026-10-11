@@ -5,7 +5,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AlphaList, ListPage } from "@/components/AlphaList";
 import { SHOW_TYPES } from "@/lib/submission";
 
-export const metadata: Metadata = { title: "Shows · Local Theater Database" };
+export const metadata: Metadata = { title: "Shows" };
 
 export default function ShowsPage() {
   return (

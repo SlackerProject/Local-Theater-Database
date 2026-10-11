@@ -8,7 +8,7 @@ import { isEmptyLeftOut, type Bundle, type BundlePerson, type LeftOut } from "@/
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { reopenSubmission } from "./actions";
 
-export const metadata: Metadata = { title: "Your submissions · Local Theater Database" };
+export const metadata: Metadata = { title: "Your submissions" };
 
 export default function SubmissionsPage() {
   return (

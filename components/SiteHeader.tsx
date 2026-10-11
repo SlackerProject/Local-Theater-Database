@@ -6,11 +6,13 @@ import { badgeMessage, LEVELS } from "@/lib/badges";
 import { HeaderNav } from "./HeaderNav";
 import { BadgeMessage } from "./badges/BadgeMessage";
 import { BugReporter } from "./BugReporter";
+import { SITE_NAME } from "@/lib/brand";
 
-export const SITE_NAME = "Local Theater Database";
+export { SITE_NAME };
 
 // Search is the primary way in, so it's in the header on every page:
 // beside the wordmark on desktop, full width on its own row on phones.
+// The home page has its own large search, so it hides this one.
 function SearchField({ id, className, defaultValue }: { id: string; className: string; defaultValue?: string }) {
   return (
     <form action="/search" role="search" className={`items-center gap-2.5 rounded-[10px] bg-soft px-4 ${className}`}>
@@ -33,7 +35,7 @@ function SearchField({ id, className, defaultValue }: { id: string; className: s
   );
 }
 
-export function SiteHeader({ query }: { query?: string } = {}) {
+export function SiteHeader({ query, hideSearch = false }: { query?: string; hideSearch?: boolean } = {}) {
   return (
     <header className="relative border-b border-rule bg-page">
       <div className="mx-auto max-w-[1180px] px-4 py-2.5 md:px-8 md:py-3">
@@ -41,12 +43,12 @@ export function SiteHeader({ query }: { query?: string } = {}) {
           <Link href="/" className="link-quiet whitespace-nowrap text-xl font-extrabold tracking-[-0.02em] md:text-[22px]">
             {SITE_NAME}
           </Link>
-          <SearchField id="q" defaultValue={query} className="hidden h-12 max-w-[560px] flex-1 md:flex" />
+          {!hideSearch && <SearchField id="q" defaultValue={query} className="hidden h-12 max-w-[560px] flex-1 md:flex" />}
           <Suspense fallback={<div className="ml-auto h-11 w-11" />}>
             <UserNav />
           </Suspense>
         </div>
-        <SearchField id="q-m" defaultValue={query} className="mt-2.5 flex h-[46px] md:hidden" />
+        {!hideSearch && <SearchField id="q-m" defaultValue={query} className="mt-2.5 flex h-[46px] md:hidden" />}
       </div>
     </header>
   );
@@ -98,8 +100,14 @@ export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-rule">
       <div className="mx-auto flex max-w-[1180px] flex-wrap justify-between gap-x-6 gap-y-2 px-4 py-6 text-sm text-muted md:px-8">
-        <span>Community-built. Anyone can add or correct a page.</span>
-        <span className="flex gap-5">
+        <span>Community-built. Anyone can add a show or correct a page.</span>
+        <span className="flex flex-wrap gap-x-5 gap-y-1">
+          <Link href="/add" className="link-quiet">
+            Add a production
+          </Link>
+          <Link href="/updates" className="link-quiet">
+            Updates
+          </Link>
           <Link href="/hotlist" className="link-quiet">
             Hotlist
           </Link>

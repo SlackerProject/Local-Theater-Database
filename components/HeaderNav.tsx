@@ -21,6 +21,7 @@ function accountLinks(user: NonNullable<User>) {
     { href: "/following", label: "Shows & follows" },
     { href: "/add", label: "Add a production" },
     { href: "/submissions", label: "Your submissions" },
+    { href: "/settings", label: "Settings" },
     ...(user.canModerate ? [{ href: "/moderate", label: "Moderate" }] : []),
   ];
 }
@@ -140,19 +141,28 @@ export function HeaderNav({ user }: { user: User }) {
             </div>
           </span>
         ) : (
-          <Link href="/signin" className="btn-primary min-h-11 px-[18px] text-[15px]">
-            Sign in
-          </Link>
+          <span className="flex items-center gap-2">
+            <Link href="/signin" className="link-quiet inline-flex min-h-11 items-center whitespace-nowrap px-3.5">
+              Sign in
+            </Link>
+            <Link href="/signup" className="btn-primary min-h-11 whitespace-nowrap px-[18px] text-[15px]">
+              Create a free account
+            </Link>
+          </span>
         )}
       </nav>
 
       {/* Phones: calendar and bell (signed in), then a 44px menu button; links live in the menu */}
       <div ref={mobileRef} className="ml-auto flex items-center md:hidden">
-        {user && (
+        {user ? (
           <>
             <CalendarLink active={path === "/calendar"} />
             <Bell count={user.unread} active={path === "/notifications"} />
           </>
+        ) : (
+          <Link href="/signin" className="link-quiet inline-flex min-h-11 items-center whitespace-nowrap px-2 text-[15px] font-semibold">
+            Sign in
+          </Link>
         )}
         <button
           type="button"
@@ -200,7 +210,7 @@ export function HeaderNav({ user }: { user: User }) {
                   Sign in
                 </Link>
                 <Link href="/signup" className={menuItem} onClick={() => setMobile(false)}>
-                  Join
+                  Create a free account
                 </Link>
               </>
             )}

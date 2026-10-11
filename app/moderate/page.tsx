@@ -14,7 +14,7 @@ import { ModerationNav } from "./ModerationNav";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 import { mediaUrl, type MediaPalette } from "@/lib/media";
 
-export const metadata: Metadata = { title: "Moderation queue · Local Theater Database" };
+export const metadata: Metadata = { title: "Moderation queue" };
 
 export default function ModeratePage({ searchParams }: PageProps<"/moderate">) {
   return (

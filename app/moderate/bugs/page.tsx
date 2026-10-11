@@ -7,8 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
 import { BugActions } from "./BugActions";
+import { SITE_NAME } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "Bug reports · Moderation · Local Theater Database" };
+export const metadata: Metadata = { title: "Bug reports · Moderation" };
 
 export default function BugsPage({ searchParams }: PageProps<"/moderate/bugs">) {
   return (
@@ -72,7 +73,7 @@ async function Bugs({ searchParams }: Pick<PageProps<"/moderate/bugs">, "searchP
         const d = (r.details ?? {}) as Details;
         const who = r.reporter ? `${r.reporter.display_name} (@${r.reporter.username})` : "a signed-out visitor";
         const copyText = [
-          "Bug report from the Local Theater Database",
+          `Bug report from ${SITE_NAME}`,
           `Page: ${r.page_url}`,
           `Reported: ${when(r.created_at)} by ${who}`,
           "",

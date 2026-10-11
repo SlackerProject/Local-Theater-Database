@@ -8,9 +8,11 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
 import { MemberActions } from "./MemberActions";
 import { FoundingSwitch } from "./FoundingSwitch";
+import { HomeCountsSwitch } from "./HomeCountsSwitch";
+import { homeCounts } from "@/lib/home";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
-export const metadata: Metadata = { title: "Members · Moderation · Local Theater Database" };
+export const metadata: Metadata = { title: "Members · Moderation" };
 
 export default function MembersPage({ searchParams }: PageProps<"/moderate/members">) {
   return (
@@ -48,11 +50,24 @@ async function Members({ searchParams }: Pick<PageProps<"/moderate/members">, "s
   ]);
   const isAdmin = hasRole(user, "admin");
   const points = await pointsFor((members ?? []).map((m) => m.id));
+  const homeNumbers = isAdmin ? await homeCounts() : { show: false, counts: null };
   const foundingValue = (founding?.value ?? { open: true, closed_at: null }) as { open: boolean; closed_at: string | null };
 
   return (
     <>
-      {isAdmin && <FoundingSwitch open={foundingValue.open} closedAt={foundingValue.closed_at} />}
+      {isAdmin && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <FoundingSwitch open={foundingValue.open} closedAt={foundingValue.closed_at} />
+          <HomeCountsSwitch
+            initial={homeNumbers.show}
+            preview={
+              homeNumbers.counts
+                ? `“${homeNumbers.counts.productions} productions · ${homeNumbers.counts.people} people · ${homeNumbers.counts.companies} companies, and counting”`
+                : "the current totals"
+            }
+          />
+        </div>
+      )}
       <p className="m-0 max-w-[760px] text-[15px] text-muted">
         Everyone with an account, most recently active first.{" "}
         {isAdmin ? "As the admin, you can change roles. " : ""}Moderators can suspend accounts below their own role; a

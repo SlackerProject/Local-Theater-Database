@@ -9,9 +9,10 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement, announcementContext, auditionOffer } from "@/lib/announcements";
 import { AnnouncementActions, AnnouncementText } from "@/components/Announcement";
 import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
+import { SiteUpdateNotice } from "@/components/SiteUpdateNotice";
 import { KeepAllButton, NotificationActions } from "./NotificationActions";
 
-export const metadata: Metadata = { title: "Notifications · Local Theater Database" };
+export const metadata: Metadata = { title: "Notifications" };
 
 export default function NotificationsPage() {
   return (
@@ -38,7 +39,7 @@ async function Notifications() {
   if (!user) redirect("/signin?next=/notifications");
 
   const supabase = await createClient();
-  const [{ data: rows }, { data: page }, { data: news }] = await Promise.all([
+  const [{ data: rows }, { data: page }, { data: news }, { data: siteUpdates }] = await Promise.all([
     supabase
       .from("notifications")
       .select("id, status, resolution, dispute_note, created_at, revision:revisions(id, entity_table, entity_id, action, before, after, changed_by, changed_at)")
@@ -54,7 +55,15 @@ async function Notifications() {
       .in("kind", [...ANNOUNCEMENT_KINDS])
       .order("created_at", { ascending: false })
       .limit(100),
+    supabase
+      .from("notifications")
+      .select("id, status, created_at, post:posts(slug, title, summary)")
+      .eq("user_id", user.id)
+      .eq("kind", "site_update")
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
+  const updates = (siteUpdates ?? []).filter((n) => n.post);
   const ctx = await announcementContext(
     supabase,
     user.id,
@@ -63,6 +72,26 @@ async function Notifications() {
 
   return (
     <>
+      {updates.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="heading">Site updates</h2>
+          <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
+            {updates.map((n) => (
+              <li key={n.id} className="flex gap-3 border-b border-rule py-4">
+                <span aria-hidden="true" className={`mt-2 h-2.5 w-2.5 flex-none rounded-full ${n.status === "unread" ? "bg-ink" : "bg-transparent"}`} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <SiteUpdateNotice id={n.id} slug={n.post!.slug} title={n.post!.title} summary={n.post!.summary} unread={n.status === "unread"} />
+                  <span className="text-sm text-muted">{formatWhen(n.created_at)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="m-0 text-sm text-muted">
+            Don’t want these? Turn them off in <Link href="/settings">Settings</Link>.
+          </p>
+        </section>
+      )}
+
       <section className="flex flex-col gap-3">
         <h2 className="heading">From people and companies you follow</h2>
         {news?.length ? (

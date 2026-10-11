@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 
-export const metadata: Metadata = { title: "Search · Local Theater Database" };
+export const metadata: Metadata = { title: "Search" };
 
 const GROUPS = [
   { kind: "people", heading: "People", path: "/person" },
@@ -50,9 +50,11 @@ async function Results({ searchParams }: Pick<PageProps<"/search">, "searchParam
     );
   }
 
+  // "Find your name" on the home page searches people only
+  const peopleOnly = (await searchParams).only === "people";
   const supabase = await createClient();
   const results = await Promise.all(
-    GROUPS.map(async (g) => {
+    GROUPS.filter((g) => !peopleOnly || g.kind === "people").map(async (g) => {
       const { data } = await supabase.rpc("lookup", { p_kind: g.kind, p_query: q, max_results: 20 });
       return { ...g, rows: data ?? [] };
     }),
@@ -67,7 +69,16 @@ async function Results({ searchParams }: Pick<PageProps<"/search">, "searchParam
           {total === 0
             ? "Nothing matches yet. Check the spelling, or try part of the name."
             : `${total} ${total === 1 ? "match" : "matches"}`}
+          {peopleOnly && (
+            <>
+              {" · People only · "}
+              <Link href={`/search?q=${encodeURIComponent(q)}`}>Search everything</Link>
+            </>
+          )}
         </p>
+        {peopleOnly && total > 0 && (
+          <p className="m-0 text-[15px]">Found yourself? Open your page and choose “Claim this page”.</p>
+        )}
       </div>
       {results
         .filter((g) => g.rows.length > 0)

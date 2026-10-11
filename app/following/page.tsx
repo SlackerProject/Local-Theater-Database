@@ -45,7 +45,7 @@ async function Following() {
   const prod = `id, slug, year, title_override, opening_date, closing_date,
     color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
     show:shows(title), organization:organizations(name)`;
-  const [{ data: watch }, { data: auditions }, { data: follows }] = await Promise.all([
+  const [{ data: watch }, { data: auditions }, { data: follows }, { data: myPage }] = await Promise.all([
     supabase
       .from("watch_list")
       .select(`status, updated_at, performance:performances(starts_at), production:productions(${prod})`)
@@ -61,14 +61,15 @@ async function Following() {
       .select("person:people(id, slug, display_name), organization:organizations(id, slug, name, town)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase.from("people").select("slug").eq("verified_owner_id", user.id).maybeSingle(),
   ]);
 
   const now = currentTime().toISOString();
   const shows = (watch ?? []).filter((w) => w.production?.show);
+  const seenCount = shows.filter((w) => w.status === "seen").length;
   const groups = [
     { status: "going", heading: "Going", empty: "When you choose “I’m going” on a performance, it will appear here." },
     { status: "want_to_see", heading: "Want to see", empty: "Press “Want to see” on a production page to save it here." },
-    { status: "seen", heading: "Seen", empty: "Shows you’ve seen will appear here." },
   ] as const;
   const people = (follows ?? []).flatMap((f) => (f.person ? [f.person] : []));
   const companies = (follows ?? []).flatMap((f) => (f.organization ? [f.organization] : []));
@@ -80,7 +81,19 @@ async function Following() {
       </p>
 
       <section className="flex flex-col gap-6">
-        <h2 className="heading">Your shows</h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="heading">Your shows</h2>
+          <p className="m-0 text-[15px] text-muted">
+            You’ve seen <strong className="text-ink">{seenCount}</strong> {seenCount === 1 ? "production" : "productions"}
+            {myPage ? (
+              <>
+                {" "}
+                (shown on <Link href={`/person/${myPage.slug}`}>your page</Link>)
+              </>
+            ) : null}
+            . Mark one by answering “Did you see it?” on its page after it closes.
+          </p>
+        </div>
         {groups.map((g) => {
           const items = shows.filter((w) => w.status === g.status);
           return (

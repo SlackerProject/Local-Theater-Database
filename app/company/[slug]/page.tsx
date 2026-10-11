@@ -8,6 +8,7 @@ import { mediaUrl } from "@/lib/media";
 import { getCurrentUser } from "@/lib/auth";
 import { FollowButton } from "@/components/FollowButton";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
+import { SuggestEdit } from "@/components/SuggestEdit";
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -124,6 +125,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
           </section>
         </aside>
       </div>
+      <SuggestEdit table="organizations" id={org.id} path={`/company/${slug}`} signedIn={!!user} />
       <ModeratorDeleteSection table="organizations" id={org.id} name={org.name} afterDelete="/companies" />
     </>
   );

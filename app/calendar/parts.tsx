@@ -35,6 +35,8 @@ export type Run = {
   because: string | null; // "Jane Doe is in this"
   poster: string | null;
   venue: string | null;
+  // Each performance (or, without a schedule, opening night)
+  nights: { id: string; date: string; startsAt: string | null }[];
 };
 
 export type Going = {
@@ -55,12 +57,13 @@ export type AuditionEvent = {
   place: string | null;
 };
 
-const auditionChip =
-  "link-quiet mx-1 mt-0.5 flex h-[26px] items-center overflow-hidden whitespace-nowrap rounded-md border border-dotted border-ink bg-soft px-2 text-[12.5px] font-bold";
+const chipBase =
+  "link-quiet flex min-h-[26px] items-center gap-[5px] overflow-hidden whitespace-nowrap rounded-md px-2 text-[12.5px] font-bold";
 
 // ---------------------------------------------------------------------
-// One week of the desktop grid: day numbers, then bars in lanes, then
-// going chips, then audition sessions
+// One week of the desktop grid: each day lists its performances as chips
+// in the show's colors. The night you're going is outlined in ink with a
+// check; runs with people you follow are dashed; auditions are dotted.
 // ---------------------------------------------------------------------
 export function Week({
   week,
@@ -77,104 +80,72 @@ export function Week({
   going: Going[];
   auditions?: AuditionEvent[];
 }) {
-  const [start, end] = [week[0], week[6]];
-  const segments = runs
-    .filter((r) => r.start <= end && r.end >= start)
-    .map((r) => {
-      const from = r.start > start ? r.start : start;
-      const to = r.end < end ? r.end : end;
-      return { r, col: daysBetween(start, from) + 1, span: daysBetween(from, to) + 1, opens: r.start >= start, closes: r.end <= end };
-    });
-
-  // Greedy lanes: each bar takes the first row where it doesn't overlap
-  const lanes: number[][] = [];
-  const placed = segments.map((s) => {
-    let lane = lanes.findIndex((cols) => cols.every((c) => c < s.col || c >= s.col + s.span));
-    if (lane === -1) lane = lanes.push([]) - 1;
-    for (let c = s.col; c < s.col + s.span; c++) lanes[lane].push(c);
-    return { ...s, lane };
-  });
-  const chips = going.filter((g) => g.date >= start && g.date <= end);
-  const sessions = auditions.filter((a) => a.date >= start && a.date <= end);
-  const chipRow = 2 + lanes.length;
-  const auditionRow = chipRow + (chips.length ? 1 : 0);
-  const rows = 1 + lanes.length + (chips.length ? 1 : 0) + (sessions.length ? 1 : 0);
+  const goingIds = new Set(going.map((g) => g.performanceId));
 
   return (
-    <div className="grid min-h-[124px] grid-cols-7 content-start gap-y-1 border-t border-rule pb-2.5">
-      {[2, 3, 4, 5, 6, 7].map((c) => (
-        <div key={c} aria-hidden="true" className="border-l border-rule" style={{ gridColumn: c, gridRow: `1 / ${rows + 1}` }} />
-      ))}
+    <div className="grid min-h-[124px] grid-cols-7 border-t border-rule">
       {week.map((d, i) => {
         const inMonth = d.startsWith(month);
         const isToday = d === today;
+        // Going first, then saved shows, then runs with people you follow
+        const nights = runs
+          .flatMap((r) => r.nights.filter((n) => n.date === d).map((n) => ({ r, n, going: goingIds.has(n.id) })))
+          .sort((a, b) => Number(b.going) - Number(a.going) || Number(a.r.followed) - Number(b.r.followed) || (a.n.startsAt ?? "").localeCompare(b.n.startsAt ?? ""));
+        const sessions = auditions.filter((a) => a.date === d);
         return (
-          <div key={d} className="px-2 pb-0.5 pt-1.5 text-sm font-semibold" style={{ gridColumn: i + 1, gridRow: 1, color: inMonth ? "#141414" : "#ABABAB" }}>
-            <span
-              className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${isToday ? "bg-ink text-white" : ""}`}
-              aria-current={isToday ? "date" : undefined}
-            >
-              {Number(d.slice(8))}
-            </span>
+          <div key={d} className={`flex min-w-0 flex-col gap-1 px-1 pb-2 ${i ? "border-l border-rule" : ""}`}>
+            <div className="px-1 pt-1.5 text-sm font-semibold" style={{ color: inMonth ? "#141414" : "#ABABAB" }}>
+              <span
+                className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${isToday ? "bg-ink text-white" : ""}`}
+                aria-current={isToday ? "date" : undefined}
+              >
+                {Number(d.slice(8))}
+              </span>
+            </div>
+            {nights.map(({ r, n, going: isGoing }) => {
+              const sw = swatch(r.colors);
+              const time = n.startsAt ? localTime(n.startsAt) : null;
+              const style: React.CSSProperties = isGoing
+                ? { background: sw.background, color: sw.ink, border: "2px solid #141414", minHeight: 30 }
+                : r.followed
+                  ? { background: "#FFFFFF", color: "#5E5E5E", border: "1.5px dashed #A8A8A8" }
+                  : { background: sw.background, color: sw.ink, border: `1px solid ${sw.borderColor}` };
+              return (
+                <Link
+                  key={n.id}
+                  href={`/production/${r.slug}`}
+                  title={`${isGoing ? "You’re going: " : ""}${r.title} · ${r.company}${time ? ` · ${time}` : ""}${r.because ? ` · ${r.because}` : ""}`}
+                  className={chipBase}
+                  style={style}
+                >
+                  {isGoing && (
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-none">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  )}
+                  <span className="flex min-w-0 flex-col py-0.5 leading-tight">
+                    <span className="overflow-hidden text-ellipsis">{r.showTitle}</span>
+                    <span className="text-[11.5px] font-semibold">{isGoing ? `Going · ${time}` : (time ?? "Opens")}</span>
+                  </span>
+                </Link>
+              );
+            })}
+            {sessions.map((a) => (
+              <Link
+                key={a.id}
+                href={`/production/${a.slug}`}
+                title={`Auditions: ${a.title} · ${localTime(a.startsAt)}${a.place ? ` · ${a.place}` : ""}`}
+                className={`${chipBase} border border-dotted border-ink bg-soft`}
+              >
+                <span className="flex min-w-0 flex-col py-0.5 leading-tight">
+                  <span className="overflow-hidden text-ellipsis">{a.showTitle}</span>
+                  <span className="text-[11.5px] font-semibold">Auditions · {localTime(a.startsAt)}</span>
+                </span>
+              </Link>
+            ))}
           </div>
         );
       })}
-      {placed.map(({ r, col, span, opens, closes, lane }) => {
-        const sw = swatch(r.colors);
-        const style: React.CSSProperties = r.followed
-          ? { background: "#FFFFFF", color: "#5E5E5E", border: "1.5px dashed #A8A8A8" }
-          : { background: sw.background, color: sw.ink, border: `1px solid ${sw.borderColor}` };
-        if (!opens) style.borderLeft = 0;
-        if (!closes) style.borderRight = 0;
-        return (
-          <Link
-            key={r.id}
-            href={`/production/${r.slug}`}
-            title={`${r.title} · ${r.company} · ${shortDate(r.start)} – ${shortDate(r.end)}`}
-            className="link-quiet flex h-[26px] items-center overflow-hidden text-ellipsis whitespace-nowrap px-2 text-[12.5px] font-bold"
-            style={{
-              ...style,
-              gridColumn: `${col} / span ${span}`,
-              gridRow: lane + 2,
-              marginLeft: opens ? 4 : 0,
-              marginRight: closes ? 4 : 0,
-              borderRadius: `${opens ? 6 : 0}px ${closes ? 6 : 0}px ${closes ? 6 : 0}px ${opens ? 6 : 0}px`,
-            }}
-          >
-            <span className="overflow-hidden text-ellipsis">{r.followed ? `${r.showTitle} · ${r.company}` : r.title}</span>
-          </Link>
-        );
-      })}
-      {chips.map((g) => {
-        const sw = swatch(g.run.colors);
-        return (
-          <Link
-            key={g.performanceId}
-            href={`/production/${g.run.slug}`}
-            title={`You’re going: ${g.run.title}`}
-            className="link-quiet mx-1 mt-0.5 flex h-[30px] items-center gap-[5px] overflow-hidden whitespace-nowrap rounded-md border-2 border-ink px-2 text-[12.5px] font-bold"
-            style={{ gridColumn: dayOfWeek(g.date) + 1, gridRow: chipRow, background: sw.background, color: sw.ink }}
-          >
-            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-none">
-              <path d="M5 12.5l4.5 4.5L19 7.5" />
-            </svg>
-            <span className="overflow-hidden text-ellipsis">Going · {localTime(g.startsAt)}</span>
-          </Link>
-        );
-      })}
-      {sessions.map((a) => (
-        <Link
-          key={a.id}
-          href={`/production/${a.slug}`}
-          title={`Auditions: ${a.title} · ${localTime(a.startsAt)}${a.place ? ` · ${a.place}` : ""}`}
-          className={auditionChip}
-          style={{ gridColumn: dayOfWeek(a.date) + 1, gridRow: auditionRow }}
-        >
-          <span className="overflow-hidden text-ellipsis">
-            Auditions · {a.showTitle} · {localTime(a.startsAt)}
-          </span>
-        </Link>
-      ))}
     </div>
   );
 }
@@ -196,7 +167,7 @@ export function AuditionRowItem({ a }: { a: AuditionEvent }) {
 }
 
 // ---------------------------------------------------------------------
-// Phone: compact month with a dot per run on each day
+// Phone: compact month with a dot for each show performing that day
 // ---------------------------------------------------------------------
 export function MiniMonth({
   weeks,
@@ -225,7 +196,7 @@ export function MiniMonth({
       {weeks.flat().map((d) => {
         const inMonth = d.startsWith(month);
         const g = goingByDay.get(d);
-        const dayRuns = inMonth ? runs.filter((r) => r.start <= d && r.end >= d) : [];
+        const dayRuns = inMonth ? runs.filter((r) => r.nights.some((n) => n.date === d)) : [];
         const isToday = d === today;
         const sw = g && swatch(g.run.colors);
         const day = (

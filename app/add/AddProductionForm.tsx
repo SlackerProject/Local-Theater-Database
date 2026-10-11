@@ -158,16 +158,24 @@ function parseCastList(text: string): { role: string; person: string }[] {
 // ---------------------------------------------------------------------
 // The form
 // ---------------------------------------------------------------------
-export function AddProductionForm({ initial, defaultYear }: { initial: FormState | null; defaultYear: string }) {
+export function AddProductionForm({
+  initial,
+  defaultYear,
+  addingTo = false,
+}: {
+  initial: FormState | null;
+  defaultYear: string;
+  addingTo?: boolean; // opened from a production page's "Add cast, crew, dates or a poster"
+}) {
   const [state, setState] = useState<FormState>(initial ?? emptyFormState(defaultYear));
-  const [tab, setTab] = useState<"cast" | "crew">("cast");
+  const [tab, setTab] = useState<"cast" | "crew">(addingTo ? "crew" : "cast");
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(
     initial?.resubmissionOf
       ? "Here’s what needs fixing. Make your changes, then submit for review again."
-      : initial
+      : initial && !addingTo
         ? "Picked up where you left off from your saved draft."
         : null,
   );
@@ -351,8 +359,9 @@ export function AddProductionForm({ initial, defaultYear }: { initial: FormState
             <h2 id="s-live" className="heading">Adding to a live production</h2>
             <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{live.label}</p>
             <p className="m-0 text-[15px] text-muted">
-              These are the items a moderator didn’t approve last time. Fix what’s needed and submit them again;
-              once approved they’re added to this production.
+              {state.resubmissionOf
+                ? "These are the items a moderator didn’t approve last time. Fix what’s needed and submit them again; once approved they’re added to this production."
+                : "Add anyone missing from the cast or creative team, more performance dates, or a poster. Fill in only what you know; a moderator reviews it, then it’s added to this production."}
             </p>
           </section>
         )}

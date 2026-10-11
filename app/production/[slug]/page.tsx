@@ -15,6 +15,7 @@ import { Auditions, type AuditionRow } from "./Auditions";
 import { siteOrigin } from "@/lib/site";
 import { HeroActions, type PerformanceRow } from "./HeroActions";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
+import { SuggestEdit } from "@/components/SuggestEdit";
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {
   return (
@@ -345,7 +346,12 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
               <h2 className="heading">Creative team</h2>
             </div>
             {crew.length === 0 ? (
-              <p className="m-0 pt-3 text-muted">The creative team will appear here once it’s added.</p>
+              <p className="m-0 pt-3 text-muted">
+                The creative team will appear here once it’s added.{" "}
+                <Link href={user ? `/add?to=${p.id}` : signInHref} className="font-semibold text-ink">
+                  Know who’s directing? Add them
+                </Link>
+              </p>
             ) : (
               crew.map((x) => (
                 <div key={x.id} className="flex justify-between gap-4 border-b border-rule py-3">
@@ -358,6 +364,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
             )}
           </section>
 
+          <SuggestEdit table="productions" id={p.id} path={path} signedIn={!!user} addToHref={`/add?to=${p.id}`} />
           <ModeratorDeleteSection table="productions" id={p.id} name={`${title} (${p.year})`} afterDelete="/shows" />
         </div>
 

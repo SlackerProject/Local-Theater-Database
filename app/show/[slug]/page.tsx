@@ -5,6 +5,8 @@ import { SHOW_TYPES } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PosterTile } from "@/components/PosterTile";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
+import { SuggestEdit } from "@/components/SuggestEdit";
+import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
 
 export default function ShowPage({ params }: PageProps<"/show/[slug]">) {
@@ -35,6 +37,7 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
     .maybeSingle();
 
   if (!show) notFound();
+  const user = await getCurrentUser();
 
   const typeLabel = SHOW_TYPES.find((t) => t.value === show.type)?.label;
   const about = [show.subtitle, typeLabel, show.authors, show.premiere_year && `First produced ${show.premiere_year}`]
@@ -74,6 +77,7 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
           </div>
         )}
       </section>
+      <SuggestEdit table="shows" id={show.id} path={`/show/${slug}`} signedIn={!!user} />
       <ModeratorDeleteSection table="shows" id={show.id} name={show.title} afterDelete="/shows" />
     </>
   );

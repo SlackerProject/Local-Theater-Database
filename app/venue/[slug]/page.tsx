@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
+import { SuggestEdit } from "@/components/SuggestEdit";
+import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
 
 export default function VenuePage({ params }: PageProps<"/venue/[slug]">) {
@@ -36,6 +38,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
     .maybeSingle();
 
   if (!venue) notFound();
+  const user = await getCurrentUser();
 
   const address = [venue.street_address, venue.town, [venue.state, venue.postal_code].filter(Boolean).join(" ")]
     .filter(Boolean)
@@ -100,6 +103,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
           )}
         </aside>
       </div>
+      <SuggestEdit table="locations" id={venue.id} path={`/venue/${slug}`} signedIn={!!user} />
       <ModeratorDeleteSection table="locations" id={venue.id} name={venue.name} afterDelete="/" />
     </>
   );

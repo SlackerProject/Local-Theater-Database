@@ -4,13 +4,13 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { looksLikeFormState } from "@/lib/submission";
+import { emptyCredit, emptyFormState, looksLikeFormState } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AddProductionForm } from "./AddProductionForm";
 
 export const metadata: Metadata = { title: "Add a production · Local Theater Database" };
 
-export default function AddProductionPage() {
+export default function AddProductionPage({ searchParams }: PageProps<"/add">) {
   return (
     <>
       <SiteHeader />
@@ -27,7 +27,7 @@ export default function AddProductionPage() {
           </Link>
         </div>
         <Suspense fallback={<p className="text-muted">Loading the form…</p>}>
-          <FormForSignedInMember />
+          <FormForSignedInMember searchParams={searchParams} />
         </Suspense>
       </main>
       <SiteFooter />
@@ -35,11 +35,35 @@ export default function AddProductionPage() {
   );
 }
 
-async function FormForSignedInMember() {
+async function FormForSignedInMember({ searchParams }: Pick<PageProps<"/add">, "searchParams">) {
+  const { to } = await searchParams;
+  const addTo = typeof to === "string" && /^[0-9a-f-]{36}$/i.test(to) ? to : null;
   const user = await getCurrentUser();
-  if (!user) redirect("/signin?next=/add");
+  if (!user) redirect(`/signin?next=${encodeURIComponent(addTo ? `/add?to=${addTo}` : "/add")}`);
 
   const supabase = await createClient();
+  const defaultYear = new Date().toLocaleDateString("en-US", { year: "numeric", timeZone: "America/New_York" });
+
+  // "Add cast, crew, dates or a poster" from a production page: start a
+  // fresh form for that production (any saved draft is left alone)
+  if (addTo) {
+    const { data: p } = await supabase
+      .from("productions")
+      .select("id, year, title_override, location_id, show:shows(title)")
+      .eq("id", addTo)
+      .maybeSingle();
+    if (p?.show) {
+      const initial = emptyFormState(defaultYear);
+      initial.existingProduction = {
+        id: p.id,
+        label: `${p.title_override ?? p.show.title} (${p.year})`,
+        hasLocation: !!p.location_id,
+      };
+      initial.credits = [emptyCredit("crew", "c0"), emptyCredit("cast", "c1")];
+      return <AddProductionForm initial={initial} defaultYear={defaultYear} addingTo />;
+    }
+  }
+
   const { data: draft } = await supabase
     .from("submission_drafts")
     .select("data")
@@ -47,6 +71,5 @@ async function FormForSignedInMember() {
     .maybeSingle();
 
   const initial = draft && looksLikeFormState(draft.data) ? draft.data : null;
-  const defaultYear = new Date().toLocaleDateString("en-US", { year: "numeric", timeZone: "America/New_York" });
   return <AddProductionForm initial={initial} defaultYear={defaultYear} />;
 }

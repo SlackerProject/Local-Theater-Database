@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { hasRole, type CurrentUser } from "@/lib/auth";
 import { describeChanges, type Revision } from "@/lib/changes";
-import { AuditionButtons, ClaimButtons, DisputeButtons, SuggestionButtons } from "./ModerationButtons";
+import { AuditionButtons, ClaimButtons, DisputeButtons, PageSuggestionButtons, SuggestionButtons } from "./ModerationButtons";
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
@@ -202,6 +202,75 @@ export async function AuditionsSection() {
               </a>
             )}
             <AuditionButtons id={p.id} />
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------
+// "Suggest an edit" notes on production, company, show and venue pages
+// ---------------------------------------------------------------------
+const PAGE_KINDS = {
+  productions: { noun: "production", path: "production" },
+  organizations: { noun: "company", path: "company" },
+  shows: { noun: "show", path: "show" },
+  locations: { noun: "venue", path: "venue" },
+} as const;
+
+export async function PageSuggestionsSection() {
+  const supabase = await createClient();
+  const { data: suggestions } = await supabase
+    .from("edit_proposals")
+    .select("id, entity_table, entity_id, note, created_at, proposer:profiles!edit_proposals_proposed_by_fkey(username, display_name)")
+    .in("entity_table", Object.keys(PAGE_KINDS))
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  // Look up each page's name and address
+  const ids = (t: string) => (suggestions ?? []).filter((s) => s.entity_table === t && s.entity_id).map((s) => s.entity_id!);
+  const [prods, orgs, shows, venues] = await Promise.all([
+    ids("productions").length
+      ? supabase.from("productions").select("id, slug, year, title_override, show:shows(title)").in("id", ids("productions"))
+      : Promise.resolve({ data: [] }),
+    ids("organizations").length ? supabase.from("organizations").select("id, slug, name").in("id", ids("organizations")) : Promise.resolve({ data: [] }),
+    ids("shows").length ? supabase.from("shows").select("id, slug, title").in("id", ids("shows")) : Promise.resolve({ data: [] }),
+    ids("locations").length ? supabase.from("locations").select("id, slug, name").in("id", ids("locations")) : Promise.resolve({ data: [] }),
+  ]);
+  const pages = new Map<string, { slug: string; label: string }>();
+  for (const p of prods.data ?? []) pages.set(p.id, { slug: p.slug, label: `${p.title_override ?? p.show?.title} (${p.year})` });
+  for (const o of orgs.data ?? []) pages.set(o.id, { slug: o.slug, label: o.name });
+  for (const s of shows.data ?? []) pages.set(s.id, { slug: s.slug, label: s.title });
+  for (const v of venues.data ?? []) pages.set(v.id, { slug: v.slug, label: v.name });
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="heading">Suggested edits</h2>
+      {!suggestions?.length && <p className="m-0 text-muted">No suggested edits waiting for review.</p>}
+      {suggestions?.map((s) => {
+        const kind = PAGE_KINDS[s.entity_table as keyof typeof PAGE_KINDS];
+        const page = s.entity_id ? pages.get(s.entity_id) : undefined;
+        return (
+          <article key={s.id} className={item}>
+            <p className="m-0 text-lg">
+              <strong>{s.proposer?.display_name}</strong> suggests an edit to{" "}
+              {page ? (
+                <Link href={`/${kind.path}/${page.slug}`} className="font-bold">
+                  {page.label}
+                </Link>
+              ) : (
+                `a ${kind.noun} that no longer exists`
+              )}
+              <span className="text-muted"> ({kind.noun})</span>.
+            </p>
+            <span className="text-sm text-muted">Sent {when(s.created_at)}</span>
+            {s.note && <p className="callout m-0 whitespace-pre-line text-[15px]">{s.note}</p>}
+            <p className="m-0 text-sm text-muted">
+              Make the change yourself, then mark this done. Cast and crew can be added through “Add cast, crew, dates or a
+              poster” on the production page.
+            </p>
+            <PageSuggestionButtons id={s.id} />
           </article>
         );
       })}

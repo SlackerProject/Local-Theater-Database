@@ -88,6 +88,11 @@ export async function reviewSuggestion(id: string, approve: boolean, note = ""):
   return call(() => supabase.rpc("approve_person_edit", { p_proposal_id: id, p_approve: approve, p_note: note }));
 }
 
+export async function resolveSuggestion(id: string, done: boolean, note = ""): Promise<Done> {
+  const supabase = await createClient();
+  return call(() => supabase.rpc("resolve_suggestion", { p_proposal_id: id, p_done: done, p_note: note }));
+}
+
 export async function reviewAuditions(id: string, approve: boolean, note = ""): Promise<Done> {
   const supabase = await createClient();
   return call(() => supabase.rpc("review_auditions", { p_proposal_id: id, p_approve: approve, p_note: note }));

@@ -58,7 +58,7 @@ export function Auditions({
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
         <h2 className="heading">Auditions</h2>
-        {precast && <span className="tag">Now casting</span>}
+        {precast && <span className="tag">Casting soon</span>}
       </div>
 
       {sessions.length ? (

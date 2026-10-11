@@ -72,11 +72,17 @@ const PROD_SELECT = `id, slug, year, title_override, opening_date, closing_date,
 
 function toRun(p: ProdRow, followed: boolean, because: string | null): Run | null {
   if (!p.show || p.is_hidden) return null;
-  const dates = p.performances.filter((x) => !x.is_cancelled).map((x) => localDate(x.starts_at)).sort();
+  const performances = p.performances
+    .filter((x) => !x.is_cancelled)
+    .map((x) => ({ id: x.id, date: localDate(x.starts_at), startsAt: x.starts_at as string | null }))
+    .sort((a, b) => a.startsAt!.localeCompare(b.startsAt!));
+  const dates = performances.map((x) => x.date);
   const start = p.opening_date ?? dates[0];
   const end = p.closing_date ?? dates.at(-1) ?? start;
   if (!start || !end) return null;
   const showTitle = p.title_override ?? p.show.title;
+  // Without a schedule yet, mark opening night so the run still shows up
+  const nights = performances.length ? performances : [{ id: `${p.id}-opening`, date: start, startsAt: null }];
   return {
     id: p.id,
     slug: p.slug,
@@ -90,6 +96,7 @@ function toRun(p: ProdRow, followed: boolean, because: string | null): Run | nul
     because,
     poster: mediaUrl(p.poster?.thumb_key),
     venue: p.location ? [p.location.name, p.location.town].filter(Boolean).join(", ") : null,
+    nights,
   };
 }
 
@@ -265,7 +272,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
       <div className="hidden flex-wrap gap-x-6 gap-y-2 text-sm md:flex">
         <span className="inline-flex items-center gap-2">
           <span aria-hidden="true" className="h-3.5 w-7 rounded-[3px] border" style={{ background: "#F3E0C8", borderColor: "#978B7C" }} />
-          Shows you saved, in each poster’s colors
+          Performances of shows you saved, in each poster’s colors
         </span>
         <span className="inline-flex items-center gap-2">
           <span aria-hidden="true" className="h-3.5 w-7 rounded-[3px] border-2 border-ink" style={{ background: "#F3E0C8" }} />
@@ -273,7 +280,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
         </span>
         <span className="inline-flex items-center gap-2">
           <span aria-hidden="true" className="h-3.5 w-7 rounded-[3px] border-[1.5px] border-dashed border-[#A8A8A8]" />
-          Runs with people you follow
+          Shows with people you follow
         </span>
         <span className="inline-flex items-center gap-2">
           <span aria-hidden="true" className="h-3.5 w-7 rounded-[3px] border border-dotted border-ink bg-soft" />

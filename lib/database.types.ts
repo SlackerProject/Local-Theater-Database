@@ -1597,6 +1597,10 @@ export type Database = {
         Args: { p_id: string; p_undo: boolean }
         Returns: undefined
       }
+      resolve_suggestion: {
+        Args: { p_done: boolean; p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
       respond_notification: {
         Args: { p_id: string; p_keep: boolean; p_note?: string }
         Returns: undefined
@@ -1624,6 +1628,7 @@ export type Database = {
           slug: string
         }[]
       }
+      seen_count: { Args: { p_person_id: string }; Returns: number }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       slugify: { Args: { p_text: string }; Returns: string }

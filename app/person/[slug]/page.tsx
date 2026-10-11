@@ -92,6 +92,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
     { count: unread },
     { data: followers },
     { data: myFollow },
+    { data: seen },
   ] = await Promise.all([
       supabase.rpc("frequent_collaborators", { p_person_id: person.id }),
       person.verified_owner_id
@@ -114,6 +115,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
       user && !isOwner
         ? supabase.from("follows").select("id").eq("user_id", user.id).eq("person_id", person.id).maybeSingle()
         : Promise.resolve({ data: null }),
+      person.verified_owner_id ? supabase.rpc("seen_count", { p_person_id: person.id }) : Promise.resolve({ data: 0 }),
     ]);
 
   const headshot = person.headshot;
@@ -273,6 +275,14 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             {isOwner && (
               <p className="m-0 text-sm text-muted">
                 {followers ?? 0} {followers === 1 ? "follower" : "followers"}
+              </p>
+            )}
+            {!!seen && (
+              <p className="m-0 text-[15px]">
+                <span>
+                  <strong>Seen {seen}</strong> {seen === 1 ? "production" : "productions"}
+                  {isOwner && <span className="text-muted"> · from “Did you see it?” on production pages</span>}
+                </span>
               </p>
             )}
             {editing && (
@@ -466,6 +476,21 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             <HidePageButton slug={person.slug} />
           </section>
         )}
+        {!isOwner &&
+          !myClaim &&
+          (user ? (
+            <section className="flex flex-col items-stretch gap-1 border-t border-rule pt-5 text-[15px] text-muted">
+              Spot something wrong or missing?
+              <SuggestCorrection personId={person.id} slug={person.slug} currentName={person.display_name} label="Suggest an edit" />
+            </section>
+          ) : (
+            <p className="m-0 border-t border-rule pt-5 text-[15px] text-muted">
+              Spot something wrong or missing?{" "}
+              <Link href={`/signin?next=${encodeURIComponent(pagePath)}`} className="font-semibold text-ink">
+                Sign in to suggest an edit
+              </Link>
+            </p>
+          ))}
         <ModeratorDeleteSection table="people" id={person.id} name={person.display_name} afterDelete="/people" />
       </main>
     </>

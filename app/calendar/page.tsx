@@ -249,10 +249,11 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
 
   return (
     <>
-      {/* Title and month navigation */}
+      {/* Title and month navigation. The arrows never move as the month's
+          name changes length: pinned right on phones, first on desktop. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="m-0 text-[30px] font-extrabold leading-none tracking-[-0.02em] md:text-[40px]">{monthName(month)}</h1>
-        <div className="ml-auto flex items-center gap-2 md:ml-2">
+        <h1 className="order-1 m-0 text-[30px] font-extrabold leading-none tracking-[-0.02em] md:order-2 md:text-[40px]">{monthName(month)}</h1>
+        <div className="order-2 ml-auto flex items-center gap-2 md:order-1 md:ml-0">
           <Link href={href(shiftMonth(month, -1))} aria-label="Previous month" className="link-quiet flex h-11 w-11 items-center justify-center rounded-lg border-[1.5px] border-rule">
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 6l-6 6 6 6" />

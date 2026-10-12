@@ -8,10 +8,9 @@ import {
   displayTitle,
   emptyCredit,
   emptyFormState,
-  isBlankCredit,
   newId,
+  personNameKey,
   summarize,
-  type Choice,
   type CreditRow,
   type FormState,
   type Match,
@@ -19,13 +18,14 @@ import {
   type ShowType,
 } from "@/lib/submission";
 import { discardDraft, saveDraft, submitProduction } from "./actions";
-import { NewPill, PickedLine, TypeAhead, lookup } from "./TypeAhead";
+import { NewPill, PickedLine, TypeAhead } from "./TypeAhead";
 import { PosterField } from "@/components/uploads/UploadPanels";
 import { ShareWithCast } from "@/components/ShareWithCast";
-import { PositionSelect } from "@/components/PositionSelect";
 import { TownPicker } from "@/components/TownPicker";
 import { SERVICE_AREA, SITE_NAME } from "@/lib/brand";
-import { readUnderstudy } from "@/lib/credits";
+import { readUnderstudy, splitRoles } from "@/lib/credits";
+import type { CreditAdd } from "@/lib/corrections";
+import { CastEditor, CrewEditor, type CreditEdits, type CreditOps } from "@/app/edit/[kind]/[slug]/CreditsEditor";
 import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------
@@ -160,27 +160,6 @@ function addDays(date: string, days: number) {
 
 const byDateTime = (a: Performance, b: Performance) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
 
-// "Role: Name", "Role<tab>Name", "Role - Name" or "Role, Name", one per line.
-// The name is after the last colon (or tab, or dash), so roles can hold
-// commas and dashes: "Mrs. Jefferson, Bohemian: Wynter Williams",
-// "Understudy - Joanne Jefferson: Wynter Williams".
-function parseCastList(text: string): { role: string; person: string }[] {
-  const at = (line: string, re: RegExp) => {
-    const all = [...line.matchAll(re)];
-    const m = all.at(-1);
-    return m && m.index ? { role: line.slice(0, m.index).trim(), person: line.slice(m.index + m[0].length).trim() } : null;
-  };
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const split = at(line, /\s*[:\t]\s*/g) ?? at(line, /\s[-–—]\s/g) ?? line.match(/^(.+?)\s*,\s*(.+)$/)?.slice(1);
-      if (Array.isArray(split)) return { role: split[0].trim(), person: split[1].trim() };
-      return split && split.role && split.person ? split : { role: "", person: line };
-    });
-}
-
 // ---------------------------------------------------------------------
 // The form
 // ---------------------------------------------------------------------
@@ -193,11 +172,13 @@ export function AddProductionForm({
   defaultYear: string;
   addingTo?: boolean; // opened from a production page's "Add cast, crew, dates or a poster"
 }) {
-  const [state, setState] = useState<FormState>(initial ?? emptyFormState(defaultYear));
-  // Which list (cast or creative team) the "Paste a whole list" box is for
-  const [tab, setTab] = useState<"cast" | "crew">(addingTo ? "crew" : "cast");
-  const [pasteOpen, setPasteOpen] = useState(false);
-  const [pasteText, setPasteText] = useState("");
+  // One row per role (older drafts held several in one Role box)
+  const [state, setState] = useState<FormState>(() => {
+    const s = initial ?? emptyFormState(defaultYear);
+    return { ...s, credits: oneRolePerRow(s.credits) };
+  });
+  // The location filled in from the company's usual venue, to say so beside it
+  const [autoVenue, setAutoVenue] = useState<{ id: string; company: string } | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(
     initial?.resubmissionOf
@@ -214,40 +195,9 @@ export function AddProductionForm({
   const summary = summarize(state);
   const title = displayTitle(state);
 
-  // ----- credits -----
-  const setCredit = (id: string, patch: Partial<CreditRow>) =>
-    update((s) => ({ ...s, credits: s.credits.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
-
-  async function checkPeople(rows: CreditRow[]) {
-    for (const row of rows) {
-      const matches = await lookup("people", row.person);
-      setCredit(row.id, { choice: matches.length ? { kind: "suggest", match: matches[0] } : { kind: "new" } });
-    }
-  }
-
-  function addPastedRows() {
-    const parsed = parseCastList(pasteText);
-    if (!parsed.length) return;
-    // One row per person (and per person's understudy roles): "Mrs. Jefferson"
-    // and "Bohemian" for the same name become "Mrs. Jefferson, Bohemian"
-    const rows: CreditRow[] = [];
-    for (const { role, person } of parsed) {
-      const read = readUnderstudy(role);
-      const understudy = tab === "cast" && read.understudy;
-      const text = tab === "cast" ? read.text : role;
-      const same = person && rows.find((r) => r.person.toLowerCase() === person.toLowerCase() && !!r.understudy === understudy);
-      if (same && tab === "cast") same.role = [same.role, text].filter(Boolean).join(", ");
-      else rows.push({ ...emptyCredit(tab), role: text, person, ...(understudy && { understudy: true }) });
-    }
-    update((s) => ({ ...s, credits: [...s.credits.filter((c) => !(c.kind === tab && isBlankCredit(c))), ...rows] }));
-    setPasteText("");
-    setPasteOpen(false);
-    void checkPeople(rows.filter((r) => r.person));
-  }
-
-  // An existing show: fill the cast with its known roles (people left blank).
-  // Rows that already name someone stay; empty rows are replaced, and roles
-  // already filled aren't repeated. Unfilled rows are skipped on submit.
+  // An existing show: list its known roles as "not cast yet" (cast rows
+  // without a person). Rows that already name someone stay; empty rows are
+  // replaced, and roles already filled aren't repeated.
   async function prefillRoles(show: Match) {
     const { data } = await createClient()
       .from("show_characters")
@@ -268,11 +218,43 @@ export function AddProductionForm({
       return { ...s, credits: [...keep, ...roles.map((role) => ({ ...emptyCredit("cast"), role }))] };
     });
     if (added) {
-      setTab("cast");
       setNotice(
-        `Added ${added} ${added === 1 ? "role" : "roles"} from ${show.label}. Fill in who played each one; roles left blank are skipped.`,
+        `Listed ${added} ${added === 1 ? "role" : "roles"} from ${show.label} under Cast. Press “Add person” beside each one you know; the rest stay “not cast yet”.`,
       );
     }
+  }
+
+  // A company picked from the list: fill in the venue it uses most, unless
+  // a location is already chosen. One less thing to look up.
+  async function fillUsualVenue(company: Match) {
+    const { data } = await createClient()
+      .from("productions")
+      .select("location:locations(id, slug, name, street_address, town, state)")
+      .eq("organization_id", company.id)
+      .not("location_id", "is", null);
+    const tally = new Map<string, { n: number; loc: NonNullable<NonNullable<typeof data>[number]["location"]> }>();
+    for (const r of data ?? []) {
+      if (!r.location) continue;
+      const t = tally.get(r.location.id) ?? { n: 0, loc: r.location };
+      t.n++;
+      tally.set(r.location.id, t);
+    }
+    const top = [...tally.values()].sort((a, b) => b.n - a.n)[0]?.loc;
+    if (!top) return;
+    const match: Match = {
+      id: top.id,
+      slug: top.slug,
+      label: top.name,
+      detail: [top.street_address, top.town, top.state].filter(Boolean).join(", "),
+    };
+    // Picking the company doesn't touch the location, so this is still current
+    if (state.location.choice.kind !== "none" || state.location.query.trim()) return;
+    update((s) =>
+      s.location.choice.kind !== "none" || s.location.query.trim()
+        ? s
+        : { ...s, location: { ...s.location, query: match.label, choice: { kind: "existing", match }, editing: false } },
+    );
+    setAutoVenue({ id: top.id, company: company.label });
   }
 
   // ----- performances -----
@@ -498,9 +480,10 @@ export function AddProductionForm({
               onQueryChange={(query) =>
                 update((s) => ({ ...s, organization: { ...s.organization, query, choice: { kind: "none" }, editing: true } }))
               }
-              onPick={(match) =>
-                update((s) => ({ ...s, organization: { ...s.organization, query: match.label, choice: { kind: "existing", match } } }))
-              }
+              onPick={(match) => {
+                update((s) => ({ ...s, organization: { ...s.organization, query: match.label, choice: { kind: "existing", match } } }));
+                void fillUsualVenue(match);
+              }}
               onAddNew={() => update((s) => ({ ...s, organization: { ...s.organization, choice: { kind: "new" } } }))}
               onLeaveUnresolved={(matches) => {
                 if (!matches.length) update((s) => ({ ...s, organization: { ...s.organization, choice: { kind: "new" } } }));
@@ -593,6 +576,11 @@ export function AddProductionForm({
                 match={state.location.choice.match}
                 onChange={() => update((s) => ({ ...s, location: { ...s.location, choice: { kind: "none" } } }))}
               />
+            )}
+            {state.location.choice.kind === "existing" && autoVenue?.id === state.location.choice.match.id && (
+              <p className="m-0 text-sm text-muted">
+                Filled in because {autoVenue.company} usually performs here. Change it if this production is somewhere else.
+              </p>
             )}
             {state.location.choice.kind === "new" &&
               (state.location.editing ? (
@@ -748,87 +736,11 @@ export function AddProductionForm({
           </div>
         </section>
 
-        {/* 4 · Cast and crew: the cast, then the creative team, one after the other */}
+        {/* 4 · Cast and crew: the same lists as a production's edit page */}
         <section className={card} aria-labelledby="s-credits">
           <h2 id="s-credits" className="heading">{live ? "Cast and crew" : "4 · Cast and crew"}</h2>
-
-          {(["cast", "crew"] as const).map((k) => {
-            const rows = state.credits.filter((c) => c.kind === k);
-            const noun = k === "cast" ? "cast" : "creative team";
-            return (
-              <div key={k} className={`flex flex-col gap-1 ${k === "crew" ? "mt-4 border-t border-rule pt-5" : ""}`}>
-                <h3 className="subheading">{k === "cast" ? "Cast" : "Creative team & crew"}</h3>
-                {k === "cast" && (
-                  <p className="m-0 text-sm text-muted">
-                    One line per person: someone with several roles gets them all in one Role box, separated by commas
-                    (<em>Mrs. Jefferson, Bohemian</em>). Tick <strong>Understudy</strong> for a role they cover.
-                  </p>
-                )}
-
-                {rows.length === 0 && <p className="m-0 text-muted">No {noun} added yet.</p>}
-
-                {rows.map((c) => (
-                  <CreditRowEditor
-                    key={c.id}
-                    row={c}
-                    sameNewPersonAs={sameNewPersonAs(state.credits, c)}
-                    onChange={(patch) => setCredit(c.id, patch)}
-                    onRemove={() => update((s) => ({ ...s, credits: s.credits.filter((x) => x.id !== c.id) }))}
-                  />
-                ))}
-
-                {pasteOpen && tab === k && (
-                  <div className="flex flex-col gap-2.5 border-l-[3px] border-rule py-1 pl-4">
-                    <label htmlFor={`f-paste-${k}`} className="font-semibold">
-                      Paste the {noun} list, one per line
-                    </label>
-                    <span className="text-sm text-muted">
-                      Like <em>{k === "cast" ? "Jo March: Jane Doe" : "Director: Jane Doe"}</em>. We’ll check each name against the
-                      database.
-                    </span>
-                    <textarea
-                      id={`f-paste-${k}`}
-                      rows={6}
-                      value={pasteText}
-                      onChange={(e) => setPasteText(e.target.value)}
-                      className="field p-3"
-                    />
-                    <div className="flex flex-wrap gap-2.5">
-                      <button type="button" className={pillDark} onClick={addPastedRows}>
-                        Add these
-                      </button>
-                      <button type="button" className={pillLight} onClick={() => setPasteOpen(false)}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-x-5 gap-y-1">
-                  <button
-                    type="button"
-                    className={linkButton}
-                    onClick={() => update((s) => ({ ...s, credits: [...s.credits, emptyCredit(k)] }))}
-                  >
-                    {k === "cast" ? "+ Add a cast member" : "+ Add someone to the creative team"}
-                  </button>
-                  <button
-                    type="button"
-                    className={linkButton}
-                    onClick={() => {
-                      setTab(k);
-                      setPasteText("");
-                      setPasteOpen(true);
-                    }}
-                  >
-                    + Paste a whole {noun} list
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          <FormCredits state={state} update={update} />
         </section>
-
         {/* 5 · Poster */}
         {(!live || state.poster) && (
           <section className={card} aria-labelledby="s-poster">
@@ -918,139 +830,90 @@ function SummaryRow({ term, value, last }: { term: string; value: string; last?:
 }
 
 // ---------------------------------------------------------------------
-// One cast or crew row: Role + Person, then the person's status panel
+// Cast and crew: the edit page's lists (one line per person, roles as
+// tags, roles not cast yet), kept in the form as one row per role
 // ---------------------------------------------------------------------
-// A new person named again in a later row (someone with two roles) is the
-// same new person: returns the earlier row's role, or null
-function sameNewPersonAs(credits: CreditRow[], row: CreditRow): string | null {
-  const name = row.person.trim().toLowerCase();
-  if (row.choice.kind !== "new" || !name) return null;
-  const first = credits.find((c) => c.choice.kind === "new" && c.person.trim().toLowerCase() === name);
-  return first && first.id !== row.id ? first.role.trim() || "another role" : null;
+
+// Older drafts held several roles in one row ("Mrs. Jefferson, Bohemian"
+// or "Understudy - Joanne"); the lists work with one row per role
+function oneRolePerRow(rows: CreditRow[]): CreditRow[] {
+  return rows.flatMap((r) => {
+    if (r.kind === "crew") return r.person.trim() ? [r] : [];
+    const read = readUnderstudy(r.role);
+    const roles = splitRoles(read.text);
+    if (!r.person.trim()) return roles.map((role) => ({ ...emptyCredit("cast"), role }));
+    const understudy = !!r.understudy || read.understudy;
+    if (roles.length <= 1) return [{ ...r, role: roles[0] ?? r.role.trim(), ...(understudy && { understudy: true }) }];
+    return roles.map((role, i) => ({ ...r, id: i ? `${r.id}-${i}` : r.id, role, ...(understudy && { understudy: true }) }));
+  });
 }
 
-function CreditRowEditor({
-  row,
-  sameNewPersonAs,
-  onChange,
-  onRemove,
-}: {
-  row: CreditRow;
-  sameNewPersonAs: string | null; // the earlier row's role, when this is the same new person
-  onChange: (patch: Partial<CreditRow>) => void;
-  onRemove: () => void;
-}) {
-  const roleId = `role-${row.id}`;
-  const choice: Choice = row.choice;
+const personKeyOf = (r: CreditRow) =>
+  r.choice.kind === "existing" ? `id:${r.choice.match.id}` : `new:${personNameKey(r.person)}`;
+
+function FormCredits({ state, update }: { state: FormState; update: (fn: (s: FormState) => FormState) => void }) {
+  const named = state.credits.filter((c) => c.person.trim());
+  const notCast = state.credits.filter((c) => c.kind === "cast" && !c.person.trim() && c.role.trim());
+
+  const added: CreditAdd[] = named.map((r) => ({
+    kind: r.kind,
+    role: r.role,
+    ...(r.choice.kind === "existing"
+      ? { person_id: r.choice.match.id, person_label: r.choice.match.label }
+      : { new_name: r.person.trim(), adult_confirmed: r.adultConfirmed }),
+    ...(r.understudy && { understudy: true }),
+    ...(r.distinct && { distinct: true }),
+  }));
+
+  const edits: CreditEdits = { removed: new Set(), added, addedRoles: notCast.map((r) => r.role), renamedRoles: {}, removedRoles: new Set() };
+
+  const ops: CreditOps = {
+    setRemoved: () => undefined, // nothing is live yet
+    addCredits: (adds) =>
+      update((s) => {
+        const rows = [...s.credits];
+        for (const a of adds) {
+          const row: CreditRow = {
+            ...emptyCredit(a.kind),
+            role: a.role,
+            person: a.person_label ?? a.new_name ?? "",
+            choice: a.person_id ? { kind: "existing", match: { id: a.person_id, slug: "", label: a.person_label ?? "", detail: "" } } : { kind: "new" },
+            adultConfirmed: a.person_id ? false : !!a.adult_confirmed,
+            ...(a.understudy && { understudy: true }),
+            ...(a.distinct && { distinct: true }),
+          };
+          // The same person in the same role once
+          const dupe = rows.some(
+            (r) =>
+              r.person.trim() && personKeyOf(r) === personKeyOf(row) && r.kind === row.kind && !!r.understudy === !!row.understudy &&
+              r.role.toLowerCase() === row.role.toLowerCase(),
+          );
+          if (!dupe) rows.push(row);
+        }
+        return { ...s, credits: rows };
+      }),
+    removeAdded: (indexes) => {
+      const ids = new Set(indexes.map((i) => named[i]?.id));
+      update((s) => ({ ...s, credits: s.credits.filter((c) => !ids.has(c.id)) }));
+    },
+    addRoles: (names) =>
+      update((s) => {
+        const have = new Set(s.credits.filter((c) => c.kind === "cast").map((c) => c.role.trim().toLowerCase()));
+        const fresh = names.filter((n) => !have.has(n.toLowerCase()));
+        return { ...s, credits: [...s.credits, ...fresh.map((role) => ({ ...emptyCredit("cast"), role }))] };
+      }),
+    removeAddedRole: (i) => {
+      const id = notCast[i]?.id;
+      update((s) => ({ ...s, credits: s.credits.filter((c) => c.id !== id) }));
+    },
+    renameRole: () => undefined,
+    toggleRemoveRole: () => undefined,
+  };
 
   return (
-    <div className="relative flex flex-col gap-2.5 border-b border-rule py-4 sm:pr-12">
-      {/* On phones the button sits beside the short "Role" label instead of taking a column */}
-      <button
-        type="button"
-        aria-label={`Remove this ${row.kind} row`}
-        onClick={onRemove}
-        className="absolute right-0 top-2 flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent"
-      >
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E5E5E" strokeWidth="2" strokeLinecap="round">
-          <path d="M6 6l12 12M18 6L6 18" />
-        </svg>
-      </button>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
-        <div className="flex min-w-0 flex-col gap-1">
-          <label htmlFor={roleId} className="text-[15px] font-semibold">{row.kind === "cast" ? "Role" : "Position"}</label>
-          {row.kind === "crew" ? (
-            <PositionSelect id={roleId} value={row.role} onChange={(role) => onChange({ role })} className={smallField} />
-          ) : (
-            <>
-              <input
-                id={roleId}
-                type="text"
-                value={row.role}
-                placeholder="Jo March"
-                aria-describedby={`${roleId}-hint`}
-                onChange={(e) => onChange({ role: e.target.value })}
-                className={smallField}
-              />
-              <span id={`${roleId}-hint`} className="sr-only">
-                For several roles, separate them with commas.
-              </span>
-              <label className="flex min-h-9 cursor-pointer items-center gap-2 text-[15px]">
-                <input
-                  type="checkbox"
-                  checked={!!row.understudy}
-                  onChange={(e) => onChange({ understudy: e.target.checked })}
-                  className="h-5 w-5 flex-none accent-ink"
-                />
-                Understudy (covers this role)
-              </label>
-            </>
-          )}
-        </div>
-        <TypeAhead
-          kind="people"
-          noun="person"
-          label="Person"
-          size="small"
-          query={row.person}
-          choice={choice.kind === "suggest" ? { kind: "none" } : choice}
-          onQueryChange={(person) => onChange({ person, choice: { kind: "none" }, adultConfirmed: false })}
-          onPick={(match: Match) => onChange({ person: match.label, choice: { kind: "existing", match } })}
-          onAddNew={() => onChange({ choice: { kind: "new" } })}
-          onLeaveUnresolved={(matches) =>
-            onChange({ choice: matches.length ? { kind: "suggest", match: matches[0] } : { kind: "new" } })
-          }
-        />
-      </div>
-
-      {choice.kind === "existing" && (
-        <PickedLine match={choice.match} onChange={() => onChange({ choice: { kind: "none" } })} />
-      )}
-
-      {choice.kind === "new" && row.person.trim() && sameNewPersonAs !== null && (
-        <p className="m-0 text-sm text-muted">
-          Same new person as <strong className="text-ink">{row.person.trim()}</strong> ({sameNewPersonAs}). They’ll get one page with
-          both credits.
-        </p>
-      )}
-
-      {choice.kind === "new" && row.person.trim() && sameNewPersonAs === null && (
-        <NewPanel badge="New person" note="Not in the database yet. We’ll create their page.">
-          <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-[15px]">
-            <input
-              type="checkbox"
-              checked={row.adultConfirmed}
-              onChange={(e) => onChange({ adultConfirmed: e.target.checked })}
-              className="mt-0.5 h-5 w-5 flex-none accent-ink"
-            />
-            <span>
-              I confirm this person is <strong>18 or older</strong>.{" "}
-              <span className="text-muted">Required. Minors aren’t listed on the site.</span>
-            </span>
-          </label>
-        </NewPanel>
-      )}
-
-      {choice.kind === "suggest" && (
-        <div className="callout flex flex-col gap-2.5">
-          <span className="font-semibold">Did you mean {choice.match.label}?</span>
-          <span className="text-sm text-muted">
-            Already in the database with {choice.match.detail.charAt(0).toLowerCase() + choice.match.detail.slice(1)}.
-          </span>
-          <div className="flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              className={pillDark}
-              onClick={() => onChange({ person: choice.match.label, choice: { kind: "existing", match: choice.match } })}
-            >
-              Yes, use this person
-            </button>
-            <button type="button" className={pillLight} onClick={() => onChange({ choice: { kind: "new" } })}>
-              No, someone new
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="flex flex-col gap-8">
+      <CastEditor fresh showTitle={state.show.query.trim() || "this show"} credits={[]} roles={[]} edits={edits} ops={ops} />
+      <CrewEditor fresh credits={[]} edits={edits} ops={ops} />
     </div>
   );
 }

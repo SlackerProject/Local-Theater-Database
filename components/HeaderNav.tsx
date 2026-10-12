@@ -33,20 +33,79 @@ const BROWSE = [
   { href: "/shows", label: "Shows" },
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
+  { href: "/auditions", label: "Auditions" },
   { href: "/hotlist", label: "Hotlist" },
 ];
 
-function accountLinks(user: NonNullable<User>) {
+// The account menu, in groups: what's yours, then (for moderators) the
+// moderation tools. "Add a production" is a button above them all and
+// Settings sits with Sign out at the bottom.
+function accountGroups(user: NonNullable<User>) {
   return [
-    { href: `/u/${user.username}`, label: "Your profile" },
-    ...(user.pageSlug ? [{ href: `/person/${user.pageSlug}`, label: "Your page on stage" }] : []),
-    { href: "/following", label: "Shows & follows" },
-    { href: "/add", label: "Add a production" },
-    { href: "/submissions", label: "Your submissions" },
-    { href: "/settings", label: "Settings" },
-    ...(user.canModerate ? [{ href: "/moderate", label: "Moderate" }] : []),
-    ...(user.canWriteUpdates ? [{ href: "/updates/new", label: "Write an update" }] : []),
+    {
+      title: "You",
+      links: [
+        { href: `/u/${user.username}`, label: "Your profile" },
+        ...(user.pageSlug ? [{ href: `/person/${user.pageSlug}`, label: "Your page on stage" }] : []),
+        { href: "/following", label: "Shows & follows" },
+        { href: "/submissions", label: "Your submissions" },
+      ],
+    },
+    ...(user.canModerate
+      ? [
+          {
+            title: "Moderation",
+            links: [
+              { href: "/moderate", label: "Moderate" },
+              ...(user.canWriteUpdates ? [{ href: "/updates/new", label: "Write an update" }] : []),
+            ],
+          },
+        ]
+      : []),
   ];
+}
+
+// The account menu's contents, shared by the desktop dropdown and the phone menu
+function AccountMenuItems({ user, onPick, menu }: { user: NonNullable<User>; onPick: () => void; menu: boolean }) {
+  const role = menu ? "menuitem" : undefined;
+  return (
+    <>
+      <div className="px-3 pb-1.5 pt-1">
+        <Link href="/add" role={role} onClick={onPick} className="btn-primary min-h-11 w-full gap-1.5 text-[15px]">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Add a production
+        </Link>
+      </div>
+      {accountGroups(user).map((g) => (
+        <div key={g.title} className="flex flex-col border-t border-rule py-1">
+          <span className="px-4 pb-0.5 pt-1.5 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">{g.title}</span>
+          {g.links.map((l) => (
+            <Link key={l.href} href={l.href} role={role} className={menuItem} onClick={onPick}>
+              {l.label}
+              {l.href === "/moderate" && user.waiting > 0 && (
+                <>
+                  <WaitingCount count={user.waiting} className="ml-2" />
+                  <span className="sr-only">, {waitingLabel(user.waiting)}</span>
+                </>
+              )}
+            </Link>
+          ))}
+        </div>
+      ))}
+      <div className="flex flex-col border-t border-rule pt-1">
+        <Link href="/settings" role={role} className={menuItem} onClick={onPick}>
+          Settings
+        </Link>
+        <form action={signOut}>
+          <button type="submit" role={role} className={`${menuItem} w-full cursor-pointer border-0 bg-transparent text-left text-base`}>
+            Sign out
+          </button>
+        </form>
+      </div>
+    </>
+  );
 }
 
 function initial(name: string) {
@@ -148,24 +207,9 @@ export function HeaderNav({ user }: { user: User }) {
                 {user.waiting > 0 && <WaitingCount count={user.waiting} className="absolute -right-0.5 top-0 shadow-[0_0_0_2px_#fff]" />}
               </button>
               {account && (
-                <div role="menu" className="absolute right-0 top-full z-20 mt-2 flex w-56 flex-col rounded-lg border border-rule bg-page py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
-                  <span className="px-4 pb-1 pt-1 text-sm font-normal text-muted">Signed in as {user.displayName}</span>
-                  {accountLinks(user).map((l) => (
-                    <Link key={l.href} href={l.href} role="menuitem" className={menuItem} onClick={() => setAccount(false)}>
-                      {l.label}
-                      {l.href === "/moderate" && user.waiting > 0 && (
-                        <>
-                          <WaitingCount count={user.waiting} className="ml-2" />
-                          <span className="sr-only">, {waitingLabel(user.waiting)}</span>
-                        </>
-                      )}
-                    </Link>
-                  ))}
-                  <form action={signOut} className="border-t border-rule pt-1.5">
-                    <button type="submit" role="menuitem" className={`${menuItem} w-full cursor-pointer border-0 bg-transparent text-left text-base`}>
-                      Sign out
-                    </button>
-                  </form>
+                <div role="menu" className="absolute right-0 top-full z-20 mt-2 flex w-64 flex-col rounded-lg border border-rule bg-page py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+                  <span className="px-4 pb-1.5 pt-1 text-sm font-normal text-muted">Signed in as {user.displayName}</span>
+                  <AccountMenuItems user={user} menu onPick={() => setAccount(false)} />
                 </div>
               )}
             </div>
@@ -224,22 +268,7 @@ export function HeaderNav({ user }: { user: User }) {
                   Notifications
                   {user.unread > 0 && <span className="ml-2 rounded bg-ink px-1.5 text-[13px] font-bold text-white">{user.unread}</span>}
                 </Link>
-                {accountLinks(user).map((l) => (
-                  <Link key={l.href} href={l.href} className={menuItem} onClick={() => setMobile(false)}>
-                    {l.label}
-                    {l.href === "/moderate" && user.waiting > 0 && (
-                      <>
-                        <WaitingCount count={user.waiting} className="ml-2" />
-                        <span className="sr-only">, {waitingLabel(user.waiting)}</span>
-                      </>
-                    )}
-                  </Link>
-                ))}
-                <form action={signOut}>
-                  <button type="submit" className={`${menuItem} w-full cursor-pointer border-0 bg-transparent text-left text-base`}>
-                    Sign out
-                  </button>
-                </form>
+                <AccountMenuItems user={user} menu={false} onPick={() => setMobile(false)} />
               </>
             ) : (
               <>

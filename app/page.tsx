@@ -7,13 +7,10 @@ import { comingUpFromFollows, homeCounts, playingNow } from "@/lib/home";
 import { currentTime, localDay, localTime } from "@/lib/calendar";
 import { showColors, swatch } from "@/lib/palette";
 import { mediaUrl } from "@/lib/media";
-import { ANNOUNCEMENT_KINDS, ANNOUNCEMENT_SELECT, announcement, announcementContext, auditionOffer } from "@/lib/announcements";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { HotlistBox, LatestUpdateBar, PlayingNow, TileGrid, UpdatesBox } from "@/components/home/HomeParts";
 import { SITE_NAME } from "@/lib/brand";
 import { FindYourNameButton, HeroSearch } from "@/components/home/HeroSearch";
-import { AnnouncementActions, AnnouncementText } from "@/components/Announcement";
-import { SiteUpdateNotice } from "@/components/SiteUpdateNotice";
 
 // The home page: an introduction for visitors (home.html / home-mobile.html),
 // a personal page for members (DESIGN.md "Home page (signed in)")
@@ -188,8 +185,8 @@ async function MemberHome({ user }: { user: CurrentUser }) {
         <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-10">
           <h1 className="sr-only">Home</h1>
           <LatestUpdateBar />
-          <NextShow userId={user.id} />
-          <NewForYou userId={user.id} />
+          <NextAudition userId={user.id} />
+          <FollowingThumbs userId={user.id} />
           <section className="flex flex-col gap-3.5">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="heading">Coming up from people you follow</h2>
@@ -218,53 +215,59 @@ async function MemberHome({ user }: { user: CurrentUser }) {
   );
 }
 
-// The next performance they're Going to
-async function NextShow({ userId }: { userId: string }) {
+// The next audition session for a production they asked to be reminded
+// about; otherwise a way into the audition finder
+async function NextAudition({ userId }: { userId: string }) {
   await connection();
   const supabase = await createClient();
-  const { data: going } = await supabase
-    .from("watch_list")
+  const { data: follows } = await supabase
+    .from("audition_follows")
     .select(
-      `performance:performances(id, starts_at, label, is_cancelled),
-       production:productions(slug, year, title_override, color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
-                              show:shows(title), location:locations(name, town), poster:media!productions_poster_fk(thumb_key))`,
+      `production:productions(slug, year, title_override, is_hidden, color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
+                              show:shows(title), organization:organizations(name), poster:media!productions_poster_fk(thumb_key),
+                              auditions(id, starts_at, label, place, venue:locations(name, town)))`,
     )
-    .eq("user_id", userId)
-    .eq("status", "going");
+    .eq("user_id", userId);
   const now = currentTime().toISOString();
-  const next = (going ?? [])
-    .filter((g) => g.performance && !g.performance.is_cancelled && g.performance.starts_at >= now && g.production?.show)
-    .sort((a, b) => a.performance!.starts_at.localeCompare(b.performance!.starts_at))[0];
+  const next = (follows ?? [])
+    .flatMap((f) => (f.production?.show && !f.production.is_hidden ? f.production.auditions.map((a) => ({ a, p: f.production! })) : []))
+    .filter(({ a }) => a.starts_at >= now)
+    .sort((x, y) => x.a.starts_at.localeCompare(y.a.starts_at))[0];
 
   if (!next) {
     return (
-      <section className="flex flex-col gap-2">
-        <h2 className="heading">Your next show</h2>
-        <p className="m-0 text-muted">
-          Nothing planned yet. Find something below, open it, and choose “I’m going” on a date. It will show up here and on{" "}
-          <Link href="/calendar" className="text-ink">
-            your calendar
-          </Link>
-          .
+      <section className="flex flex-col gap-3">
+        <h2 className="heading">Your next audition</h2>
+        <p className="m-0 max-w-[620px] text-muted">
+          No auditions saved yet. Find a production that’s casting and press “Remind me about auditions”. The next session will
+          show up here and on your calendar.
         </p>
+        <Link href="/auditions" className="btn-primary self-start">
+          Find your next audition
+        </Link>
       </section>
     );
   }
 
-  const p = next.production!;
-  const pf = next.performance!;
+  const { a, p } = next;
   const title = p.title_override ?? p.show!.title;
   const sw = swatch(showColors(p));
   const poster = mediaUrl(p.poster?.thumb_key);
+  const where = a.venue ? [a.venue.name, a.venue.town].filter(Boolean).join(", ") : a.place;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="heading">Your next show</h2>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="heading">Your next audition</h2>
+        <Link href="/auditions" className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold">
+          Find more auditions
+        </Link>
+      </div>
       <Link
         href={`/production/${p.slug}`}
         className="link-quiet flex max-w-[620px] items-center gap-4 rounded-lg border-2 border-ink p-3"
         style={{ background: sw.background, color: sw.ink }}
       >
-        <span className="flex aspect-[4/5] w-[84px] flex-none overflow-hidden rounded-[4px]">
+        <span className="flex aspect-[4/5] w-[84px] flex-none items-center overflow-hidden rounded-[4px]">
           {poster ? (
             <img src={poster} alt={`${title} poster`} className="h-full w-full object-contain" />
           ) : (
@@ -275,85 +278,111 @@ async function NextShow({ userId }: { userId: string }) {
           <span className="text-xl font-extrabold leading-tight">
             {title} ({p.year})
           </span>
+          {p.organization && <span className="text-[15px]">{p.organization.name}</span>}
           <span className="font-semibold">
-            {localDay(pf.starts_at)} · {localTime(pf.starts_at)}
-            {pf.label && ` · ${pf.label}`}
+            {a.label ?? "Auditions"}: {localDay(a.starts_at)} · {localTime(a.starts_at)}
           </span>
-          {p.location && <span className="text-[15px]">{[p.location.name, p.location.town].filter(Boolean).join(", ")}</span>}
+          {where && <span className="text-[15px]">{where}</span>}
         </span>
       </Link>
     </section>
   );
 }
 
-// The latest unread notifications: follows, auditions and site updates
-async function NewForYou({ userId }: { userId: string }) {
+// Thumbnails of the people they follow and the productions they've saved
+// (Want to see, Going, or auditions they asked to be reminded about)
+async function FollowingThumbs({ userId }: { userId: string }) {
+  await connection();
   const supabase = await createClient();
-  const [{ data: news }, { data: updates }] = await Promise.all([
+  const prod = `id, slug, year, title_override, is_hidden, color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
+                show:shows(title), poster:media!productions_poster_fk(thumb_key)`;
+  const [{ data: follows }, { data: watch }, { data: auditionFollows }] = await Promise.all([
     supabase
-      .from("notifications")
-      .select(ANNOUNCEMENT_SELECT)
+      .from("follows")
+      .select("person:people(id, slug, display_name, is_hidden, headshot:media!people_headshot_fk(thumb_key))")
       .eq("user_id", userId)
-      .in("kind", [...ANNOUNCEMENT_KINDS])
-      .eq("status", "unread")
+      .not("person_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(24),
     supabase
-      .from("notifications")
-      .select("id, status, created_at, post:posts(slug, title, summary)")
+      .from("watch_list")
+      .select(`production:productions(${prod})`)
       .eq("user_id", userId)
-      .eq("kind", "site_update")
-      .eq("status", "unread")
-      .order("created_at", { ascending: false })
-      .limit(2),
+      .in("status", ["want_to_see", "going"])
+      .order("updated_at", { ascending: false })
+      .limit(24),
+    supabase.from("audition_follows").select(`production:productions(${prod})`).eq("user_id", userId).order("created_at", { ascending: false }).limit(24),
   ]);
-  const ctx = await announcementContext(supabase, userId, (news ?? []).flatMap((n) => (n.production ? [n.production.id] : [])));
-  const items = [
-    ...(news ?? []).map((n) => ({ at: n.created_at, kind: "follow" as const, n })),
-    ...(updates ?? []).filter((u) => u.post).map((u) => ({ at: u.created_at, kind: "update" as const, u })),
-  ]
-    .sort((a, b) => b.at.localeCompare(a.at))
-    .slice(0, 5);
+  const people = (follows ?? []).flatMap((f) => (f.person && !f.person.is_hidden ? [f.person] : [])).slice(0, 12);
+  const seen = new Set<string>();
+  const productions = [...(watch ?? []), ...(auditionFollows ?? [])]
+    .flatMap((w) => (w.production?.show && !w.production.is_hidden ? [w.production] : []))
+    .filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)))
+    .slice(0, 10);
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="heading">New for you</h2>
-        <Link href="/notifications" className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold">
-          All notifications
+        <h2 className="heading">Following</h2>
+        <Link href="/following" className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold">
+          Shows &amp; follows
         </Link>
       </div>
-      {items.length ? (
-        <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
-          {items.map((item) => {
-            if (item.kind === "update") {
-              const u = item.u;
+
+      <div className="flex flex-col gap-2">
+        <h3 className="subheading">People</h3>
+        {people.length ? (
+          <ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-4 p-0">
+            {people.map((pe) => (
+              <li key={pe.id} className="w-[84px]">
+                <Link href={`/person/${pe.slug}`} className="link-quiet flex flex-col items-center gap-1.5 text-center">
+                  {pe.headshot?.thumb_key ? (
+                    <img src={mediaUrl(pe.headshot.thumb_key)!} alt="" loading="lazy" className="h-16 w-16 rounded-full bg-soft object-cover" />
+                  ) : (
+                    <span aria-hidden="true" className="flex h-16 w-16 items-center justify-center rounded-full bg-soft text-xl font-bold text-muted">
+                      {pe.display_name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="line-clamp-2 text-[13px] font-semibold leading-tight">{pe.display_name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="m-0 text-muted">Press “Follow” on someone’s page to see them here and hear about their next show.</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className="subheading">Productions</h3>
+        {productions.length ? (
+          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-3 p-0">
+            {productions.map((p) => {
+              const title = p.title_override ?? p.show!.title;
+              const sw = swatch(showColors(p));
+              const poster = mediaUrl(p.poster?.thumb_key);
               return (
-                <li key={u.id} className="border-b border-rule py-3.5">
-                  <SiteUpdateNotice id={u.id} slug={u.post!.slug} title={u.post!.title} summary={u.post!.summary} unread />
+                <li key={p.id}>
+                  <Link href={`/production/${p.slug}`} className="link-quiet flex flex-col gap-1.5">
+                    <span className="flex aspect-[4/5] w-full items-center overflow-hidden rounded-[4px] border" style={{ background: sw.background, borderColor: sw.borderColor }}>
+                      {poster ? (
+                        <img src={poster} alt="" loading="lazy" className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="self-end p-1.5 text-[11px] font-extrabold leading-tight text-muted">{title}</span>
+                      )}
+                    </span>
+                    <span className="line-clamp-2 text-[13px] font-semibold leading-tight">
+                      {title} ({p.year})
+                    </span>
+                  </Link>
                 </li>
               );
-            }
-            const a = announcement(item.n);
-            if (!a) return null;
-            return (
-              <li key={item.n.id} className="flex flex-col gap-2.5 border-b border-rule py-3.5">
-                <AnnouncementText a={a} />
-                <AnnouncementActions
-                  id={item.n.id}
-                  kind={a.kind}
-                  productionId={a.productionId}
-                  productionHref={a.production.href}
-                  saved={ctx.saved.has(a.productionId)}
-                  auditions={auditionOffer(a.kind, a.productionId, ctx)}
-                />
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="m-0 text-muted">You’re all caught up. News about people and companies you follow will appear here.</p>
-      )}
+            })}
+          </ul>
+        ) : (
+          <p className="m-0 text-muted">Press “Want to see” on a production, or ask to be reminded about its auditions, to keep it here.</p>
+        )}
+      </div>
     </section>
   );
 }

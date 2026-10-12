@@ -36,6 +36,8 @@ export type CreditRow = {
   adultConfirmed: boolean;
   // Cast: the person understudies the role(s) instead of playing them
   understudy?: boolean;
+  // A new person who shares a name with someone on the site, confirmed different
+  distinct?: boolean;
 };
 
 export type FormState = {
@@ -130,6 +132,8 @@ type BundleItems = {
   performances: BundlePerformance[];
   people: BundlePerson[];
   credits: BundleCredit[];
+  // Roles nobody is cast in yet, added to the show's role list on approval
+  roles?: string[];
 };
 
 // A whole new production
@@ -284,9 +288,16 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   );
   const countedNew = new Set<string>();
 
+  // Cast rows without a person are roles not cast yet
+  const roles: string[] = [];
   for (const c of s.credits) {
-    // Rows without a person are skipped: roles filled in from the show's
-    // known characters are only suggestions until someone is named
+    if (c.kind !== "cast" || clean(c.person)) continue;
+    for (const role of splitRoles(readUnderstudy(c.role).text)) {
+      if (!roles.some((r) => r.toLowerCase() === role.toLowerCase())) roles.push(role);
+    }
+  }
+
+  for (const c of s.credits) {
     if (!clean(c.person)) continue;
     if (!clean(c.role)) missingRole++;
 
@@ -304,7 +315,10 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
       mapKey = `new:${name}`;
       if (!keyFor.has(mapKey)) {
         keyFor.set(mapKey, `p${keyFor.size + 1}`);
-        people.push({ key: keyFor.get(mapKey)!, new: { display_name: clean(c.person), adult_confirmed: true } });
+        people.push({
+          key: keyFor.get(mapKey)!,
+          new: { display_name: clean(c.person), adult_confirmed: true, ...(c.distinct && { distinct: true }) },
+        });
       }
     } else {
       unresolved++;
@@ -335,7 +349,7 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
     poster = { storage_key, thumb_key, width, height, bytes, palette };
   }
 
-  if (existing && !poster && !location && !performances.length && !credits.length && !problems.length) {
+  if (existing && !poster && !location && !performances.length && !credits.length && !roles.length && !problems.length) {
     problems.push("Add at least one cast or crew member, performance, the location or a poster.");
   }
 
@@ -344,6 +358,7 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   const extras = {
     ...(s.resubmissionOf && { resubmission_of: s.resubmissionOf }),
     ...(poster && { poster }),
+    ...(roles.length && { roles }),
   };
 
   if (existing) {
@@ -466,6 +481,7 @@ function itemsToForm(
     performances: BundlePerformance[];
     people: BundlePerson[];
     credits: BundleCredit[];
+    roles?: string[];
   },
 ): FormState {
   if (items.poster) form.poster = { ...items.poster, rightsConfirmed: true };
@@ -489,10 +505,11 @@ function itemsToForm(
     const row = { ...emptyCredit(c.kind), role: c.role, ...(c.understudy && { understudy: true }) };
     if (!person) return row;
     return "new" in person
-      ? { ...row, person: person.new.display_name, choice: { kind: "new" as const }, adultConfirmed: true }
+      ? { ...row, person: person.new.display_name, choice: { kind: "new" as const }, adultConfirmed: true, ...(person.new.distinct && { distinct: true }) }
       : { ...row, person: person.label, choice: { kind: "existing" as const, match: matchFrom(person) } };
   });
-  if (!form.credits.length) form.credits = [emptyCredit("cast")];
+  // Roles not cast yet come back as cast rows without a person
+  form.credits.push(...(items.roles ?? []).map((role) => ({ ...emptyCredit("cast"), role })));
   return form;
 }
 

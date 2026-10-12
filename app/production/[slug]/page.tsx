@@ -247,13 +247,16 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
         <div className="mx-auto flex max-w-[1180px] flex-col items-start gap-[22px] px-4 pb-7 pt-6 md:flex-row md:items-end md:gap-12 md:px-8 md:py-12">
           <div className="w-[190px] flex-none md:w-[270px]">
             {p.poster ? (
-              <img
-                src={mediaUrl(p.poster.thumb_key ?? p.poster.storage_key)!}
-                alt={`${title} poster`}
-                width={p.poster.width ?? undefined}
-                height={p.poster.height ?? undefined}
-                className="block h-auto w-full rounded-[4px] shadow-[0_18px_40px_rgba(40,20,10,0.25)]"
-              />
+              // A poster-shaped frame: any image, wide or tall, sits centered in it
+              <div className="flex aspect-[2/3] w-full items-center justify-center">
+                <img
+                  src={mediaUrl(p.poster.thumb_key ?? p.poster.storage_key)!}
+                  alt={`${title} poster`}
+                  width={p.poster.width ?? undefined}
+                  height={p.poster.height ?? undefined}
+                  className="block h-auto max-h-full w-auto max-w-full rounded-[4px] shadow-[0_18px_40px_rgba(40,20,10,0.25)]"
+                />
+              </div>
             ) : (
               <PosterTile title={title} />
             )}

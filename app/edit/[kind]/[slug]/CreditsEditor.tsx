@@ -213,7 +213,19 @@ function ReplacePerson({ id, pendingNew, onDone, onCancel }: { id: string; pendi
 }
 
 // The people in the cast or on the creative team, one line each
-function PeopleList({ kind, credits, edits, ops }: { kind: "cast" | "crew"; credits: CreditLine[]; edits: CreditEdits; ops: CreditOps }) {
+function PeopleList({
+  kind,
+  credits,
+  edits,
+  ops,
+  fresh = false,
+}: {
+  kind: "cast" | "crew";
+  credits: CreditLine[];
+  edits: CreditEdits;
+  ops: CreditOps;
+  fresh?: boolean; // a new production: everything is new, so nothing is marked as a change
+}) {
   const [open, setOpen] = useState<{ key: string; what: "more" | "replace" } | null>(null);
   const groups = groupCredits(kind, credits, edits.added);
   const pendingNew = pendingNewOf(edits.added);
@@ -226,7 +238,7 @@ function PeopleList({ kind, credits, edits, ops }: { kind: "cast" | "crew"; cred
       {groups.map((g) => {
         const live = g.lines.filter((l) => !edits.removed.has(l.id));
         const allGone = live.length === 0 && g.added.length === 0;
-        const changed = g.added.length > 0 || g.lines.some((l) => edits.removed.has(l.id));
+        const changed = !fresh && (g.added.length > 0 || g.lines.some((l) => edits.removed.has(l.id)));
         // Roles they play first, then the ones they cover
         const lines = [...g.lines].sort((a, b) => Number(a.understudy) - Number(b.understudy));
         const adds = [...g.added].sort((a, b) => Number(!!a.a.understudy) - Number(!!b.a.understudy));
@@ -274,7 +286,7 @@ function PeopleList({ kind, credits, edits, ops }: { kind: "cast" | "crew"; cred
                     key={`a${i}`}
                     text={a.role}
                     understudy={a.understudy}
-                    state="adding"
+                    state={fresh ? "now" : "adding"}
                     label={`${g.name} as ${a.role}`}
                     onToggle={() => ops.removeAdded([i])}
                   />
@@ -341,6 +353,7 @@ export function CastEditor({
   credits,
   roles,
   rolesOnly = false,
+  fresh = false,
   edits,
   ops,
 }: {
@@ -348,6 +361,7 @@ export function CastEditor({
   credits: CreditLine[];
   roles: RoleLine[];
   rolesOnly?: boolean; // the show's own page: its roles, without who plays them
+  fresh?: boolean; // a new production (the Add form): nothing is marked as a change
   edits: CreditEdits;
   ops: CreditOps;
 }) {
@@ -366,11 +380,12 @@ export function CastEditor({
   const uncastAdded = edits.addedRoles.map((name, i) => ({ name, i })).filter(({ name }) => !isCast(name));
 
   const changed =
-    edits.added.some((a) => a.kind === "cast") ||
+    !fresh &&
+    (edits.added.some((a) => a.kind === "cast") ||
     cast.some((c) => edits.removed.has(c.id)) ||
     edits.addedRoles.length > 0 ||
     edits.removedRoles.size > 0 ||
-    Object.keys(edits.renamedRoles).length > 0;
+    Object.keys(edits.renamedRoles).length > 0);
 
   const roleLine = (key: string, name: string, actions: React.ReactNode, nameCell: React.ReactNode, gone = false, isChanged = false) => (
     <li
@@ -415,7 +430,7 @@ export function CastEditor({
       {!rolesOnly && (
         <>
           <ColumnLabels labels={["Person", "Roles"]} wide />
-          <PeopleList kind="cast" credits={credits} edits={edits} ops={ops} />
+          <PeopleList kind="cast" credits={credits} edits={edits} ops={ops} fresh={fresh} />
         </>
       )}
 
@@ -474,10 +489,10 @@ export function CastEditor({
                   </button>
                 </>,
                 <span className="flex min-h-11 flex-wrap items-center gap-2 font-bold">
-                  <span className="tag">Adding</span> {name}
+                  {!fresh && <span className="tag">Adding</span>} {name}
                 </span>,
                 false,
-                true,
+                !fresh,
               ),
             )}
             {rolesOnly && uncast.length === 0 && uncastAdded.length === 0 && <li className="px-2 py-3 text-muted">No roles listed yet.</li>}
@@ -496,12 +511,22 @@ export function CastEditor({
 // ---------------------------------------------------------------------
 // Creative team & crew: one line per person, with every position
 // ---------------------------------------------------------------------
-export function CrewEditor({ credits, edits, ops }: { credits: CreditLine[]; edits: CreditEdits; ops: CreditOps }) {
-  const changed = edits.added.some((a) => a.kind === "crew") || credits.some((c) => c.kind === "crew" && edits.removed.has(c.id));
+export function CrewEditor({
+  credits,
+  edits,
+  ops,
+  fresh = false,
+}: {
+  credits: CreditLine[];
+  edits: CreditEdits;
+  ops: CreditOps;
+  fresh?: boolean; // a new production (the Add form): nothing is marked as a change
+}) {
+  const changed = !fresh && (edits.added.some((a) => a.kind === "crew") || credits.some((c) => c.kind === "crew" && edits.removed.has(c.id)));
   return (
     <EditorShell id="crew" title="Creative team & crew" hint="One line per person, with every position they hold." changed={changed}>
       <ColumnLabels labels={["Person", "Positions"]} wide />
-      <PeopleList kind="crew" credits={credits} edits={edits} ops={ops} />
+      <PeopleList kind="crew" credits={credits} edits={edits} ops={ops} fresh={fresh} />
       <AddLines kind="crew" pendingNew={pendingNewOf(edits.added)} ops={ops} />
     </EditorShell>
   );

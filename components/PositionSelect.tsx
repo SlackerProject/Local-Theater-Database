@@ -6,15 +6,19 @@ import { CREW_POSITIONS } from "@/lib/positions";
 
 const OTHER = "__other";
 
-// The positions list lives in the database (moderators can add to it), so
-// it's loaded once per page view; the built-in list shows until it arrives
+// The positions list lives in the database (moderators can add to it). The
+// last list loaded shows at once, and each form that opens loads it fresh,
+// so a position a moderator just added appears without reloading the site.
 let cached: string[] | null = null;
 let loading: Promise<string[]> | null = null;
+let loadedAt = 0;
 
 function loadPositions() {
-  if (cached) return Promise.resolve(cached);
-  loading ??= Promise.resolve(createClient().from("crew_positions").select("name")).then(({ data }) => {
-    cached = data?.length ? data.map((p) => p.name) : [...CREW_POSITIONS];
+  // One request for all the dropdowns opening together
+  if (loading && Date.now() - loadedAt < 5000) return loading;
+  loadedAt = Date.now();
+  loading = Promise.resolve(createClient().from("crew_positions").select("name")).then(({ data }) => {
+    cached = data?.length ? data.map((p) => p.name) : (cached ?? [...CREW_POSITIONS]);
     return cached;
   });
   return loading;

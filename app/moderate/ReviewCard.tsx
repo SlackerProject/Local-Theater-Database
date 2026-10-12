@@ -148,6 +148,7 @@ export function ReviewCard({
       performances: performances.filter((p) => p.include).map((p) => p.value),
       people: peopleFor(keep),
       credits: keep,
+      ...(submitted.roles?.length && { roles: submitted.roles }),
     };
     const bundle: Bundle = addTo
       ? { ...items, production: submitted.production }
@@ -412,6 +413,14 @@ export function ReviewCard({
               Fixing a new person’s name fixes it on every line they appear on. The contributor confirmed each new person is 18 or older.
             </p>
           )}
+        </section>
+      )}
+
+      {!!submitted.roles?.length && (
+        <section className="flex flex-col gap-1">
+          <h3 className="subheading">Roles not cast yet ({submitted.roles.length})</h3>
+          <p className="m-0 text-[15px]">{submitted.roles.join(", ")}</p>
+          <span className="text-sm text-muted">Added to the show’s role list (roles it already has are skipped).</span>
         </section>
       )}
 

@@ -90,9 +90,23 @@ export type NewShow = { title: string; type: ShowType; subtitle?: string; author
 export type NewOrganization = { name: string; town?: string; website_url?: string };
 export type NewLocation = { name: string; street_address?: string; town?: string };
 export type BundlePerformance = { date: string; time: string; label?: string };
+// distinct: a moderator confirmed a new person isn't the someone of the
+// same name already on the site (otherwise approval refuses a duplicate)
 export type BundlePerson =
   | { key: string; id: string; label: string }
-  | { key: string; new: { display_name: string; adult_confirmed: true } };
+  | { key: string; new: { display_name: string; adult_confirmed: true; distinct?: boolean } };
+
+// A name compared without capitals, spacing or punctuation; mirrors
+// person_name_key() in the database
+export function personNameKey(name: string) {
+  return name
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+// Someone already on the site with a new person's name
+export type SameNameMatch = { id: string; label: string; slug: string; detail: string | null };
 export type BundleCredit = { kind: "cast" | "crew"; role: string; person_key: string };
 // An uploaded poster and the palette read from it in the browser (migration 0007)
 export type BundlePoster = {

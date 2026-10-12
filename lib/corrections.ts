@@ -78,6 +78,9 @@ export type CreditAdd = {
   person_label?: string; // for the review screen
   new_name?: string;
   adult_confirmed?: boolean;
+  // A new person who shares a name with someone already on the site, confirmed
+  // as a different person (otherwise they're linked to the existing page)
+  distinct?: boolean;
 };
 export type PerformanceEdit = { id?: string; date: string; time: string; label: string; cancelled?: boolean };
 

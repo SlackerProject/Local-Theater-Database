@@ -12,7 +12,9 @@ import {
   type LeftOut,
   type NewLocation,
   type Ref,
+  type SameNameMatch,
   type ShowType,
+  personNameKey,
 } from "@/lib/submission";
 import { mediaUrl } from "@/lib/media";
 import { PaletteSwatches } from "@/components/uploads/UploadPanels";
@@ -72,6 +74,7 @@ export function ReviewCard({
   submittedAt,
   medal,
   knownPositions,
+  sameName = {},
 }: {
   id: string;
   submitted: Bundle;
@@ -79,6 +82,7 @@ export function ReviewCard({
   submittedAt: string;
   medal?: React.ReactNode; // the contributor's small medal
   knownPositions: string[]; // the crew positions list
+  sameName?: Record<string, SameNameMatch[]>; // people already on the site, by name key
 }) {
   const addTo = isAddTo(submitted);
   const [show, setShow] = useState(addTo ? null : submitted.show);
@@ -96,6 +100,12 @@ export function ReviewCard({
     submitted.performances.map((value) => ({ include: true, value })),
   );
   const [people, setPeople] = useState<BundlePerson[]>(submitted.people);
+  // New people who are already on the site: the existing person's id
+  // ("same person", the default) or "distinct" (a different person)
+  const matchesFor = (p: BundlePerson) => ("new" in p ? (sameName[personNameKey(p.new.display_name)] ?? []) : []);
+  const [sameAs, setSameAs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(submitted.people.flatMap((p) => (matchesFor(p).length ? [[p.key, matchesFor(p)[0].id]] : []))),
+  );
   const [credits, setCredits] = useState<Item<BundleCredit>[]>(submitted.credits.map((value) => ({ include: true, value })));
   const [note, setNote] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
@@ -122,7 +132,15 @@ export function ReviewCard({
   function build(): { bundle: Bundle; leftOut: LeftOut } {
     const keep = credits.filter((c) => c.include).map((c) => c.value);
     const drop = credits.filter((c) => !c.include).map((c) => c.value);
-    const peopleFor = (cs: BundleCredit[]) => people.filter((p) => cs.some((c) => c.person_key === p.key));
+    // "Same person" links to the existing page; "different" lets a new one share the name
+    const resolved: BundlePerson[] = people.map((p) => {
+      const choice = sameAs[p.key];
+      if (!("new" in p) || !choice) return p;
+      if (choice === "distinct") return { ...p, new: { ...p.new, distinct: true } };
+      const m = matchesFor(p).find((x) => x.id === choice);
+      return m ? { key: p.key, id: m.id, label: m.label } : p;
+    });
+    const peopleFor = (cs: BundleCredit[]) => resolved.filter((p) => cs.some((c) => c.person_key === p.key));
     const items = {
       version: 1 as const,
       ...(poster?.include && { poster: poster.value }),
@@ -346,10 +364,49 @@ export function ReviewCard({
                 ) : (
                   <span className="flex-[1_1_160px] px-2.5">{p ? p.label : "?"}</span>
                 )}
-                <Tag isNew={!!p && "new" in p} />
+                <Tag isNew={!!p && "new" in p && !(sameAs[p.key] && sameAs[p.key] !== "distinct")} />
               </div>
             );
           })}
+          {people
+            .filter((p) => matchesFor(p).length > 0 && credits.some((c) => c.include && c.value.person_key === p.key))
+            .map((p) => (
+              <fieldset key={p.key} className="callout m-0 mt-2 flex flex-col gap-1.5 border-0 text-[15px]">
+                <legend className="float-left mb-1 w-full font-bold">
+                  {"new" in p ? p.new.display_name : ""} is already on the site. Is this the same person?
+                </legend>
+                {matchesFor(p).map((m) => (
+                  <label key={m.id} className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="radio"
+                      name={`same-${id}-${p.key}`}
+                      checked={sameAs[p.key] === m.id}
+                      onChange={() => setSameAs((s) => ({ ...s, [p.key]: m.id }))}
+                      className="mt-1 h-4 w-4 flex-none accent-ink"
+                    />
+                    <span>
+                      <strong>Same person:</strong>{" "}
+                      <a href={`/person/${m.slug}`} target="_blank" rel="noopener noreferrer">
+                        {m.label}
+                      </a>
+                      {m.detail && <span className="text-muted"> ({m.detail})</span>}
+                    </span>
+                  </label>
+                ))}
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input
+                    type="radio"
+                    name={`same-${id}-${p.key}`}
+                    checked={sameAs[p.key] === "distinct"}
+                    onChange={() => setSameAs((s) => ({ ...s, [p.key]: "distinct" }))}
+                    className="mt-1 h-4 w-4 flex-none accent-ink"
+                  />
+                  <span>
+                    <strong>A different person</strong> with the same name (gets their own page)
+                  </span>
+                </label>
+              </fieldset>
+            ))}
           {people.some((p) => "new" in p) && (
             <p className="m-0 pt-1 text-sm text-muted">
               Fixing a new person’s name fixes it on every line they appear on. The contributor confirmed each new person is 18 or older.

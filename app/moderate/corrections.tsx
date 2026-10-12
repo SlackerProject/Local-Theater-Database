@@ -13,6 +13,7 @@ import { SHOW_TYPES } from "@/lib/submission";
 import { localDate, localHHMM } from "@/lib/calendar";
 import { CorrectionReview, type ReviewRow } from "./CorrectionReview";
 import { unlistedPositions } from "@/lib/positions";
+import { personNameKey, sameNameMatches } from "@/lib/same-name";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 
 const TABLES = Object.keys(KIND_FOR_TABLE) as PageTable[];
@@ -153,6 +154,8 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
       : { data: [] };
     const credit = new Map((credits ?? []).map((cr) => [cr.id, cr]));
     const people = await names(supabase, "people", (c.credits?.add ?? []).map((a) => a.person_id).filter((x): x is string => !!x));
+    // New people who are already on the site get linked to them unless marked different
+    const sameName = await sameNameMatches(supabase, (c.credits?.add ?? []).flatMap((a) => (a.new_name ? [a.new_name] : [])));
 
     for (const id of c.credits?.remove ?? []) {
       const cr = credit.get(id);
@@ -175,7 +178,14 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
     }
     (c.credits?.add ?? []).forEach((a, i) => {
       const who = a.person_id ? (people.get(a.person_id) ?? a.person_label ?? "(unknown person)") : `${a.new_name} (new person, confirmed 18+)`;
-      rows.push({ key: `credit:add:${i}`, what: `Add to ${a.kind === "crew" ? "creative team" : "cast"}`, current: "", proposed: `${who} — ${a.role}` });
+      const match = a.new_name && !a.distinct ? sameName[personNameKey(a.new_name)]?.[0] : undefined;
+      rows.push({
+        key: `credit:add:${i}`,
+        what: `Add to ${a.kind === "crew" ? "creative team" : "cast"}`,
+        current: "",
+        proposed: `${who} — ${a.role}`,
+        ...(match && { sameName: { distinctKey: `distinct:credit:add:${i}`, name: a.new_name!, match } }),
+      });
     });
 
     const perfIds = [...(c.performances?.remove ?? []), ...(c.performances?.update ?? []).map((u) => u.id)];

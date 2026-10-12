@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Bundle } from "@/lib/submission";
+import { sameNameMatches } from "@/lib/same-name";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ReviewCard } from "./ReviewCard";
 import { UploadQueue, type QueueGroup } from "./UploadQueue";
@@ -63,6 +64,13 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
 
   const { data: positionRows } = await supabase.from("crew_positions").select("name");
   const knownPositions = (positionRows ?? []).map((p) => p.name);
+
+  // New people who are already on the site (e.g. added by another
+  // submission approved since this one was sent)
+  const sameName = await sameNameMatches(
+    supabase,
+    (proposals ?? []).flatMap((p) => ((p.changes as unknown as Bundle).people ?? []).flatMap((x) => ("new" in x ? [x.new.display_name] : []))),
+  );
 
   // Contributors' medals (moderation is a contribution context)
   const points = await pointsFor([...(proposals ?? []).map((p) => p.proposed_by), ...(uploads ?? []).map((m) => m.uploaded_by)]);
@@ -126,6 +134,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
           submittedBy={`${p.proposer?.display_name} (@${p.proposer?.username})`}
           medal={<ContributorTag points={points.get(p.proposed_by)} />}
           knownPositions={knownPositions}
+          sameName={sameName}
           submittedAt={new Date(p.created_at).toLocaleString("en-US", {
             timeZone: "America/New_York",
             dateStyle: "medium",

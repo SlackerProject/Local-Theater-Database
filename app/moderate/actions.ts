@@ -22,7 +22,9 @@ export async function approveSubmission(
   if (problems.length) return { ok: false, problems };
 
   const supabase = await createClient();
-  const { data: productionId, error } = await supabase.rpc("approve_submission", {
+  // The checked version refuses new people who are already on the site,
+  // unless marked as a different person
+  const { data: productionId, error } = await supabase.rpc("approve_submission_checked", {
     p_proposal_id: id,
     p_bundle: bundle as unknown as Json,
     p_left_out: isEmptyLeftOut(leftOut) ? undefined : (leftOut as unknown as Json),

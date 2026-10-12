@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { addCrewPositions, reviewCorrection } from "./actions";
 import { NewPositions } from "./NewPositions";
 
-export type ReviewRow = { key: string; what: string; current: string; proposed: string };
+export type ReviewRow = {
+  key: string;
+  what: string;
+  current: string;
+  proposed: string;
+  // A new person with the name of someone already on the site: linked to
+  // them unless the moderator says it's a different person (distinctKey)
+  sameName?: { distinctKey: string; name: string; match: { label: string; slug: string; detail: string | null } };
+};
 
 const cell = "border border-[#CFCFCF] p-2.5 align-top text-left";
 
@@ -15,6 +23,8 @@ export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; 
   const router = useRouter();
   const [keep, setKeep] = useState<Set<string>>(new Set(rows.map((r) => r.key)));
   const [addPositions, setAddPositions] = useState<Set<string>>(new Set());
+  const [distinct, setDistinct] = useState<Set<string>>(new Set());
+  const sameNameRows = rows.filter((r) => r.sameName && keep.has(r.key));
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
@@ -27,7 +37,9 @@ export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; 
         const added = await addCrewPositions([...addPositions]);
         if (!added.ok) return setError(added.error ?? "Couldn’t add the new positions.");
       }
-      const r = await reviewCorrection(id, accept, reply, noteOnlyDone);
+      // "Different person" answers ride along with the approved rows
+      const extra = accept.length ? rows.filter((r) => r.sameName && accept.includes(r.key) && distinct.has(r.key)).map((r) => r.sameName!.distinctKey) : [];
+      const r = await reviewCorrection(id, [...accept, ...extra], reply, noteOnlyDone);
       if (r.ok) router.refresh();
       else setError(r.error ?? "That didn’t work.");
     });
@@ -78,6 +90,46 @@ export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; 
       ) : (
         <p className="m-0 text-[15px] text-muted">Only a note. Make any change yourself, then mark it done.</p>
       )}
+      {sameNameRows.map((r) => {
+        const s = r.sameName!;
+        const different = distinct.has(r.key);
+        return (
+          <fieldset key={r.key} className="callout m-0 flex flex-col gap-1.5 border-0 text-[15px]">
+            <legend className="float-left mb-1 w-full font-bold">{s.name} is already on the site. Is this the same person?</legend>
+            {[false, true].map((isDifferent) => (
+              <label key={String(isDifferent)} className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="radio"
+                  name={`same-${id}-${r.key}`}
+                  checked={different === isDifferent}
+                  onChange={() =>
+                    setDistinct((d) => {
+                      const next = new Set(d);
+                      if (isDifferent) next.add(r.key);
+                      else next.delete(r.key);
+                      return next;
+                    })
+                  }
+                  className="mt-1 h-4 w-4 flex-none accent-ink"
+                />
+                {isDifferent ? (
+                  <span>
+                    <strong>A different person</strong> with the same name (gets their own page)
+                  </span>
+                ) : (
+                  <span>
+                    <strong>Same person:</strong>{" "}
+                    <a href={`/person/${s.match.slug}`} target="_blank" rel="noopener noreferrer">
+                      {s.match.label}
+                    </a>
+                    {s.match.detail && <span className="text-muted"> ({s.match.detail})</span>}
+                  </span>
+                )}
+              </label>
+            ))}
+          </fieldset>
+        );
+      })}
       <NewPositions positions={newPositions} selected={addPositions} onChange={setAddPositions} />
       <label className="flex max-w-[620px] flex-col gap-1 text-sm font-semibold">
         Reply to the contributor <span className="font-normal text-muted">(optional, shown on their submissions page)</span>

@@ -1697,6 +1697,7 @@ export type Database = {
     }
     Functions: {
       add_crew_positions: { Args: { p_names: string[] }; Returns: number }
+      allow_distinct_person: { Args: { p_name: string }; Returns: undefined }
       apply_auditions: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_award: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_correction: {
@@ -1712,6 +1713,15 @@ export type Database = {
         Returns: undefined
       }
       approve_submission: {
+        Args: {
+          p_bundle?: Json
+          p_left_out?: Json
+          p_note?: string
+          p_proposal_id: string
+        }
+        Returns: string
+      }
+      approve_submission_checked: {
         Args: {
           p_bundle?: Json
           p_left_out?: Json
@@ -1759,6 +1769,16 @@ export type Database = {
       }
       dismiss_notification: { Args: { p_id: string }; Returns: undefined }
       edge_for: { Args: { p_ground: string }; Returns: string }
+      find_people_by_names: {
+        Args: { p_names: string[] }
+        Returns: {
+          detail: string
+          display_name: string
+          id: string
+          name_key: string
+          slug: string
+        }[]
+      }
       follower_count: {
         Args: { p_organization_id?: string; p_person_id?: string }
         Returns: number
@@ -1885,6 +1905,7 @@ export type Database = {
         Args: { p_bio: string; p_headshot_media_id: string; p_links: Json }
         Returns: undefined
       }
+      person_name_key: { Args: { p_name: string }; Returns: string }
       production_display_title: {
         Args: { p: Database["public"]["Tables"]["productions"]["Row"] }
         Returns: string

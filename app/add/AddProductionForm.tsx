@@ -24,6 +24,7 @@ import { PosterField } from "@/components/uploads/UploadPanels";
 import { ShareWithCast } from "@/components/ShareWithCast";
 import { PositionSelect } from "@/components/PositionSelect";
 import { TownPicker } from "@/components/TownPicker";
+import { SERVICE_AREA, SITE_NAME } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------
@@ -519,6 +520,21 @@ export function AddProductionForm({
                     value={state.organization.website}
                     onChange={(website) => update((s) => ({ ...s, organization: { ...s.organization, website } }))}
                   />
+                </div>
+                <div className="callout flex flex-col gap-2 text-[15px]">
+                  <span>
+                    <strong>{SITE_NAME} covers {SERVICE_AREA} for now.</strong> Please only add companies that perform there,
+                    so the site stays local. Companies elsewhere in Massachusetts or in neighboring states will be declined.
+                  </span>
+                  <label className="flex cursor-pointer items-start gap-2.5 font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={!!state.organization.inArea}
+                      onChange={(e) => update((s) => ({ ...s, organization: { ...s.organization, inArea: e.target.checked } }))}
+                      className="mt-0.5 h-5 w-5 flex-none accent-ink"
+                    />
+                    This company performs in {SERVICE_AREA}.
+                  </label>
                 </div>
               </NewPanel>
             )}

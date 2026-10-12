@@ -4,6 +4,7 @@
 // approve_submission() reads (see migrations 0003 and 0004).
 
 import { maTown } from "@/lib/ma-towns";
+import { SERVICE_AREA } from "@/lib/brand";
 
 export type ShowType = "musical" | "play" | "opera" | "revue" | "other";
 export const SHOW_TYPES: { value: ShowType; label: string }[] = [
@@ -46,7 +47,8 @@ export type FormState = {
   // editing: the "new record" details panel is open (false once Done is pressed).
   // Optional on show and organization because drafts saved before it existed lack it.
   show: { query: string; choice: Choice; type: ShowType | ""; subtitle: string; authors?: string; editing?: boolean };
-  organization: { query: string; choice: Choice; town: string; website: string; editing?: boolean };
+  // inArea: the contributor confirmed a new company is in SERVICE_AREA
+  organization: { query: string; choice: Choice; town: string; website: string; editing?: boolean; inArea?: boolean };
   location: { query: string; choice: Choice; address: string; town: string; editing: boolean };
   year: string;
   openingDate: string;
@@ -200,6 +202,7 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
       }
       const orgTown = maTown(s.organization.town);
       if (!orgTown) problems.push("Choose the company’s city or town from the Massachusetts list.");
+      if (!s.organization.inArea) problems.push(`Confirm the new company performs in ${SERVICE_AREA}.`);
       organization = {
         new: {
           name: clean(s.organization.query),

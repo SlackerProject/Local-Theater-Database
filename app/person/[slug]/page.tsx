@@ -171,10 +171,12 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
   }
 
   const crewRoles = [...new Set(visible.filter((c) => c.kind === "crew").map((c) => c.role).filter(Boolean))];
+  // One credit per production, however many roles they had in it
+  const creditCount = new Set(visible.map((c) => c.prod.id)).size;
   const descriptor = [
     visible.some((c) => c.kind === "cast") && "Actor",
     ...crewRoles.slice(0, 2),
-    `${visible.length} ${visible.length === 1 ? "credit" : "credits"}`,
+    `${creditCount} ${creditCount === 1 ? "credit" : "credits"}`,
   ]
     .filter(Boolean)
     .join(" · ");

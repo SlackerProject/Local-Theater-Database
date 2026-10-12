@@ -15,7 +15,7 @@ export { SITE_NAME };
 // The home page has its own large search, so it hides this one.
 function SearchField({ id, className, defaultValue }: { id: string; className: string; defaultValue?: string }) {
   return (
-    <form action="/search" role="search" className={`items-center gap-2.5 rounded-[10px] bg-soft px-4 ${className}`}>
+    <form action="/search" role="search" className={`min-w-0 items-center gap-2.5 rounded-[10px] bg-soft px-4 ${className}`}>
       <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5E5E5E" strokeWidth="2" strokeLinecap="round">
         <circle cx="11" cy="11" r="7" />
         <path d="M20 20l-3.5-3.5" />

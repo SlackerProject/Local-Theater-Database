@@ -25,6 +25,7 @@ import { ShareWithCast } from "@/components/ShareWithCast";
 import { PositionSelect } from "@/components/PositionSelect";
 import { TownPicker } from "@/components/TownPicker";
 import { SERVICE_AREA, SITE_NAME } from "@/lib/brand";
+import { readUnderstudy } from "@/lib/credits";
 import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------
@@ -159,15 +160,24 @@ function addDays(date: string, days: number) {
 
 const byDateTime = (a: Performance, b: Performance) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
 
-// "Role: Name", "Role - Name", "Role, Name" or "Role<tab>Name", one per line
+// "Role: Name", "Role<tab>Name", "Role - Name" or "Role, Name", one per line.
+// The name is after the last colon (or tab, or dash), so roles can hold
+// commas and dashes: "Mrs. Jefferson, Bohemian: Wynter Williams",
+// "Understudy - Joanne Jefferson: Wynter Williams".
 function parseCastList(text: string): { role: string; person: string }[] {
+  const at = (line: string, re: RegExp) => {
+    const all = [...line.matchAll(re)];
+    const m = all.at(-1);
+    return m && m.index ? { role: line.slice(0, m.index).trim(), person: line.slice(m.index + m[0].length).trim() } : null;
+  };
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const m = line.match(/^(.+?)\s*(?::|\t|\s[-–—]\s|,)\s*(.+)$/);
-      return m ? { role: m[1].trim(), person: m[2].trim() } : { role: "", person: line };
+      const split = at(line, /\s*[:\t]\s*/g) ?? at(line, /\s[-–—]\s/g) ?? line.match(/^(.+?)\s*,\s*(.+)$/)?.slice(1);
+      if (Array.isArray(split)) return { role: split[0].trim(), person: split[1].trim() };
+      return split && split.role && split.person ? split : { role: "", person: line };
     });
 }
 
@@ -218,7 +228,17 @@ export function AddProductionForm({
   function addPastedRows() {
     const parsed = parseCastList(pasteText);
     if (!parsed.length) return;
-    const rows = parsed.map(({ role, person }) => ({ ...emptyCredit(tab), role, person }));
+    // One row per person (and per person's understudy roles): "Mrs. Jefferson"
+    // and "Bohemian" for the same name become "Mrs. Jefferson, Bohemian"
+    const rows: CreditRow[] = [];
+    for (const { role, person } of parsed) {
+      const read = readUnderstudy(role);
+      const understudy = tab === "cast" && read.understudy;
+      const text = tab === "cast" ? read.text : role;
+      const same = person && rows.find((r) => r.person.toLowerCase() === person.toLowerCase() && !!r.understudy === understudy);
+      if (same && tab === "cast") same.role = [same.role, text].filter(Boolean).join(", ");
+      else rows.push({ ...emptyCredit(tab), role: text, person, ...(understudy && { understudy: true }) });
+    }
     update((s) => ({ ...s, credits: [...s.credits.filter((c) => !(c.kind === tab && isBlankCredit(c))), ...rows] }));
     setPasteText("");
     setPasteOpen(false);
@@ -738,6 +758,12 @@ export function AddProductionForm({
             return (
               <div key={k} className={`flex flex-col gap-1 ${k === "crew" ? "mt-4 border-t border-rule pt-5" : ""}`}>
                 <h3 className="subheading">{k === "cast" ? "Cast" : "Creative team & crew"}</h3>
+                {k === "cast" && (
+                  <p className="m-0 text-sm text-muted">
+                    One line per person: someone with several roles gets them all in one Role box, separated by commas
+                    (<em>Mrs. Jefferson, Bohemian</em>). Tick <strong>Understudy</strong> for a role they cover.
+                  </p>
+                )}
 
                 {rows.length === 0 && <p className="m-0 text-muted">No {noun} added yet.</p>}
 
@@ -936,14 +962,29 @@ function CreditRowEditor({
           {row.kind === "crew" ? (
             <PositionSelect id={roleId} value={row.role} onChange={(role) => onChange({ role })} className={smallField} />
           ) : (
-            <input
-              id={roleId}
-              type="text"
-              value={row.role}
-              placeholder="Jo March"
-              onChange={(e) => onChange({ role: e.target.value })}
-              className={smallField}
-            />
+            <>
+              <input
+                id={roleId}
+                type="text"
+                value={row.role}
+                placeholder="Jo March"
+                aria-describedby={`${roleId}-hint`}
+                onChange={(e) => onChange({ role: e.target.value })}
+                className={smallField}
+              />
+              <span id={`${roleId}-hint`} className="sr-only">
+                For several roles, separate them with commas.
+              </span>
+              <label className="flex min-h-9 cursor-pointer items-center gap-2 text-[15px]">
+                <input
+                  type="checkbox"
+                  checked={!!row.understudy}
+                  onChange={(e) => onChange({ understudy: e.target.checked })}
+                  className="h-5 w-5 flex-none accent-ink"
+                />
+                Understudy (covers this role)
+              </label>
+            </>
           )}
         </div>
         <TypeAhead

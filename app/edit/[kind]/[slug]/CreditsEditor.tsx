@@ -1,22 +1,31 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { lookup } from "@/app/add/TypeAhead";
 import { personNameKey } from "@/lib/submission";
+import { readUnderstudy, splitRoles } from "@/lib/credits";
 import type { CreditAdd } from "@/lib/corrections";
 import { PositionSelect } from "@/components/PositionSelect";
 import { PersonPicker, personProblem, type PersonValue } from "./PersonPicker";
 import { CROSS, Icon, PENCIL, PLUS, UNDO, changedRow, input, small } from "./ui";
 
-// characterId: the show role a cast credit is linked to
-export type CreditLine = { id: string; kind: "cast" | "crew"; person: string; role: string; characterId: string | null };
+// One credit as it is now. characterId: the show role a cast credit is
+// linked to; understudy: they cover the role rather than play it.
+export type CreditLine = {
+  id: string;
+  kind: "cast" | "crew";
+  personId: string;
+  person: string;
+  role: string;
+  characterId: string | null;
+  understudy: boolean;
+};
 // One of the show's roles; inUse = someone is credited in it (any production)
 export type RoleLine = { id: string; name: string; inUse: boolean };
 
 // Everything changed so far in the cast, crew and roles
 export type CreditEdits = {
   removed: Set<string>; //                 credit ids
-  roleChanges: Record<string, string>; //   credit id -> new role
   added: CreditAdd[];
   addedRoles: string[];
   renamedRoles: Record<string, string>; //  role id -> new name
@@ -24,10 +33,9 @@ export type CreditEdits = {
 };
 
 export type CreditOps = {
-  toggleRemoveCredit: (id: string) => void;
-  setCreditRole: (id: string, role: string, original: string) => void;
-  addCredit: (a: CreditAdd) => void;
-  removeAdded: (i: number) => void;
+  setRemoved: (ids: string[], removed: boolean) => void;
+  addCredits: (a: CreditAdd[]) => void;
+  removeAdded: (indexes: number[]) => void;
   addRoles: (names: string[]) => void;
   removeAddedRole: (i: number) => void;
   renameRole: (id: string, name: string, original: string) => void;
@@ -37,121 +45,147 @@ export type CreditOps = {
 const tidy = (s: string) => s.trim().replace(/\s+/g, " ");
 const same = (a: string, b: string) => tidy(a).toLowerCase() === tidy(b).toLowerCase();
 
-function toCreditAdd(kind: "cast" | "crew", role: string, v: PersonValue): CreditAdd {
-  return "person_id" in v
-    ? { kind, role: tidy(role), person_id: v.person_id, person_label: v.person_label }
-    : { kind, role: tidy(role), new_name: v.new_name, adult_confirmed: true, ...(v.distinct && { distinct: true }) };
+// Who an added line names, as a grouping key
+const addedKey = (a: CreditAdd) => (a.person_id ? `id:${a.person_id}` : `new:${personNameKey(a.new_name ?? "")}`);
+
+function addsFor(kind: "cast" | "crew", roles: string[], understudy: boolean, v: PersonValue): CreditAdd[] {
+  return roles.map((role) =>
+    "person_id" in v
+      ? { kind, role, person_id: v.person_id, person_label: v.person_label, ...(understudy && { understudy: true }) }
+      : { kind, role, new_name: v.new_name, adult_confirmed: true, ...(v.distinct && { distinct: true }), ...(understudy && { understudy: true }) },
+  );
+}
+
+// The person a group is about, to add more roles for them
+function groupPerson(g: Group): PersonValue {
+  if (g.personId) return { person_id: g.personId, person_label: g.name };
+  return { new_name: g.name, adult_confirmed: true, clash: false, distinct: !!g.added[0]?.a.distinct };
 }
 
 // New people already added in this correction (someone with two roles)
 const pendingNewOf = (added: CreditAdd[]) => [...new Set(added.flatMap((a) => (a.new_name ? [a.new_name] : [])))];
 
 // ---------------------------------------------------------------------
-// Click to change: a role or position shown as text with a pencil
+// One person and everything they do in this production
 // ---------------------------------------------------------------------
-function EditableText({
-  value,
+type Group = {
+  key: string;
+  personId: string | null;
+  name: string;
+  isNew: boolean;
+  lines: CreditLine[]; // as it is now
+  added: { a: CreditAdd; i: number }[];
+  order: number;
+};
+
+function groupCredits(kind: "cast" | "crew", credits: CreditLine[], added: CreditAdd[]): Group[] {
+  const groups = new Map<string, Group>();
+  credits
+    .filter((c) => c.kind === kind)
+    .forEach((c, n) => {
+      const key = `id:${c.personId}`;
+      const g = groups.get(key) ?? { key, personId: c.personId, name: c.person, isNew: false, lines: [], added: [], order: n };
+      g.lines.push(c);
+      groups.set(key, g);
+    });
+  added.forEach((a, i) => {
+    if (a.kind !== kind) return;
+    const key = addedKey(a);
+    const g =
+      groups.get(key) ??
+      ({ key, personId: a.person_id ?? null, name: a.person_label ?? a.new_name ?? "", isNew: !a.person_id, lines: [], added: [], order: 10000 + i } as Group);
+    g.added.push({ a, i });
+    groups.set(key, g);
+  });
+  return [...groups.values()].sort((x, y) => x.order - y.order);
+}
+
+// A role as a removable tag
+function Chip({
+  text,
+  understudy,
+  state,
+  onToggle,
   label,
-  changed,
-  crew = false,
-  suggestions,
-  onSave,
 }: {
-  value: string;
-  label: string; // "Role for Jane Doe"
-  changed?: boolean;
-  crew?: boolean;
-  suggestions?: string; // datalist id
-  onSave: (v: string) => void;
+  text: string;
+  understudy?: boolean;
+  state: "now" | "removing" | "adding";
+  onToggle: () => void;
+  label: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const inputId = useId();
-  const save = () => {
-    if (tidy(draft)) onSave(tidy(draft));
-    setEditing(false);
+  return (
+    <span
+      className={`inline-flex min-h-9 items-center gap-1 rounded-md border pl-2.5 text-[15px] ${
+        state === "adding" ? "border-ink bg-[#FFF6D6] font-semibold" : state === "removing" ? "border-[#CFCFCF] text-muted" : "border-[#CFCFCF] bg-page"
+      }`}
+    >
+      <span className={state === "removing" ? "line-through" : ""}>
+        {understudy && <span className="font-normal text-muted">Understudy for </span>}
+        {text}
+      </span>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={state === "removing" ? `Keep ${label}` : `Remove ${label}`}
+        className="flex h-9 w-8 cursor-pointer items-center justify-center rounded-r-md border-0 bg-transparent text-muted hover:text-ink"
+      >
+        <Icon d={state === "removing" ? UNDO : CROSS} />
+      </button>
+    </span>
+  );
+}
+
+// Adding more roles (or positions) for someone already listed
+function MoreRoles({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (roles: string[], understudy: boolean) => void; onCancel: () => void }) {
+  const [text, setText] = useState("");
+  const [understudy, setUnderstudy] = useState(false);
+  const add = () => {
+    const read = readUnderstudy(text);
+    const roles = kind === "cast" ? splitRoles(read.text) : [tidy(text)].filter(Boolean);
+    if (roles.length) onAdd(roles, kind === "cast" && (understudy || read.understudy));
   };
-  if (editing) {
-    return (
-      <span className="flex flex-wrap items-center gap-2">
-        {crew ? (
-          <PositionSelect id={inputId} value={draft} onChange={setDraft} className={`${input} max-w-[260px]`} />
-        ) : (
+  return (
+    <span className="flex w-full flex-col gap-2">
+      {kind === "crew" ? (
+        <PositionSelect id={`more-${kind}`} value={text} onChange={setText} className={`${input} max-w-[300px]`} />
+      ) : (
+        <>
           <input
-            aria-label={label}
+            aria-label="Roles to add, separated by commas"
             autoFocus
-            list={suggestions}
-            value={draft}
-            maxLength={100}
-            onChange={(e) => setDraft(e.target.value)}
+            list="show-roles"
+            value={text}
+            placeholder="e.g. Bohemian, Pam"
+            onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                save();
+                add();
               }
-              if (e.key === "Escape") setEditing(false);
             }}
-            className={`${input} max-w-[260px]`}
+            className={`${input} max-w-[320px]`}
           />
-        )}
-        <button type="button" onClick={save} className={small}>
-          Done
+          <label className="flex cursor-pointer items-center gap-2 text-[15px]">
+            <input type="checkbox" checked={understudy} onChange={(e) => setUnderstudy(e.target.checked)} className="h-5 w-5 accent-ink" />
+            Understudy (covers these roles)
+          </label>
+        </>
+      )}
+      <span className="flex gap-2">
+        <button type="button" onClick={add} className={small}>
+          Add
         </button>
-        <button type="button" onClick={() => setEditing(false)} className={small}>
+        <button type="button" onClick={onCancel} className={small}>
           Cancel
         </button>
       </span>
-    );
-  }
-  return (
-    <button
-      type="button"
-      aria-label={`Change ${label}: ${value || "empty"}`}
-      onClick={() => {
-        setDraft(value);
-        setEditing(true);
-      }}
-      className={`group flex min-h-11 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-left text-base ${changed ? "font-bold" : "font-semibold"}`}
-    >
-      <span className="underline decoration-[#CFCFCF] decoration-1 underline-offset-4 group-hover:decoration-ink">{value || "(no role)"}</span>
-      <span className="text-muted">
-        <Icon d={PENCIL} />
-      </span>
-    </button>
+    </span>
   );
 }
 
-// One line of the list: role | person | buttons
-function Line({ children, changed, struck }: { children: React.ReactNode; changed?: boolean; struck?: boolean }) {
-  return (
-    <li
-      className={`grid grid-cols-1 items-start gap-x-4 gap-y-1 border-b border-rule px-2 py-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto] ${
-        changed ? changedRow : ""
-      } ${struck ? "text-muted [&>span:not(:last-child)]:line-through" : ""}`}
-    >
-      {children}
-    </li>
-  );
-}
-
-function Buttons({ children }: { children: React.ReactNode }) {
-  return <span className="flex flex-wrap items-center gap-2 no-underline md:justify-end">{children}</span>;
-}
-
-// Picking a person for a line (to fill a role, or to replace someone)
-function PickPerson({
-  id,
-  pendingNew,
-  onDone,
-  onCancel,
-  doneLabel = "Done",
-}: {
-  id: string;
-  pendingNew: string[];
-  onDone: (v: PersonValue) => void;
-  onCancel: () => void;
-  doneLabel?: string;
-}) {
+// Choosing someone else for every role a person has
+function ReplacePerson({ id, pendingNew, onDone, onCancel }: { id: string; pendingNew: string[]; onDone: (v: PersonValue) => void; onCancel: () => void }) {
   const [v, setV] = useState<PersonValue | null>(null);
   const [problem, setProblem] = useState("");
   return (
@@ -168,7 +202,7 @@ function PickPerson({
           }}
           className={small}
         >
-          {doneLabel}
+          Done
         </button>
         <button type="button" onClick={onCancel} className={small}>
           Cancel
@@ -178,15 +212,130 @@ function PickPerson({
   );
 }
 
-// ---------------------------------------------------------------------
-// Cast: every role in the show, with who plays it (or "Not cast yet")
-// ---------------------------------------------------------------------
-type CastItem =
-  | { t: "credit"; c: CreditLine }
-  | { t: "role"; r: RoleLine }
-  | { t: "added"; a: CreditAdd; i: number }
-  | { t: "addedRole"; name: string; i: number };
+// The people in the cast or on the creative team, one line each
+function PeopleList({ kind, credits, edits, ops }: { kind: "cast" | "crew"; credits: CreditLine[]; edits: CreditEdits; ops: CreditOps }) {
+  const [open, setOpen] = useState<{ key: string; what: "more" | "replace" } | null>(null);
+  const groups = groupCredits(kind, credits, edits.added);
+  const pendingNew = pendingNewOf(edits.added);
+  const roleWord = kind === "cast" ? "role" : "position";
 
+  if (!groups.length) return <p className="m-0 px-2 py-3 text-muted">No one listed yet.</p>;
+
+  return (
+    <ul className="m-0 flex list-none flex-col p-0">
+      {groups.map((g) => {
+        const live = g.lines.filter((l) => !edits.removed.has(l.id));
+        const allGone = live.length === 0 && g.added.length === 0;
+        const changed = g.added.length > 0 || g.lines.some((l) => edits.removed.has(l.id));
+        // Roles they play first, then the ones they cover
+        const lines = [...g.lines].sort((a, b) => Number(a.understudy) - Number(b.understudy));
+        const adds = [...g.added].sort((a, b) => Number(!!a.a.understudy) - Number(!!b.a.understudy));
+        return (
+          <li
+            key={g.key}
+            className={`grid grid-cols-1 items-start gap-x-4 gap-y-2 border-b border-rule px-2 py-3 md:grid-cols-[13rem_minmax(0,1fr)_auto] ${
+              changed ? changedRow : ""
+            }`}
+          >
+            <span className={`flex min-h-9 flex-col justify-center ${allGone ? "text-muted line-through" : ""}`}>
+              <strong>{g.name}</strong>
+              {g.isNew && <span className="text-sm text-muted">New to the site</span>}
+            </span>
+
+            {open?.key === g.key && open.what === "replace" ? (
+              <ReplacePerson
+                id={`replace-${g.key}`}
+                pendingNew={pendingNew}
+                onCancel={() => setOpen(null)}
+                onDone={(v) => {
+                  // Same roles, someone else
+                  ops.setRemoved(live.map((l) => l.id), true);
+                  ops.removeAdded(g.added.map(({ i }) => i));
+                  const plays = [...live.filter((l) => !l.understudy).map((l) => l.role), ...g.added.filter(({ a }) => !a.understudy).map(({ a }) => a.role)];
+                  const covers = [...live.filter((l) => l.understudy).map((l) => l.role), ...g.added.filter(({ a }) => a.understudy).map(({ a }) => a.role)];
+                  ops.addCredits([...addsFor(kind, plays, false, v), ...addsFor(kind, covers, true, v)]);
+                  setOpen(null);
+                }}
+              />
+            ) : (
+              <span className="flex flex-wrap items-center gap-1.5">
+                {lines.map((l) => (
+                  <Chip
+                    key={l.id}
+                    text={l.role}
+                    understudy={l.understudy}
+                    state={edits.removed.has(l.id) ? "removing" : "now"}
+                    label={`${g.name} as ${l.role}`}
+                    onToggle={() => ops.setRemoved([l.id], !edits.removed.has(l.id))}
+                  />
+                ))}
+                {adds.map(({ a, i }) => (
+                  <Chip
+                    key={`a${i}`}
+                    text={a.role}
+                    understudy={a.understudy}
+                    state="adding"
+                    label={`${g.name} as ${a.role}`}
+                    onToggle={() => ops.removeAdded([i])}
+                  />
+                ))}
+                {open?.key === g.key && open.what === "more" && (
+                  <MoreRoles
+                    kind={kind}
+                    onCancel={() => setOpen(null)}
+                    onAdd={(roles, understudy) => {
+                      const taken = (r: string) =>
+                        live.some((l) => same(l.role, r) && l.understudy === understudy) ||
+                        g.added.some(({ a }) => same(a.role, r) && !!a.understudy === understudy);
+                      ops.addCredits(addsFor(kind, roles.filter((r) => !taken(r)), understudy, groupPerson(g)));
+                      setOpen(null);
+                    }}
+                  />
+                )}
+              </span>
+            )}
+
+            <span className="flex flex-wrap items-center gap-2 md:justify-end">
+              {allGone ? (
+                g.lines.length > 0 && (
+                  <button type="button" onClick={() => ops.setRemoved(g.lines.map((l) => l.id), false)} className={small}>
+                    <Icon d={UNDO} /> Undo
+                  </button>
+                )
+              ) : (
+                !open || open.key !== g.key ? (
+                  <>
+                    <button type="button" onClick={() => setOpen({ key: g.key, what: "more" })} aria-label={`Add a ${roleWord} for ${g.name}`} className={small}>
+                      <Icon d={PLUS} /> {kind === "cast" ? "Role" : "Position"}
+                    </button>
+                    <button type="button" onClick={() => setOpen({ key: g.key, what: "replace" })} aria-label={`Replace ${g.name}`} className={small}>
+                      Change person
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        ops.setRemoved(live.map((l) => l.id), true);
+                        ops.removeAdded(g.added.map(({ i }) => i));
+                      }}
+                      aria-label={`Remove ${g.name}`}
+                      className={small}
+                    >
+                      <Icon d={CROSS} /> Remove
+                    </button>
+                  </>
+                ) : null
+              )}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Cast: who plays what (one line per person), then roles not cast yet
+// ---------------------------------------------------------------------
 export function CastEditor({
   showTitle,
   credits,
@@ -202,46 +351,49 @@ export function CastEditor({
   edits: CreditEdits;
   ops: CreditOps;
 }) {
-  const [picking, setPicking] = useState<string | null>(null); // line key choosing a person
+  const [picking, setPicking] = useState<string | null>(null); // a role choosing its person
   const pendingNew = pendingNewOf(edits.added);
   const roleNames = [
     ...roles.filter((r) => !edits.removedRoles.has(r.id)).map((r) => edits.renamedRoles[r.id] ?? r.name),
     ...edits.addedRoles,
   ];
-
-  // In the show's role order: who plays each role, then roles not cast yet.
-  // A role this production credits, or that an added line fills, isn't
-  // also shown as "Not cast yet".
-  const order = (name: string, characterId?: string | null) => {
-    const byId = characterId ? roles.findIndex((r) => r.id === characterId) : -1;
-    if (byId >= 0) return byId;
-    const byName = roleNames.findIndex((n) => same(n, name));
-    return byName >= 0 ? (byName < roles.length ? byName : roles.length + byName) : 10000;
-  };
-  const castNow = credits.filter((c) => c.kind === "cast");
-  const filled = (name: string, id?: string) =>
-    castNow.some((c) => (id && c.characterId === id) || same(c.role, name)) ||
-    edits.added.some((a) => a.kind === "cast" && same(a.role, name));
-  const items: { item: CastItem; at: number; tie: number }[] = [
-    ...castNow.map((c, n) => ({ item: { t: "credit", c } as CastItem, at: order(c.role, c.characterId), tie: n })),
-    ...roles.filter((r) => !filled(r.name, r.id)).map((r) => ({ item: { t: "role", r } as CastItem, at: order(r.name, r.id), tie: 0 })),
-    ...edits.added
-      .map((a, i) => ({ a, i }))
-      .filter(({ a }) => a.kind === "cast")
-      .map(({ a, i }) => ({ item: { t: "added", a, i } as CastItem, at: order(a.role), tie: 1000 + i })),
-    ...edits.addedRoles
-      .map((name, i) => ({ name, i }))
-      .filter(({ name }) => !filled(name))
-      .map(({ name, i }) => ({ item: { t: "addedRole", name, i } as CastItem, at: order(name), tie: 2000 + i })),
-  ];
-  items.sort((x, y) => x.at - y.at || x.tie - y.tie);
+  const cast = credits.filter((c) => c.kind === "cast");
+  // A role is cast once someone plays it here (understudies don't count)
+  const isCast = (name: string, id?: string) =>
+    cast.some((c) => !c.understudy && !edits.removed.has(c.id) && ((id && c.characterId === id) || same(c.role, name))) ||
+    edits.added.some((a) => a.kind === "cast" && !a.understudy && same(a.role, name));
+  const uncast = roles.filter((r) => !isCast(edits.renamedRoles[r.id] ?? r.name, r.id));
+  const uncastAdded = edits.addedRoles.map((name, i) => ({ name, i })).filter(({ name }) => !isCast(name));
 
   const changed =
     edits.added.some((a) => a.kind === "cast") ||
-    castNow.some((c) => edits.removed.has(c.id) || c.id in edits.roleChanges) ||
+    cast.some((c) => edits.removed.has(c.id)) ||
     edits.addedRoles.length > 0 ||
     edits.removedRoles.size > 0 ||
     Object.keys(edits.renamedRoles).length > 0;
+
+  const roleLine = (key: string, name: string, actions: React.ReactNode, nameCell: React.ReactNode, gone = false, isChanged = false) => (
+    <li
+      key={key}
+      className={`grid grid-cols-1 items-start gap-x-4 gap-y-1 border-b border-rule px-2 py-2 md:grid-cols-[13rem_minmax(0,1fr)_auto] ${isChanged ? changedRow : ""}`}
+    >
+      {nameCell}
+      {picking === key ? (
+        <ReplacePerson
+          id={`pick-${key}`}
+          pendingNew={pendingNew}
+          onCancel={() => setPicking(null)}
+          onDone={(v) => {
+            ops.addCredits(addsFor("cast", [name], false, v));
+            setPicking(null);
+          }}
+        />
+      ) : (
+        <span className="flex min-h-11 items-center text-muted">{gone ? "Role will be removed" : rolesOnly ? "" : "Not cast yet"}</span>
+      )}
+      <span className="flex flex-wrap items-center gap-2 md:justify-end">{picking !== key && actions}</span>
+    </li>
+  );
 
   return (
     <EditorShell
@@ -250,199 +402,91 @@ export function CastEditor({
       hint={
         rolesOnly
           ? `Every role in ${showTitle}. Each production’s cast is added on the production’s page.`
-          : `Every role in ${showTitle}, and who plays it. Roles are shared by all productions of the show, so list them even before the cast is known.`
+          : `One line per person, with every role they play (and any they understudy). Roles are shared by all productions of ${showTitle}, so list them even before the cast is known.`
       }
       changed={changed}
-      headings={rolesOnly ? ["Role", ""] : ["Role", "Person"]}
     >
       <datalist id="show-roles">
         {roleNames.map((n) => (
           <option key={n} value={n} />
         ))}
       </datalist>
-      <ul className="m-0 flex list-none flex-col p-0">
-        {items.map(({ item }) => {
-          if (item.t === "credit") {
-            const c = item.c;
-            const gone = edits.removed.has(c.id);
-            const role = edits.roleChanges[c.id] ?? c.role;
-            const key = `credit-${c.id}`;
-            return (
-              <Line key={key} changed={gone || c.id in edits.roleChanges} struck={gone}>
-                {gone ? (
-                  <span className="flex min-h-11 items-center font-semibold">{role}</span>
-                ) : (
-                  <span className="flex flex-col">
-                    <EditableText
-                      value={role}
-                      label={`${c.person}’s role`}
-                      changed={c.id in edits.roleChanges}
-                      suggestions="show-roles"
-                      onSave={(v) => ops.setCreditRole(c.id, v, c.role)}
-                    />
-                    {c.id in edits.roleChanges && <span className="text-sm font-normal text-muted no-underline">was {c.role}</span>}
-                  </span>
-                )}
-                {picking === key ? (
-                  <PickPerson
-                    id={`pick-${key}`}
-                    pendingNew={pendingNew}
-                    doneLabel="Replace"
-                    onCancel={() => setPicking(null)}
-                    onDone={(v) => {
-                      ops.toggleRemoveCredit(c.id);
-                      ops.addCredit(toCreditAdd("cast", role, v));
-                      setPicking(null);
-                    }}
-                  />
-                ) : (
-                  <span className="flex min-h-11 items-center">{c.person}</span>
-                )}
-                <Buttons>
-                  {gone ? (
-                    <>
-                      <span className="text-sm font-semibold no-underline">Will be removed</span>
-                      <button type="button" onClick={() => ops.toggleRemoveCredit(c.id)} className={small}>
-                        <Icon d={UNDO} /> Undo
-                      </button>
-                    </>
-                  ) : (
-                    picking !== key && (
-                      <>
-                        <button type="button" onClick={() => setPicking(key)} aria-label={`Replace ${c.person} as ${role}`} className={small}>
-                          Change person
-                        </button>
-                        <button type="button" onClick={() => ops.toggleRemoveCredit(c.id)} aria-label={`Remove ${c.person} from ${role}`} className={small}>
-                          <Icon d={CROSS} /> Remove
-                        </button>
-                      </>
-                    )
-                  )}
-                </Buttons>
-              </Line>
-            );
-          }
 
-          if (item.t === "role") {
-            const r = item.r;
-            const gone = edits.removedRoles.has(r.id);
-            const name = edits.renamedRoles[r.id] ?? r.name;
-            const key = `role-${r.id}`;
-            return (
-              <Line key={key} changed={gone || r.id in edits.renamedRoles} struck={gone}>
-                {gone ? (
-                  <span className="flex min-h-11 items-center font-semibold">{name}</span>
-                ) : (
-                  <span className="flex flex-col">
-                    <EditableText
-                      value={name}
-                      label={`the role ${r.name}`}
-                      changed={r.id in edits.renamedRoles}
-                      onSave={(v) => ops.renameRole(r.id, v, r.name)}
-                    />
-                    {r.id in edits.renamedRoles && <span className="text-sm font-normal text-muted">was {r.name}</span>}
-                  </span>
-                )}
-                {picking === key ? (
-                  <PickPerson
-                    id={`pick-${key}`}
-                    pendingNew={pendingNew}
-                    onCancel={() => setPicking(null)}
-                    onDone={(v) => {
-                      ops.addCredit(toCreditAdd("cast", name, v));
-                      setPicking(null);
-                    }}
-                  />
-                ) : (
-                  <span className="flex min-h-11 items-center text-muted">{gone ? "Role will be removed" : rolesOnly ? "" : "Not cast yet"}</span>
-                )}
-                <Buttons>
-                  {gone ? (
-                    <button type="button" onClick={() => ops.toggleRemoveRole(r.id)} className={small}>
-                      <Icon d={UNDO} /> Undo
-                    </button>
-                  ) : (
-                    picking !== key && (
-                      <>
-                        {!rolesOnly && (
-                          <button type="button" onClick={() => setPicking(key)} aria-label={`Add who plays ${name}`} className={small}>
-                            <Icon d={PLUS} /> Add person
-                          </button>
-                        )}
-                        {!r.inUse && (
-                          <button type="button" onClick={() => ops.toggleRemoveRole(r.id)} aria-label={`Remove the role ${name}`} className={small}>
-                            <Icon d={CROSS} /> Remove
-                          </button>
-                        )}
-                      </>
-                    )
-                  )}
-                </Buttons>
-              </Line>
-            );
-          }
+      {!rolesOnly && (
+        <>
+          <ColumnLabels labels={["Person", "Roles"]} wide />
+          <PeopleList kind="cast" credits={credits} edits={edits} ops={ops} />
+        </>
+      )}
 
-          if (item.t === "added") {
-            const { a, i } = item;
-            return (
-              <Line key={`added-${i}`} changed>
-                <span className="flex min-h-11 flex-wrap items-center gap-2 font-bold">
-                  <span className="tag">Adding</span> {a.role}
-                </span>
-                <span className="flex min-h-11 flex-col justify-center">
-                  <strong>{a.person_label ?? a.new_name}</strong>
-                  {!a.person_id && <span className="text-sm text-muted">New to the site{a.distinct && ", a different person from the one with the same name"}</span>}
-                </span>
-                <Buttons>
-                  <button type="button" onClick={() => ops.removeAdded(i)} aria-label={`Don’t add ${a.person_label ?? a.new_name}`} className={small}>
-                    <Icon d={CROSS} /> Remove
+      {(uncast.length > 0 || uncastAdded.length > 0 || rolesOnly) && (
+        <div className="flex flex-col gap-1">
+          {!rolesOnly && <h3 className="subheading mt-2">Roles not cast yet</h3>}
+          <ul className="m-0 flex list-none flex-col p-0">
+            {uncast.map((r) => {
+              const gone = edits.removedRoles.has(r.id);
+              const name = edits.renamedRoles[r.id] ?? r.name;
+              return roleLine(
+                `role-${r.id}`,
+                name,
+                gone ? (
+                  <button type="button" onClick={() => ops.toggleRemoveRole(r.id)} className={small}>
+                    <Icon d={UNDO} /> Undo
                   </button>
-                </Buttons>
-              </Line>
-            );
-          }
-
-          const { name, i } = item;
-          const key = `addedRole-${i}`;
-          return (
-            <Line key={key} changed>
-              <span className="flex min-h-11 flex-wrap items-center gap-2 font-bold">
-                <span className="tag">Adding</span> {name}
-              </span>
-              {picking === key ? (
-                <PickPerson
-                  id={`pick-${key}`}
-                  pendingNew={pendingNew}
-                  onCancel={() => setPicking(null)}
-                  onDone={(v) => {
-                    ops.addCredit(toCreditAdd("cast", name, v));
-                    setPicking(null);
-                  }}
-                />
-              ) : (
-                <span className="flex min-h-11 items-center text-muted">{rolesOnly ? "" : "Not cast yet"}</span>
-              )}
-              <Buttons>
-                {picking !== key && (
+                ) : (
                   <>
                     {!rolesOnly && (
-                      <button type="button" onClick={() => setPicking(key)} aria-label={`Add who plays ${name}`} className={small}>
+                      <button type="button" onClick={() => setPicking(`role-${r.id}`)} aria-label={`Add who plays ${name}`} className={small}>
                         <Icon d={PLUS} /> Add person
                       </button>
                     )}
-                    <button type="button" onClick={() => ops.removeAddedRole(i)} aria-label={`Don’t add the role ${name}`} className={small}>
-                      <Icon d={CROSS} /> Remove
-                    </button>
+                    {!r.inUse && (
+                      <button type="button" onClick={() => ops.toggleRemoveRole(r.id)} aria-label={`Remove the role ${name}`} className={small}>
+                        <Icon d={CROSS} /> Remove
+                      </button>
+                    )}
                   </>
-                )}
-              </Buttons>
-            </Line>
-          );
-        })}
-        {items.length === 0 && <li className="px-2 py-3 text-muted">No roles listed yet.</li>}
-      </ul>
+                ),
+                gone ? (
+                  <span className="flex min-h-11 items-center font-semibold text-muted line-through">{name}</span>
+                ) : (
+                  <span className="flex flex-col">
+                    <RenameRole value={name} changed={r.id in edits.renamedRoles} onSave={(v) => ops.renameRole(r.id, v, r.name)} />
+                    {r.id in edits.renamedRoles && <span className="text-sm text-muted">was {r.name}</span>}
+                  </span>
+                ),
+                gone,
+                gone || r.id in edits.renamedRoles,
+              );
+            })}
+            {uncastAdded.map(({ name, i }) =>
+              roleLine(
+                `added-role-${i}`,
+                name,
+                <>
+                  {!rolesOnly && (
+                    <button type="button" onClick={() => setPicking(`added-role-${i}`)} aria-label={`Add who plays ${name}`} className={small}>
+                      <Icon d={PLUS} /> Add person
+                    </button>
+                  )}
+                  <button type="button" onClick={() => ops.removeAddedRole(i)} aria-label={`Don’t add the role ${name}`} className={small}>
+                    <Icon d={CROSS} /> Remove
+                  </button>
+                </>,
+                <span className="flex min-h-11 flex-wrap items-center gap-2 font-bold">
+                  <span className="tag">Adding</span> {name}
+                </span>,
+                false,
+                true,
+              ),
+            )}
+            {rolesOnly && uncast.length === 0 && uncastAdded.length === 0 && <li className="px-2 py-3 text-muted">No roles listed yet.</li>}
+          </ul>
+        </div>
+      )}
+
       <AddLines kind="cast" rolesOnly={rolesOnly} pendingNew={pendingNew} ops={ops} />
-      {roles.some((r) => r.inUse) && (
+      {roles.some((r) => r.inUse) && !rolesOnly && (
         <p className="m-0 text-sm text-muted">A role someone has played (here or in another production) can be renamed but not removed.</p>
       )}
     </EditorShell>
@@ -450,118 +494,73 @@ export function CastEditor({
 }
 
 // ---------------------------------------------------------------------
-// Creative team & crew: position | person
+// Creative team & crew: one line per person, with every position
 // ---------------------------------------------------------------------
 export function CrewEditor({ credits, edits, ops }: { credits: CreditLine[]; edits: CreditEdits; ops: CreditOps }) {
-  const [picking, setPicking] = useState<string | null>(null);
-  const pendingNew = pendingNewOf(edits.added);
-  const crew = credits.filter((c) => c.kind === "crew");
-  const added = edits.added.map((a, i) => ({ a, i })).filter(({ a }) => a.kind === "crew");
-  const changed = added.length > 0 || crew.some((c) => edits.removed.has(c.id) || c.id in edits.roleChanges);
-
+  const changed = edits.added.some((a) => a.kind === "crew") || credits.some((c) => c.kind === "crew" && edits.removed.has(c.id));
   return (
-    <EditorShell id="crew" title="Creative team & crew" hint="Director, music director, stage manager…" changed={changed} headings={["Position", "Person"]}>
-      <ul className="m-0 flex list-none flex-col p-0">
-        {crew.map((c) => {
-          const gone = edits.removed.has(c.id);
-          const role = edits.roleChanges[c.id] ?? c.role;
-          const key = `credit-${c.id}`;
-          return (
-            <Line key={key} changed={gone || c.id in edits.roleChanges} struck={gone}>
-              {gone ? (
-                <span className="flex min-h-11 items-center font-semibold">{role}</span>
-              ) : (
-                <span className="flex flex-col">
-                  <EditableText
-                    value={role}
-                    label={`${c.person}’s position`}
-                    crew
-                    changed={c.id in edits.roleChanges}
-                    onSave={(v) => ops.setCreditRole(c.id, v, c.role)}
-                  />
-                  {c.id in edits.roleChanges && <span className="text-sm font-normal text-muted">was {c.role}</span>}
-                </span>
-              )}
-              {picking === key ? (
-                <PickPerson
-                  id={`pick-${key}`}
-                  pendingNew={pendingNew}
-                  doneLabel="Replace"
-                  onCancel={() => setPicking(null)}
-                  onDone={(v) => {
-                    ops.toggleRemoveCredit(c.id);
-                    ops.addCredit(toCreditAdd("crew", role, v));
-                    setPicking(null);
-                  }}
-                />
-              ) : (
-                <span className="flex min-h-11 items-center">{c.person}</span>
-              )}
-              <Buttons>
-                {gone ? (
-                  <>
-                    <span className="text-sm font-semibold no-underline">Will be removed</span>
-                    <button type="button" onClick={() => ops.toggleRemoveCredit(c.id)} className={small}>
-                      <Icon d={UNDO} /> Undo
-                    </button>
-                  </>
-                ) : (
-                  picking !== key && (
-                    <>
-                      <button type="button" onClick={() => setPicking(key)} aria-label={`Replace ${c.person} as ${role}`} className={small}>
-                        Change person
-                      </button>
-                      <button type="button" onClick={() => ops.toggleRemoveCredit(c.id)} aria-label={`Remove ${c.person} (${role})`} className={small}>
-                        <Icon d={CROSS} /> Remove
-                      </button>
-                    </>
-                  )
-                )}
-              </Buttons>
-            </Line>
-          );
-        })}
-        {added.map(({ a, i }) => (
-          <Line key={`added-${i}`} changed>
-            <span className="flex min-h-11 flex-wrap items-center gap-2 font-bold">
-              <span className="tag">Adding</span> {a.role}
-            </span>
-            <span className="flex min-h-11 flex-col justify-center">
-              <strong>{a.person_label ?? a.new_name}</strong>
-              {!a.person_id && <span className="text-sm text-muted">New to the site</span>}
-            </span>
-            <Buttons>
-              <button type="button" onClick={() => ops.removeAdded(i)} aria-label={`Don’t add ${a.person_label ?? a.new_name}`} className={small}>
-                <Icon d={CROSS} /> Remove
-              </button>
-            </Buttons>
-          </Line>
-        ))}
-        {crew.length === 0 && added.length === 0 && <li className="px-2 py-3 text-muted">No one listed yet.</li>}
-      </ul>
-      <AddLines kind="crew" pendingNew={pendingNew} ops={ops} />
+    <EditorShell id="crew" title="Creative team & crew" hint="One line per person, with every position they hold." changed={changed}>
+      <ColumnLabels labels={["Person", "Positions"]} wide />
+      <PeopleList kind="crew" credits={credits} edits={edits} ops={ops} />
+      <AddLines kind="crew" pendingNew={pendingNewOf(edits.added)} ops={ops} />
     </EditorShell>
   );
 }
 
+// Click a role not cast yet to rename it
+function RenameRole({ value, changed, onSave }: { value: string; changed: boolean; onSave: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const save = () => {
+    if (tidy(draft)) onSave(tidy(draft));
+    setEditing(false);
+  };
+  if (editing) {
+    return (
+      <span className="flex flex-wrap items-center gap-2">
+        <input
+          aria-label={`New name for ${value}`}
+          autoFocus
+          value={draft}
+          maxLength={100}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              save();
+            }
+            if (e.key === "Escape") setEditing(false);
+          }}
+          className={`${input} max-w-[260px]`}
+        />
+        <button type="button" onClick={save} className={small}>
+          Done
+        </button>
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      aria-label={`Rename the role ${value}`}
+      onClick={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
+      className={`group flex min-h-11 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-left text-base ${changed ? "font-bold" : "font-semibold"}`}
+    >
+      <span className="underline decoration-[#CFCFCF] decoration-1 underline-offset-4 group-hover:decoration-ink">{value}</span>
+      <span className="text-muted">
+        <Icon d={PENCIL} />
+      </span>
+    </button>
+  );
+}
+
 // ---------------------------------------------------------------------
-// The frame both lists share: a heading, a hint and column labels
+// The frame both lists share
 // ---------------------------------------------------------------------
-function EditorShell({
-  id,
-  title,
-  hint,
-  changed,
-  headings,
-  children,
-}: {
-  id: string;
-  title: string;
-  hint: string;
-  changed: boolean;
-  headings: [string, string];
-  children: React.ReactNode;
-}) {
+function EditorShell({ id, title, hint, changed, children }: { id: string; title: string; hint: string; changed: boolean; children: React.ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="flex scroll-mt-4 flex-col gap-3">
       <div className="flex flex-col gap-1 border-b-2 border-ink pb-2">
@@ -570,18 +569,28 @@ function EditorShell({
         </h2>
         <p className="m-0 text-[15px] text-muted">{hint}</p>
       </div>
-      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto] gap-x-4 px-2 text-sm font-bold text-muted md:grid">
-        <span>{headings[0]}</span>
-        <span>{headings[1]}</span>
-        <span />
-      </div>
       {children}
     </section>
   );
 }
 
+function ColumnLabels({ labels, wide }: { labels: [string, string]; wide?: boolean }) {
+  return (
+    <div
+      className={`hidden gap-x-4 px-2 text-sm font-bold text-muted md:grid ${
+        wide ? "grid-cols-[13rem_minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto]"
+      }`}
+    >
+      <span>{labels[0]}</span>
+      <span>{labels[1]}</span>
+      <span />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------
-// Adding: one line at a time, or a whole pasted list
+// Adding: someone (with all their roles), a role not cast yet, or a
+// whole pasted list
 // ---------------------------------------------------------------------
 function AddLines({
   kind,
@@ -594,40 +603,47 @@ function AddLines({
   pendingNew: string[];
   ops: CreditOps;
 }) {
-  const [mode, setMode] = useState<"none" | "one" | "paste">("none");
-  const [role, setRole] = useState("");
+  const [mode, setMode] = useState<"none" | "person" | "role" | "paste">("none");
+  const [roles, setRoles] = useState("");
+  const [understudy, setUnderstudy] = useState(false);
   const [person, setPerson] = useState<PersonValue | null>(null);
-  const [personTouched, setPersonTouched] = useState(false);
   const [problem, setProblem] = useState("");
   const [paste, setPaste] = useState("");
   const [pasteAdult, setPasteAdult] = useState(false);
   const [busy, setBusy] = useState(false);
-  const roleWord = kind === "cast" ? "role" : "position";
 
   const close = () => {
     setMode("none");
-    setRole("");
+    setRoles("");
+    setUnderstudy(false);
     setPerson(null);
-    setPersonTouched(false);
     setProblem("");
     setPaste("");
     setPasteAdult(false);
   };
 
-  function addOne() {
-    if (!tidy(role)) return setProblem(kind === "cast" ? "Enter the role." : "Choose the position.");
-    // Cast: leaving the person empty adds the role, not cast yet
-    if (kind === "cast" && (rolesOnly || (!person && !personTouched))) {
-      ops.addRoles([tidy(role)]);
-      return close();
-    }
+  const rolesFrom = (text: string) => {
+    const read = readUnderstudy(text);
+    return { list: kind === "cast" ? splitRoles(read.text) : [tidy(text)].filter(Boolean), understudy: kind === "cast" && read.understudy };
+  };
+
+  function addPerson() {
     const p = personProblem(person);
     if (p) return setProblem(p);
-    ops.addCredit(toCreditAdd(kind, role, person!));
+    const r = rolesFrom(roles);
+    if (!r.list.length) return setProblem(kind === "cast" ? "Enter at least one role." : "Choose the position.");
+    ops.addCredits(addsFor(kind, r.list, understudy || r.understudy, person!));
     close();
   }
 
-  // "Role: Person" per line; for the cast, a line with no person adds the role
+  function addRole() {
+    const list = splitRoles(roles);
+    if (!list.length) return setProblem("Enter the role.");
+    ops.addRoles(list);
+    close();
+  }
+
+  // "Roles: Person" per line; for the cast, a line with no person adds the role(s)
   async function addPasted() {
     const lines = paste
       .split(/\r?\n/)
@@ -635,8 +651,9 @@ function AddLines({
       .filter(Boolean)
       .map((l) => {
         if (rolesOnly) return { role: tidy(l), person: "" };
-        const m = l.match(/^(.+?)\s*(?::|\t|\s[-–—]\s)\s*(.+)$/);
-        return m ? { role: tidy(m[1]), person: tidy(m[2]) } : { role: tidy(l), person: "" };
+        // The name is after the last colon or tab (or " - "), so roles can hold commas and dashes
+        const cut = [...l.matchAll(/\s*[:\t]\s*/g)].at(-1) ?? [...l.matchAll(/\s[-–—]\s/g)].at(-1);
+        return cut?.index ? { role: tidy(l.slice(0, cut.index)), person: tidy(l.slice(cut.index + cut[0].length)) } : { role: tidy(l), person: "" };
       });
     if (!lines.length) return setProblem("Paste at least one line.");
     if (kind === "crew" && lines.some((l) => !l.person)) return setProblem("Each line needs a position and a person, like “Director: Jane Doe”.");
@@ -653,59 +670,104 @@ function AddLines({
     setBusy(false);
     const needsNew = resolved.filter((l) => l.person && !l.existing && !pendingNew.some((n) => personNameKey(n) === personNameKey(l.person)));
     if (needsNew.length && !pasteAdult) {
-      return setProblem(`${needsNew.map((l) => l.person).join(", ")} ${needsNew.length === 1 ? "is" : "are"} new to the site. Tick the box to confirm everyone new is 18 or older.`);
+      return setProblem(
+        `${[...new Set(needsNew.map((l) => l.person))].join(", ")} ${needsNew.length === 1 ? "is" : "are"} new to the site. Tick the box to confirm everyone new is 18 or older.`,
+      );
     }
-    const roles: string[] = [];
+    const newRoles: string[] = [];
+    const adds: CreditAdd[] = [];
     for (const l of resolved) {
-      if (!l.person) roles.push(l.role);
-      else
-        ops.addCredit(
-          l.existing
-            ? { kind, role: l.role, person_id: l.existing.id, person_label: l.existing.label }
-            : { kind, role: l.role, new_name: l.person, adult_confirmed: true },
-        );
+      const r = rolesFrom(l.role);
+      if (!l.person) {
+        newRoles.push(...(kind === "cast" ? r.list : []));
+        continue;
+      }
+      const v: PersonValue = l.existing
+        ? { person_id: l.existing.id, person_label: l.existing.label }
+        : { new_name: l.person, adult_confirmed: true, clash: false, distinct: false };
+      for (const a of addsFor(kind, r.list, r.understudy, v)) {
+        // The same person in the same role once
+        if (!adds.some((x) => addedKey(x) === addedKey(a) && same(x.role, a.role) && !!x.understudy === !!a.understudy)) adds.push(a);
+      }
     }
-    if (roles.length) ops.addRoles(roles);
+    if (adds.length) ops.addCredits(adds);
+    if (newRoles.length) ops.addRoles(newRoles);
     close();
   }
 
-  if (mode === "one") {
+  if (mode === "person") {
     return (
       <div className="flex max-w-[640px] flex-col gap-3 border border-[#CFCFCF] bg-page p-3">
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`add-${kind}-person`} className="text-sm font-bold">
+            Person
+          </label>
+          <PersonPicker id={`add-${kind}-person`} value={person} onChange={setPerson} pendingNew={pendingNew} />
+        </div>
         <label className="flex flex-col gap-1 text-sm font-bold">
-          {kind === "cast" ? "Role" : "Position"}
-          {kind === "crew" ? (
-            <PositionSelect id={`add-${kind}-role`} value={role} onChange={setRole} className={`${input} max-w-[300px] font-normal`} />
+          {kind === "cast" ? (
+            <>
+              <span>
+                Roles <span className="font-normal text-muted">(separate several with commas)</span>
+              </span>
+              <input
+                list="show-roles"
+                value={roles}
+                placeholder="e.g. Mrs. Jefferson, Bohemian"
+                onChange={(e) => setRoles(e.target.value)}
+                className={`${input} font-normal`}
+              />
+            </>
           ) : (
-            <input
-              list="show-roles"
-              value={role}
-              maxLength={100}
-              placeholder="e.g. Monty Navarro"
-              onChange={(e) => setRole(e.target.value)}
-              className={`${input} max-w-[300px] font-normal`}
-            />
+            <>
+              Position
+              <PositionSelect id={`add-${kind}-role`} value={roles} onChange={setRoles} className={`${input} max-w-[300px] font-normal`} />
+            </>
           )}
         </label>
-        {!rolesOnly && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`add-${kind}-person`} className="text-sm font-bold">
-              Person {kind === "cast" && <span className="font-normal text-muted">(leave empty if it’s not cast yet)</span>}
-            </label>
-            <PersonPicker
-              id={`add-${kind}-person`}
-              value={person}
-              onChange={(v) => {
-                setPerson(v);
-                setPersonTouched(!!v);
-              }}
-              pendingNew={pendingNew}
-            />
-          </div>
+        {kind === "cast" && (
+          <label className="flex cursor-pointer items-center gap-2 text-[15px]">
+            <input type="checkbox" checked={understudy} onChange={(e) => setUnderstudy(e.target.checked)} className="h-5 w-5 accent-ink" />
+            Understudy (covers these roles rather than playing them)
+          </label>
         )}
         {problem && <span className="text-sm font-semibold">{problem}</span>}
         <span className="flex gap-2">
-          <button type="button" onClick={addOne} className={small}>
+          <button type="button" onClick={addPerson} className={small}>
+            Add
+          </button>
+          <button type="button" onClick={close} className={small}>
+            Cancel
+          </button>
+        </span>
+      </div>
+    );
+  }
+
+  if (mode === "role") {
+    return (
+      <div className="flex max-w-[640px] flex-col gap-3 border border-[#CFCFCF] bg-page p-3">
+        <label className="flex flex-col gap-1 text-sm font-bold">
+          <span>
+            Roles <span className="font-normal text-muted">(separate several with commas)</span>
+          </span>
+          <input
+            autoFocus
+            value={roles}
+            placeholder="e.g. Monty Navarro, Sibella Hallward"
+            onChange={(e) => setRoles(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addRole();
+              }
+            }}
+            className={`${input} font-normal`}
+          />
+        </label>
+        {problem && <span className="text-sm font-semibold">{problem}</span>}
+        <span className="flex gap-2">
+          <button type="button" onClick={addRole} className={small}>
             Add
           </button>
           <button type="button" onClick={close} className={small}>
@@ -720,15 +782,16 @@ function AddLines({
     return (
       <div className="flex max-w-[640px] flex-col gap-2 border border-[#CFCFCF] bg-page p-3">
         <label htmlFor={`paste-${kind}`} className="text-sm font-bold">
-          Paste the {kind === "cast" ? "cast" : "creative team"} list, one per line
+          {rolesOnly ? "Paste the roles, one per line" : `Paste the ${kind === "cast" ? "cast" : "creative team"} list, one per line`}
         </label>
         <span className="text-sm text-muted">
           {rolesOnly ? (
             "One role per line."
           ) : kind === "cast" ? (
             <>
-              Like <em>Monty Navarro: Jane Doe</em>. A line with only a role adds the role, not cast yet. Names already on the site
-              are matched to their pages.
+              Like <em>Mrs. Jefferson, Bohemian: Wynter Williams</em> or <em>Understudy - Joanne Jefferson: Wynter Williams</em>. Lines
+              for the same person are put together. A line with only roles adds them, not cast yet. Names already on the site are
+              matched to their pages.
             </>
           ) : (
             <>
@@ -758,13 +821,19 @@ function AddLines({
 
   return (
     <span className="flex flex-wrap gap-2">
-      <button type="button" onClick={() => setMode("one")} className={small}>
-        <Icon d={PLUS} /> {kind === "cast" ? "Add a role" : "Add someone to the team"}
-      </button>
+      {!rolesOnly && (
+        <button type="button" onClick={() => setMode("person")} className={small}>
+          <Icon d={PLUS} /> {kind === "cast" ? "Add someone to the cast" : "Add someone to the team"}
+        </button>
+      )}
+      {kind === "cast" && (
+        <button type="button" onClick={() => setMode("role")} className={small}>
+          <Icon d={PLUS} /> {rolesOnly ? "Add roles" : "Add roles not cast yet"}
+        </button>
+      )}
       <button type="button" onClick={() => setMode("paste")} className={small}>
         <Icon d={PLUS} /> {rolesOnly ? "Paste a list of roles" : "Paste a whole list"}
       </button>
-      <span className="sr-only">Each {roleWord} can be changed by clicking it.</span>
     </span>
   );
 }

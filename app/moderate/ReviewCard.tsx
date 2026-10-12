@@ -347,7 +347,7 @@ export function ReviewCard({
                   onChange={(include) => setCredits((cs) => cs.map((x, j) => (j === i ? { ...x, include } : x)))}
                   label={`Include ${c.value.role}`}
                 />
-                <span className="w-11 flex-none text-sm text-muted">{c.value.kind === "cast" ? "Cast" : "Crew"}</span>
+                <span className="w-11 flex-none text-sm text-muted">{c.value.kind === "cast" ? (c.value.understudy ? "U/S" : "Cast") : "Crew"}</span>
                 <input
                   className={`${inputBase} flex-[1_1_140px] font-semibold`}
                   aria-label="Role"

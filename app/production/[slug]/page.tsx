@@ -18,6 +18,39 @@ import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { AddThemLink, EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { ViewTracker } from "@/components/ViewTracker";
 import { AWARD_SELECT, awardSentence, sortAwards, type AwardRow } from "@/lib/awards";
+import { groupByPerson, type PersonCredits } from "@/lib/credits";
+
+type CastPerson = { slug: string; display_name: string; headshot: { thumb_key: string | null } | null };
+
+// The cast, one entry per person: every role they play, then any they understudy
+function CastGrid({ people }: { people: PersonCredits<CastPerson>[] }) {
+  return (
+    <ul className="m-0 grid list-none grid-cols-1 gap-x-10 p-0 md:grid-cols-2">
+      {people.map(({ person, roles, covers }) => (
+        <li key={person.slug}>
+          <Link href={`/person/${person.slug}`} className="link-quiet flex items-start gap-3 border-b border-rule py-2.5">
+            {person.headshot?.thumb_key ? (
+              <img src={mediaUrl(person.headshot.thumb_key)!} alt="" loading="lazy" className="h-11 w-11 flex-none rounded-full bg-soft object-cover" />
+            ) : (
+              <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-soft font-bold text-muted">
+                {person.display_name.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <span className="flex min-w-0 flex-col">
+              <span className="font-bold">{person.display_name}</span>
+              {roles.length > 0 && <span className="text-sm text-muted">{roles.join(", ")}</span>}
+              {covers.length > 0 && (
+                <span className="text-sm text-muted">
+                  <span className="font-semibold text-ink">Understudy</span> for {covers.join(", ")}
+                </span>
+              )}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {
   return (
@@ -123,6 +156,17 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const crew = credits
     .filter((x) => x.kind === "crew")
     .sort((a, b) => crewRank(a.role_name) - crewRank(b.role_name) || a.billing_order - b.billing_order);
+  // One entry per person, with every role they play (and cover)
+  const castPeople = groupByPerson(
+    cast.map((x) => ({ person: x.person, role: x.character?.name ?? x.role_name ?? "", understudy: x.is_understudy, order: x.billing_order })),
+    (pe) => pe.slug,
+  );
+  const castPlaying = castPeople.filter((g) => g.roles.length > 0);
+  const understudiesOnly = castPeople.filter((g) => g.roles.length === 0);
+  const crewPeople = groupByPerson(
+    crew.map((x, i) => ({ person: x.person, role: x.role_name ?? "", order: i })),
+    (pe) => pe.slug,
+  );
   const typeLabel = SHOW_TYPES.find((t) => t.value === p.show!.type)?.label;
   const about = [p.show.subtitle ?? typeLabel, p.show.authors].filter(Boolean).join(" · ");
   const dates = dateRange(p.opening_date, p.closing_date);
@@ -358,36 +402,15 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
                 </p>
               </>
             ) : (
-              <ul className="m-0 grid list-none grid-cols-1 gap-x-10 p-0 md:grid-cols-2">
-                {cast.map((x) => (
-                  <li key={x.id}>
-                    <Link
-                      href={`/person/${x.person!.slug}`}
-                      className="link-quiet flex items-center gap-3 border-b border-rule py-2.5"
-                    >
-                      {x.person!.headshot?.thumb_key ? (
-                        <img
-                          src={mediaUrl(x.person!.headshot.thumb_key)!}
-                          alt=""
-                          loading="lazy"
-                          className="h-11 w-11 flex-none rounded-full bg-soft object-cover"
-                        />
-                      ) : (
-                        <span aria-hidden="true" className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-soft font-bold text-muted">
-                          {x.person!.display_name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                      <span className="flex min-w-0 flex-col">
-                        <span className="font-bold">{x.person!.display_name}</span>
-                        <span className="text-sm text-muted">
-                          {x.character?.name ?? x.role_name}
-                          {x.is_understudy && " (understudy)"}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <CastGrid people={castPlaying} />
+                {understudiesOnly.length > 0 && (
+                  <>
+                    <h3 className="subheading mt-6">Understudies</h3>
+                    <CastGrid people={understudiesOnly} />
+                  </>
+                )}
+              </>
             )}
           </section>
 
@@ -403,11 +426,11 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
                 </AddThemLink>
               </p>
             ) : (
-              crew.map((x) => (
-                <div key={x.id} className="flex justify-between gap-4 border-b border-rule py-3">
-                  <span className="text-muted">{x.role_name}</span>
-                  <Link href={`/person/${x.person!.slug}`} className="text-right font-bold">
-                    {x.person!.display_name}
+              crewPeople.map((g) => (
+                <div key={g.person.slug} className="flex justify-between gap-4 border-b border-rule py-3">
+                  <span className="text-muted">{g.roles.join(", ")}</span>
+                  <Link href={`/person/${g.person.slug}`} className="flex-none text-right font-bold">
+                    {g.person.display_name}
                   </Link>
                 </div>
               ))

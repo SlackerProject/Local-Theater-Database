@@ -67,7 +67,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
     .select(
       `id, slug, display_name, bio, links, is_hidden, verified_owner_id,
        headshot:media!people_headshot_fk(id, thumb_key, storage_key, photographer_credit),
-       credits(id, kind, role_name, hidden_on_person_page, added_by_owner,
+       credits(id, kind, role_name, is_understudy, billing_order, hidden_on_person_page, added_by_owner,
                character:show_characters(name),
                production:productions(id, slug, year, title_override, opening_date,
                                       color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
@@ -142,12 +142,31 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
     .sort((a, b) => b.prod.year - a.prod.year || (b.prod.opening_date ?? "").localeCompare(a.prod.opening_date ?? ""));
   const visible = allCredits.filter((c) => !c.hidden_on_person_page);
   const listed = editing ? allCredits : visible;
+  // Visitors see one row per production, with every role in it; the owner
+  // keeps one row per credit so each can be edited or hidden
+  const roleText = (roles: string[], covers: string[]) =>
+    [roles.join(", "), covers.length ? `Understudy for ${covers.join(", ")}` : ""].filter(Boolean).join(" · ");
+  const creditRows = (kind: "cast" | "crew") => {
+    const rows = listed.filter((c) => c.kind === kind);
+    if (editing) return rows.map((c) => ({ ...c, key: c.id, roleLine: c.is_understudy ? `Understudy for ${c.role}` : c.role }));
+    const byProd = new Map<string, (typeof rows)[number] & { key: string; roleLine: string; roles: string[]; covers: string[] }>();
+    for (const c of [...rows].sort((a, b) => a.billing_order - b.billing_order)) {
+      const row = byProd.get(c.prod.id) ?? { ...c, key: c.prod.id, roleLine: "", roles: [], covers: [] };
+      const list = c.is_understudy ? row.covers : row.roles;
+      if (c.role && !list.includes(c.role)) list.push(c.role);
+      row.roleLine = roleText(row.roles, row.covers);
+      byProd.set(c.prod.id, row);
+    }
+    // Back in résumé order (newest first)
+    return rows.flatMap((c) => (byProd.get(c.prod.id)?.id === c.id ? [byProd.get(c.prod.id)!] : []));
+  };
 
   // On stage: one tile per production, with every role they had in it
   const shelf = new Map<string, { prod: (typeof visible)[number]["prod"]; title: string; roles: string[] }>();
   for (const c of visible) {
     const entry = shelf.get(c.prod.id) ?? { prod: c.prod, title: c.title, roles: [] };
-    if (c.role && !entry.roles.includes(c.role)) entry.roles.push(c.role);
+    const role = c.is_understudy ? `Understudy for ${c.role}` : c.role;
+    if (role && !entry.roles.includes(role)) entry.roles.push(role);
     shelf.set(c.prod.id, entry);
   }
 
@@ -364,7 +383,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             ) : (
               <div className="flex flex-col gap-8">
                 {(["cast", "crew"] as const)
-                  .map((kind) => ({ kind, rows: listed.filter((c) => c.kind === kind) }))
+                  .map((kind) => ({ kind, rows: creditRows(kind) }))
                   .filter((g) => g.rows.length > 0)
                   .map((g, _, groups) => (
                     <div key={g.kind} className="flex flex-col gap-1">
@@ -374,14 +393,18 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                         </h3>
                       )}
                       {/* A résumé-style table. On phones, company and year move under the production. */}
-                      <table aria-labelledby={groups.length > 1 ? `credits-${g.kind}` : undefined} className="w-full border-collapse text-left">
+                      {/* Fixed column widths, so the Cast and Crew tables line up */}
+                      <table
+                        aria-labelledby={groups.length > 1 ? `credits-${g.kind}` : undefined}
+                        className="w-full table-fixed border-collapse text-left"
+                      >
                         <thead>
                           <tr className="border-b-2 border-ink text-sm text-muted">
-                            <th scope="col" className="py-2 pr-4 font-semibold">Production</th>
-                            <th scope="col" className="py-2 pr-4 font-semibold">{g.kind === "cast" ? "Role" : "Position"}</th>
-                            <th scope="col" className="hidden py-2 pr-4 font-semibold md:table-cell">Company</th>
-                            <th scope="col" className="hidden py-2 pr-4 font-semibold lg:table-cell">Venue</th>
-                            <th scope="col" className="hidden py-2 text-right font-semibold md:table-cell">Year</th>
+                            <th scope="col" className="w-[52%] py-2 pr-4 font-semibold md:w-[36%] lg:w-[30%]">Production</th>
+                            <th scope="col" className="py-2 pr-4 font-semibold md:w-[30%] lg:w-[26%]">{g.kind === "cast" ? "Role" : "Position"}</th>
+                            <th scope="col" className="hidden py-2 pr-4 font-semibold md:table-cell md:w-[24%] lg:w-[20%]">Company</th>
+                            <th scope="col" className="hidden py-2 pr-4 font-semibold lg:table-cell lg:w-[16%]">Venue</th>
+                            <th scope="col" className="hidden py-2 text-right font-semibold md:table-cell md:w-[10%] lg:w-[8%]">Year</th>
                             {editing && (
                               <th scope="col" className="w-11 py-2">
                                 <span className="sr-only">Show or hide</span>
@@ -396,7 +419,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                             const venue = c.prod.location;
                             const hidden = c.hidden_on_person_page;
                             return (
-                              <tr key={c.id} className={`border-b border-rule align-top ${hidden ? "text-muted" : ""}`}>
+                              <tr key={c.key} className={`border-b border-rule align-top ${hidden ? "text-muted" : ""}`}>
                                 <td className="py-3 pr-4">
                                   <span className="flex items-start gap-2.5">
                                     <span
@@ -428,8 +451,15 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                                     </span>
                                   </span>
                                 </td>
-                                <td className="py-3 pr-4">
-                                  {editing ? <EditableRole slug={person.slug} creditId={c.id} role={c.role} kind={c.kind} /> : c.role}
+                                <td className="break-words py-3 pr-4">
+                                  {editing ? (
+                                    <>
+                                      {c.is_understudy && <span className="text-sm text-muted">Understudy for </span>}
+                                      <EditableRole slug={person.slug} creditId={c.id} role={c.role} kind={c.kind} />
+                                    </>
+                                  ) : (
+                                    c.roleLine
+                                  )}
                                 </td>
                                 <td className="hidden py-3 pr-4 md:table-cell">
                                   {org ? (

@@ -81,6 +81,8 @@ export type CreditAdd = {
   // A new person who shares a name with someone already on the site, confirmed
   // as a different person (otherwise they're linked to the existing page)
   distinct?: boolean;
+  // Cast: covers the role rather than playing it
+  understudy?: boolean;
 };
 export type PerformanceEdit = { id?: string; date: string; time: string; label: string; cancelled?: boolean };
 

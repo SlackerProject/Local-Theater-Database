@@ -70,7 +70,6 @@ export function CorrectionForm({
   const [edits, setEdits] = useState<Record<string, FieldValue>>({});
   const [editLabels, setEditLabels] = useState<Record<string, string>>({});
   const [removedCredits, setRemovedCredits] = useState<Set<string>>(new Set());
-  const [roleChanges, setRoleChanges] = useState<Record<string, string>>({});
   const [addedCredits, setAddedCredits] = useState<CreditAdd[]>([]);
   const [removedPerfs, setRemovedPerfs] = useState<Set<string>>(new Set());
   const [perfChanges, setPerfChanges] = useState<Record<string, PerformanceEdit & { id: string }>>({});
@@ -88,8 +87,8 @@ export function CorrectionForm({
     ...(table === "productions" && {
       credits: {
         add: addedCredits,
+        // A changed role is a removed tag plus an added one
         remove: [...removedCredits],
-        update: Object.entries(roleChanges).map(([cid, role]) => ({ id: cid, role })),
       },
       performances: { add: addedPerfs, remove: [...removedPerfs], update: Object.values(perfChanges) },
     }),
@@ -113,23 +112,38 @@ export function CorrectionForm({
     });
   const creditEdits: CreditEdits = {
     removed: removedCredits,
-    roleChanges,
     added: addedCredits,
     addedRoles,
     renamedRoles,
     removedRoles,
   };
   const ops: CreditOps = {
-    toggleRemoveCredit: (cid) => toggle(setRemovedCredits, cid),
-    setCreditRole: (cid, role, original) =>
-      setRoleChanges((r) => {
-        const next = { ...r };
-        if (!role.trim() || role.trim() === original) delete next[cid];
-        else next[cid] = role.trim();
+    setRemoved: (ids, removed) =>
+      setRemovedCredits((s) => {
+        const next = new Set(s);
+        for (const cid of ids) {
+          if (removed) next.add(cid);
+          else next.delete(cid);
+        }
         return next;
       }),
-    addCredit: (a) => setAddedCredits((list) => [...list, a]),
-    removeAdded: (i) => setAddedCredits((list) => list.filter((_, j) => j !== i)),
+    // A role someone already has (and isn't losing) isn't added again
+    addCredits: (a) =>
+      setAddedCredits((list) => [
+        ...list,
+        ...a.filter(
+          (x) =>
+            !(credits ?? []).some(
+              (c) =>
+                !removedCredits.has(c.id) &&
+                x.person_id === c.personId &&
+                c.kind === x.kind &&
+                c.understudy === !!x.understudy &&
+                c.role.toLowerCase() === x.role.toLowerCase(),
+            ),
+        ),
+      ]),
+    removeAdded: (indexes) => setAddedCredits((list) => list.filter((_, j) => !indexes.includes(j))),
     addRoles: (names) =>
       setAddedRoles((list) => {
         // Not twice, and not a role the show already has

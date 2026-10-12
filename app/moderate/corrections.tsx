@@ -150,7 +150,7 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
   if (table === "productions" && p.entity_id) {
     const creditIds = [...(c.credits?.remove ?? []), ...(c.credits?.update ?? []).map((u) => u.id)];
     const { data: credits } = creditIds.length
-      ? await supabase.from("credits").select("id, kind, role_name, person:people(display_name), character:show_characters(name)").in("id", creditIds)
+      ? await supabase.from("credits").select("id, kind, role_name, is_understudy, person:people(display_name), character:show_characters(name)").in("id", creditIds)
       : { data: [] };
     const credit = new Map((credits ?? []).map((cr) => [cr.id, cr]));
     const people = await names(supabase, "people", (c.credits?.add ?? []).map((a) => a.person_id).filter((x): x is string => !!x));
@@ -162,7 +162,9 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
       rows.push({
         key: `credit:remove:${id}`,
         what: `Remove from ${cr?.kind === "crew" ? "creative team" : "cast"}`,
-        current: cr ? `${cr.person?.display_name} — ${cr.character?.name ?? cr.role_name ?? ""}` : "(already gone)",
+        current: cr
+          ? `${cr.person?.display_name} — ${cr.is_understudy ? "Understudy for " : ""}${cr.character?.name ?? cr.role_name ?? ""}`
+          : "(already gone)",
         proposed: "Removed",
       });
     }
@@ -183,7 +185,7 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
         key: `credit:add:${i}`,
         what: `Add to ${a.kind === "crew" ? "creative team" : "cast"}`,
         current: "",
-        proposed: `${who} — ${a.role}`,
+        proposed: `${who} — ${a.understudy ? `Understudy for ${a.role}` : a.role}`,
         ...(match && { sameName: { distinctKey: `distinct:credit:add:${i}`, name: a.new_name!, match } }),
       });
     });

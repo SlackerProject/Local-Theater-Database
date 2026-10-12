@@ -5,6 +5,7 @@
 
 import { maTown } from "@/lib/ma-towns";
 import { SERVICE_AREA } from "@/lib/brand";
+import { readUnderstudy, splitRoles } from "@/lib/credits";
 
 export type ShowType = "musical" | "play" | "opera" | "revue" | "other";
 export const SHOW_TYPES: { value: ShowType; label: string }[] = [
@@ -33,6 +34,8 @@ export type CreditRow = {
   person: string; //  the name as typed
   choice: Choice;
   adultConfirmed: boolean;
+  // Cast: the person understudies the role(s) instead of playing them
+  understudy?: boolean;
 };
 
 export type FormState = {
@@ -107,7 +110,8 @@ export function personNameKey(name: string) {
 
 // Someone already on the site with a new person's name
 export type SameNameMatch = { id: string; label: string; slug: string; detail: string | null };
-export type BundleCredit = { kind: "cast" | "crew"; role: string; person_key: string };
+// One role each; understudy: covers the role rather than playing it
+export type BundleCredit = { kind: "cast" | "crew"; role: string; person_key: string; understudy?: boolean };
 // An uploaded poster and the palette read from it in the browser (migration 0007)
 export type BundlePoster = {
   storage_key: string;
@@ -307,7 +311,16 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
     }
 
     if (mapKey && clean(c.role)) {
-      credits.push({ kind: c.kind, role: clean(c.role), person_key: keyFor.get(mapKey)! });
+      // "Mrs. Jefferson, Bohemian" is two roles; "Understudy - Joanne" covers Joanne
+      const read = readUnderstudy(c.role);
+      const understudy = c.kind === "cast" && (!!c.understudy || read.understudy);
+      for (const role of splitRoles(read.text)) {
+        const person_key = keyFor.get(mapKey)!;
+        const dupe = credits.some(
+          (x) => x.person_key === person_key && x.kind === c.kind && !!x.understudy === understudy && x.role.toLowerCase() === role.toLowerCase(),
+        );
+        if (!dupe) credits.push({ kind: c.kind, role, person_key, ...(understudy && { understudy: true }) });
+      }
     }
   }
   if (missingRole) problems.push(`${missingRole} cast or crew ${missingRole === 1 ? "row needs" : "rows need"} a role.`);
@@ -473,7 +486,7 @@ function itemsToForm(
   const byKey = new Map(items.people.map((p) => [p.key, p]));
   form.credits = items.credits.map((c) => {
     const person = byKey.get(c.person_key);
-    const row = { ...emptyCredit(c.kind), role: c.role };
+    const row = { ...emptyCredit(c.kind), role: c.role, ...(c.understudy && { understudy: true }) };
     if (!person) return row;
     return "new" in person
       ? { ...row, person: person.new.display_name, choice: { kind: "new" as const }, adultConfirmed: true }

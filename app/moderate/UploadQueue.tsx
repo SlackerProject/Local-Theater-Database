@@ -9,7 +9,7 @@ import { reviewUploads } from "./actions";
 
 export type QueueItem = {
   id: string;
-  kind: "production_photo" | "poster" | "headshot";
+  kind: "production_photo" | "poster" | "headshot" | "logo";
   thumb: string;
   full: string;
   credit: string | null;
@@ -25,9 +25,10 @@ const KIND: Record<QueueItem["kind"], string> = {
   production_photo: "Photo",
   poster: "Poster",
   headshot: "Headshot",
+  logo: "Logo",
 };
 
-// Pending uploads, grouped by production or person
+// Pending uploads, grouped by production, person or company
 export function UploadQueue({ groups }: { groups: QueueGroup[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();

@@ -7,9 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "db:types": "supabase gen types --lang typescript --linked > lib/database.types.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.11",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "next": "16.4.0",
@@ -27,6 +30,12 @@
     "supabase": "^2.120.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vercel": "^63.1.2"
+    "vercel": "^63.1.2",
+    "wrangler": "^4.150.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.27.0": true,
+    "workerd@1.20261006.1": true
   }
 }

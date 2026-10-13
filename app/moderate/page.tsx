@@ -56,7 +56,8 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
         `id, kind, storage_key, thumb_key, photographer_credit, palette, created_at, uploaded_by,
          uploader:profiles!media_uploaded_by_fkey(username, display_name),
          production:productions!media_production_id_fkey(id, slug, year, title_override, show:shows(title)),
-         person:people!media_person_id_fkey(id, slug, display_name)`,
+         person:people!media_person_id_fkey(id, slug, display_name),
+         organization:organizations!media_organization_id_fkey(id, slug, name)`,
       )
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
@@ -86,6 +87,8 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
         }
       : m.person
         ? { key: `person:${m.person.id}`, label: m.person.display_name, href: `/person/${m.person.slug}` }
+        : m.organization
+          ? { key: `company:${m.organization.id}`, label: m.organization.name, href: `/company/${m.organization.slug}` }
         : null;
     if (!target) continue;
     const group = groups.get(target.key) ?? { ...target, items: [] };
@@ -143,7 +146,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
         />
       ))}
 
-      <h2 className="heading -mb-2 mt-8">Photos, posters and headshots</h2>
+      <h2 className="heading -mb-2 mt-8">Photos, posters, headshots and logos</h2>
       {groups.size === 0 ? (
         <p className="m-0 text-muted">No uploads waiting for review.</p>
       ) : (

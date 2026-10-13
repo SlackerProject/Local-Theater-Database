@@ -37,7 +37,12 @@ const KIND_TEXT: Record<string, string> = {
   auditions: "Audition dates",
   award_entries: "Added an award",
 };
-const MEDIA_TEXT: Record<string, string> = { poster: "Uploaded a poster", production_photo: "Uploaded a photo", headshot: "Uploaded a headshot" };
+const MEDIA_TEXT: Record<string, string> = {
+  poster: "Uploaded a poster",
+  production_photo: "Uploaded a photo",
+  headshot: "Uploaded a headshot",
+  logo: "Uploaded a logo",
+};
 const STATUS: Record<string, string> = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
 
 const cell = "border-b border-[#CFCFCF] p-2.5 align-top text-left";

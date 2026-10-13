@@ -262,7 +262,7 @@ function SingleImageUploader({
   done,
   inkOverride,
 }: {
-  kind: "poster" | "headshot";
+  kind: "poster" | "headshot" | "logo";
   targetId: string;
   openLabel: string;
   openVariant?: "secondary" | "text";
@@ -312,7 +312,11 @@ function SingleImageUploader({
       const stored = await uploadProcessed(supabase, userId, processed);
       const { error } = await supabase.from("media").insert({
         kind,
-        ...(kind === "poster" ? { production_id: targetId, palette } : { person_id: targetId }),
+        ...(kind === "poster"
+          ? { production_id: targetId, palette }
+          : kind === "logo"
+            ? { organization_id: targetId }
+            : { person_id: targetId }),
         photographer_credit: credit.trim() || null,
         uploaded_by: userId,
         rights_confirmed_at: new Date().toISOString(),
@@ -345,8 +349,8 @@ function SingleImageUploader({
           {preview && (
             <div className="flex flex-wrap items-end gap-4">
               <div
-                className="flex aspect-[4/5] w-[140px] items-center overflow-hidden rounded-[4px]"
-                style={{ background: palette?.ground ?? "#F5F5F4" }}
+                className={`flex ${kind === "logo" ? "aspect-square border border-rule p-2" : "aspect-[4/5]"} w-[140px] items-center overflow-hidden rounded-[4px]`}
+                style={{ background: kind === "logo" ? "#FFFFFF" : (palette?.ground ?? "#F5F5F4") }}
               >
                 <img src={preview} alt="Preview" className="h-full w-full object-contain" />
               </div>
@@ -362,7 +366,7 @@ function SingleImageUploader({
             <>
               <div className="flex max-w-[420px] flex-col gap-1.5">
                 <label htmlFor={creditId} className="text-[15px] font-semibold">
-                  {kind === "poster" ? "Designer or photographer credit" : "Photographer credit"}{" "}
+                  {kind === "poster" ? "Designer or photographer credit" : kind === "logo" ? "Designer credit" : "Photographer credit"}{" "}
                   <span className="font-normal opacity-75">(optional)</span>
                 </label>
                 <input id={creditId} value={credit} onChange={(e) => setCredit(e.target.value)} className="field h-12 px-3" />
@@ -414,6 +418,19 @@ export function HeadshotUploader({ personId, hasHeadshot }: { personId: string; 
       openVariant="text"
       intro="A recent, clear photo of this person. It appears once a moderator approves it."
       done="Thanks! The headshot is waiting for a moderator and will appear here once approved."
+    />
+  );
+}
+
+export function LogoUploader({ organizationId, hasLogo }: { organizationId: string; hasLogo: boolean }) {
+  return (
+    <SingleImageUploader
+      kind="logo"
+      targetId={organizationId}
+      openLabel={hasLogo ? "Suggest a different logo" : "Add a logo"}
+      openVariant="text"
+      intro="The company's logo, shown wherever the company appears. A file with a plain or transparent background works best. It appears once a moderator approves it."
+      done="Thanks! The logo is waiting for a moderator and will appear here once approved."
     />
   );
 }

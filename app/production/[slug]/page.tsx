@@ -19,6 +19,7 @@ import { AddThemLink, EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { ViewTracker } from "@/components/ViewTracker";
 import { AWARD_SELECT, awardSentence, sortAwards, type AwardRow } from "@/lib/awards";
 import { groupByPerson, type PersonCredits } from "@/lib/credits";
+import { CompanyLogo } from "@/components/CompanyLogo";
 
 type CastPerson = { slug: string; display_name: string; headshot: { thumb_key: string | null } | null };
 
@@ -92,7 +93,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
        color_ground, color_ground_2, color_ink, color_soft, color_accent,
        poster:media!productions_poster_fk(thumb_key, storage_key, width, height),
        show:shows(id, slug, title, subtitle, type, authors),
-       organization:organizations(slug, name),
+       organization:organizations(slug, name, logo:media!organizations_logo_fk(thumb_key)),
        location:locations(id, slug, name, street_address, town, state),
        performances(id, starts_at, label, is_cancelled),
        credits(id, kind, role_name, billing_order, is_understudy,
@@ -264,7 +265,8 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {p.organization ? (
-                <Link href={`/company/${p.organization.slug}`} className="font-semibold underline" style={{ color: c.ink }}>
+                <Link href={`/company/${p.organization.slug}`} className="flex items-center gap-2.5 font-semibold underline" style={{ color: c.ink }}>
+                  {p.organization.logo?.thumb_key && <CompanyLogo thumbKey={p.organization.logo.thumb_key} name={p.organization.name} size={40} />}
                   {p.organization.name}
                 </Link>
               ) : (

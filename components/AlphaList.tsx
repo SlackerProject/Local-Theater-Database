@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-export type AlphaItem = { key: string; href: string; label: string; sortKey: string; detail?: string };
+// image: a small picture before the name (a company's logo)
+export type AlphaItem = { key: string; href: string; label: string; sortKey: string; detail?: string; image?: React.ReactNode };
 
 // An A–Z list grouped by first letter, used by the Shows, People and Companies pages
 export function AlphaList({ items, empty }: { items: AlphaItem[]; empty: string }) {
@@ -28,9 +29,12 @@ export function AlphaList({ items, empty }: { items: AlphaItem[]; empty: string 
           <ul className="m-0 grid list-none grid-cols-1 gap-x-10 p-0 md:grid-cols-2">
             {group.map((item) => (
               <li key={item.key} className="border-b border-rule">
-                <Link href={item.href} className="link-quiet flex min-h-11 flex-col justify-center py-2.5">
-                  <span className="font-bold">{item.label}</span>
-                  {item.detail && <span className="text-sm text-muted">{item.detail}</span>}
+                <Link href={item.href} className="link-quiet flex min-h-11 items-center gap-3 py-2.5">
+                  {item.image}
+                  <span className="flex min-w-0 flex-col justify-center">
+                    <span className="font-bold">{item.label}</span>
+                    {item.detail && <span className="text-sm text-muted">{item.detail}</span>}
+                  </span>
                 </Link>
               </li>
             ))}

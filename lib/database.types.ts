@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -682,6 +682,7 @@ export type Database = {
           height: number | null
           id: string
           kind: Database["public"]["Enums"]["media_kind"]
+          organization_id: string | null
           palette: Json | null
           person_id: string | null
           photographer_credit: string | null
@@ -703,6 +704,7 @@ export type Database = {
           height?: number | null
           id?: string
           kind: Database["public"]["Enums"]["media_kind"]
+          organization_id?: string | null
           palette?: Json | null
           person_id?: string | null
           photographer_credit?: string | null
@@ -724,6 +726,7 @@ export type Database = {
           height?: number | null
           id?: string
           kind?: Database["public"]["Enums"]["media_kind"]
+          organization_id?: string | null
           palette?: Json | null
           person_id?: string | null
           photographer_credit?: string | null
@@ -739,6 +742,13 @@ export type Database = {
           width?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "media_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "media_person_id_fkey"
             columns: ["person_id"]
@@ -911,6 +921,7 @@ export type Database = {
           founded_year: number | null
           id: string
           is_active: boolean
+          logo_media_id: string | null
           name: string
           short_name: string | null
           slug: string
@@ -926,6 +937,7 @@ export type Database = {
           founded_year?: number | null
           id?: string
           is_active?: boolean
+          logo_media_id?: string | null
           name: string
           short_name?: string | null
           slug: string
@@ -941,6 +953,7 @@ export type Database = {
           founded_year?: number | null
           id?: string
           is_active?: boolean
+          logo_media_id?: string | null
           name?: string
           short_name?: string | null
           slug?: string
@@ -955,6 +968,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_logo_fk"
+            columns: ["logo_media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
             referencedColumns: ["id"]
           },
         ]
@@ -2087,7 +2107,7 @@ export type Database = {
       award_result: "nominated" | "won"
       claim_status: "pending" | "verified" | "rejected"
       credit_kind: "cast" | "crew"
-      media_kind: "production_photo" | "poster" | "headshot"
+      media_kind: "production_photo" | "poster" | "headshot" | "logo"
       moderation_status: "pending" | "approved" | "rejected"
       show_type: "musical" | "play" | "opera" | "revue" | "other"
       user_role: "member" | "trusted" | "moderator" | "admin"
@@ -2225,7 +2245,7 @@ export const Constants = {
       award_result: ["nominated", "won"],
       claim_status: ["pending", "verified", "rejected"],
       credit_kind: ["cast", "crew"],
-      media_kind: ["production_photo", "poster", "headshot"],
+      media_kind: ["production_photo", "poster", "headshot", "logo"],
       moderation_status: ["pending", "approved", "rejected"],
       show_type: ["musical", "play", "opera", "revue", "other"],
       user_role: ["member", "trusted", "moderator", "admin"],

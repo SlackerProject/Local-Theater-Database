@@ -29,10 +29,15 @@ function WaitingCount({ count, className = "" }: { count: number; className?: st
 
 const waitingLabel = (n: number) => `${n} ${n === 1 ? "decision" : "decisions"} waiting`;
 
+// Across the top on desktop: the three ways to browse
 const BROWSE = [
   { href: "/shows", label: "Shows" },
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
+];
+// In the account menu and the phone menu, to keep the top of the page
+// clean; the footer links them for everyone
+const EXPLORE = [
   { href: "/auditions", label: "Auditions" },
   { href: "/hotlist", label: "Hotlist" },
 ];
@@ -51,6 +56,7 @@ function accountGroups(user: NonNullable<User>) {
         { href: "/submissions", label: "Your submissions" },
       ],
     },
+    { title: "Explore", links: EXPLORE },
     ...(user.canModerate
       ? [
           {
@@ -252,7 +258,8 @@ export function HeaderNav({ user }: { user: User }) {
         </button>
         {mobile && (
           <nav aria-label="Main" className="absolute inset-x-0 top-full z-20 flex flex-col border-b border-rule bg-page pb-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
-            {BROWSE.map((l) => (
+            {/* Signed in, Auditions and Hotlist are in the account part below */}
+            {[...BROWSE, ...(user ? [] : EXPLORE)].map((l) => (
               <Link key={l.href} href={l.href} className={menuItem} onClick={() => setMobile(false)}>
                 {l.label}
               </Link>

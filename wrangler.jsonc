@@ -1,0 +1,12 @@
+{
+  // Cloudflare Workers settings for the site (built by OpenNext:
+  // npm run deploy). See https://opennext.js.org/cloudflare
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "local-theater-database",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "local-theater-database" }],
+  "observability": { "enabled": true }
+}

@@ -114,6 +114,9 @@ export function SiteFooter() {
           <Link href="/updates" className="link-quiet">
             Updates
           </Link>
+          <Link href="/auditions" className="link-quiet">
+            Auditions
+          </Link>
           <Link href="/hotlist" className="link-quiet">
             Hotlist
           </Link>

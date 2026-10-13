@@ -42,3 +42,8 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Cloudflare (OpenNext) build output and local settings
+.open-next
+.dev.vars
+.wrangler

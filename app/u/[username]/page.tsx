@@ -137,6 +137,8 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
       text =
         r.media_kind === "headshot" ? (
           <>Added a headshot for {pageLink("people", r.person_id) ?? "a person"}</>
+        ) : r.media_kind === "logo" ? (
+          "Added a company logo"
         ) : (
           <>Added a photo of {prodLink(r.production_id) ?? "a production"}</>
         );

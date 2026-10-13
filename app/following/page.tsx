@@ -8,6 +8,7 @@ import { showColors, swatch } from "@/lib/palette";
 import { currentTime, localDay, localTime } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { RemoveButton } from "./RemoveButton";
+import { CompanyLogo } from "@/components/CompanyLogo";
 
 export const metadata: Metadata = { title: "Shows & follows" };
 
@@ -58,7 +59,7 @@ async function Following() {
       .order("created_at", { ascending: false }),
     supabase
       .from("follows")
-      .select("person:people(id, slug, display_name), organization:organizations(id, slug, name, town)")
+      .select("person:people(id, slug, display_name), organization:organizations(id, slug, name, town, logo:media!organizations_logo_fk(thumb_key))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("people").select("slug").eq("verified_owner_id", user.id).maybeSingle(),
@@ -191,11 +192,14 @@ async function Following() {
           <ul className="m-0 list-none border-t border-rule p-0">
             {companies.map((c) => (
               <li key={c.id} className={row}>
-                <span className="flex flex-col">
-                  <Link href={`/company/${c.slug}`} className="link-quiet font-bold">
-                    {c.name}
-                  </Link>
-                  {c.town && <span className="text-sm text-muted">{c.town}</span>}
+                <span className="flex items-center gap-3">
+                  <CompanyLogo thumbKey={c.logo?.thumb_key} name={c.name} size={40} />
+                  <span className="flex flex-col">
+                    <Link href={`/company/${c.slug}`} className="link-quiet font-bold">
+                      {c.name}
+                    </Link>
+                    {c.town && <span className="text-sm text-muted">{c.town}</span>}
+                  </span>
                 </span>
                 <RemoveButton target={{ kind: "company", organizationId: c.id }} label="Unfollow" />
               </li>

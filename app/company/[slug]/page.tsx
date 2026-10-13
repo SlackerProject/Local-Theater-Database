@@ -9,6 +9,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { FollowButton } from "@/components/FollowButton";
 import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
+import { CompanyLogo } from "@/components/CompanyLogo";
+import { LogoUploader } from "@/components/uploads/UploadPanels";
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -31,6 +33,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
     .from("organizations")
     .select(
       `id, name, town, state, website_url, founded_year, description,
+       logo:media!organizations_logo_fk(thumb_key, storage_key, photographer_credit),
        productions(id, slug, year, title_override, color_ground, poster:media!productions_poster_fk(thumb_key),
                    show:shows(title), location:locations(id, slug, name, town)),
        organization_locations(is_home_venue, location:locations(id, slug, name, town))`,
@@ -41,11 +44,19 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
   if (!org) notFound();
 
   const user = await getCurrentUser();
-  const [{ data: followers }, { data: myFollow }] = await Promise.all([
+  const [{ data: followers }, { data: myFollow }, { count: myPendingLogos }] = await Promise.all([
     supabase.rpc("follower_count", { p_organization_id: org.id }),
     user
       ? supabase.from("follows").select("id").eq("user_id", user.id).eq("organization_id", org.id).maybeSingle()
       : Promise.resolve({ data: null }),
+    user
+      ? supabase
+          .from("media")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", org.id)
+          .eq("uploaded_by", user.id)
+          .eq("status", "pending")
+      : Promise.resolve({ count: 0 }),
   ]);
 
   // Venues: those linked to the company plus any it has performed at
@@ -63,7 +74,11 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
     <>
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="display text-[42px] md:text-[72px]">{org.name}</h1>
+          <div className="flex min-w-0 items-center gap-4 md:gap-6">
+            <CompanyLogo thumbKey={org.logo?.thumb_key ?? org.logo?.storage_key} name={org.name} size={88} className="md:hidden" />
+            <CompanyLogo thumbKey={org.logo?.thumb_key ?? org.logo?.storage_key} name={org.name} size={128} className="hidden md:flex" />
+            <h1 className="display min-w-0 text-[42px] md:text-[72px]">{org.name}</h1>
+          </div>
           <EditButton kind="company" slug={slug} signedIn={!!user} />
         </div>
         <p className="m-0 text-[17px] text-muted">
@@ -78,6 +93,19 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
           )}
         </p>
         {org.description && <p className="m-0 max-w-[620px]">{org.description}</p>}
+        <div className="flex flex-col gap-1">
+          {user ? (
+            <LogoUploader organizationId={org.id} hasLogo={!!org.logo} />
+          ) : (
+            !org.logo && (
+              <Link href={`/signin?next=${encodeURIComponent(`/company/${slug}`)}`} className="self-start text-[15px] font-semibold">
+                Sign in to add a logo
+              </Link>
+            )
+          )}
+          {!!myPendingLogos && <span className="text-sm text-muted">Your logo is waiting for a moderator.</span>}
+          {org.logo?.photographer_credit && <span className="text-xs text-muted">Logo: {org.logo.photographer_credit}</span>}
+        </div>
         <div className="mt-1">
           <FollowButton
             target={{ organizationId: org.id }}

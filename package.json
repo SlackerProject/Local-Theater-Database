@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "preview": "node scripts/patch-opennext.mjs && opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "node scripts/patch-opennext.mjs && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "db:types": "supabase gen types --lang typescript --linked > lib/database.types.ts"
   },
   "dependencies": {

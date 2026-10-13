@@ -35,7 +35,9 @@ jobs:
       - run: npm ci
 
       - name: Build for Cloudflare
-        run: npx opennextjs-cloudflare build
+        run: |
+          node scripts/patch-opennext.mjs
+          npx opennextjs-cloudflare build
 
       - name: Check the main pages load in Cloudflare's runtime
         run: |

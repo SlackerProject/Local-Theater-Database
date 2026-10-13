@@ -6,12 +6,14 @@ import { createServerClient } from "@supabase/ssr";
 const MAIN_HOST = "localtheaterdatabase.com";
 
 export async function proxy(request: NextRequest) {
-  // One secure address: www and plain http go to https://localtheaterdatabase.com
+  // One secure address: www, plain http and the old Vercel address go to
+  // https://localtheaterdatabase.com
   const host = (request.headers.get("host") ?? "").toLowerCase();
   // Cloudflare tells us how the visitor connected; without the header
   // (local testing) nothing is redirected for http
   const proto = request.headers.get("x-forwarded-proto");
-  if (host === `www.${MAIN_HOST}` || (host === MAIN_HOST && proto === "http")) {
+  // The old Vercel address sends visitors to the new home too
+  if (host === `www.${MAIN_HOST}` || host.endsWith(".vercel.app") || (host === MAIN_HOST && proto === "http")) {
     const url = new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${MAIN_HOST}`);
     return NextResponse.redirect(url, 308);
   }

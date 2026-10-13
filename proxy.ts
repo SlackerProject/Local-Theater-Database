@@ -3,7 +3,19 @@ import { createServerClient } from "@supabase/ssr";
 
 // Refreshes the Supabase session cookie on each request so signed-in
 // visitors stay signed in. Page-level checks still decide who sees what.
+const MAIN_HOST = "localtheaterdatabase.com";
+
 export async function proxy(request: NextRequest) {
+  // One secure address: www and plain http go to https://localtheaterdatabase.com
+  const host = (request.headers.get("host") ?? "").toLowerCase();
+  // Cloudflare tells us how the visitor connected; without the header
+  // (local testing) nothing is redirected for http
+  const proto = request.headers.get("x-forwarded-proto");
+  if (host === `www.${MAIN_HOST}` || (host === MAIN_HOST && proto === "http")) {
+    const url = new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${MAIN_HOST}`);
+    return NextResponse.redirect(url, 308);
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

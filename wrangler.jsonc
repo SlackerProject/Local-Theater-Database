@@ -1,6 +1,7 @@
 {
   // Cloudflare Workers settings for the site (built by OpenNext:
-  // npm run deploy). See https://opennext.js.org/cloudflare
+  // npm run deploy, or the GitHub "Cloudflare" workflow).
+  // See https://opennext.js.org/cloudflare
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "local-theater-database",
   "main": ".open-next/worker.js",
@@ -8,5 +9,16 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "local-theater-database" }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // The site's addresses. www sends visitors on to the main address (proxy.ts).
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "localtheaterdatabase.com", "custom_domain": true },
+    { "pattern": "www.localtheaterdatabase.com", "custom_domain": true }
+  ],
+
+  // Slows down password guessing and sign-up spam: at most 10 sign-in or
+  // sign-up attempts a minute from one address (lib/rate-limit.ts)
+  "ratelimits": [{ "name": "AUTH_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }]
 }

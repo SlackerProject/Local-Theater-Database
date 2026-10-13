@@ -3,6 +3,9 @@
 import { siteOrigin } from "@/lib/site";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { allowAuthAttempt } from "@/lib/rate-limit";
+
+const TOO_MANY = "Too many attempts right now. Please wait a minute and try again.";
 
 export type AuthFormState = {
   error?: string;
@@ -42,6 +45,9 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
   if (!ageConfirmed) {
     return { error: "You must be 18 or older to join.", values };
   }
+  if (!(await allowAuthAttempt())) {
+    return { error: TOO_MANY, values };
+  }
 
   const supabase = await createClient();
 
@@ -78,6 +84,9 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const next = safeNext(formData.get("next"));
+  if (!(await allowAuthAttempt())) {
+    return { error: TOO_MANY, values: { email } };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });

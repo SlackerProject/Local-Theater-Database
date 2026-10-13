@@ -7,4 +7,5 @@ export const DESCRIPTION =
 // Where the site's theater companies are; new companies must be in it
 export const SERVICE_AREA = "Eastern Massachusetts";
 // Used for absolute links in link previews
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local-theater-database.vercel.app";
+// (|| rather than ??: a build setting left blank counts as not set)
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://local-theater-database.vercel.app";

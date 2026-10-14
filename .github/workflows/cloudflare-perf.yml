@@ -25,7 +25,9 @@ jobs:
           sleep 15
           for round in 1 2 3; do
             for path in / /shows /people /companies /auditions /hotlist /production/rent-mass-arts-center-2026 /person/wynter-williams /company/mass-arts-center /show/rent /signin; do
-              curl -s -o /dev/null -w "%{http_code} %{time_starttransfer}s/%{time_total}s $path\n" "https://localtheaterdatabase.com$path"
+              cache=$(curl -s -o /dev/null -D - "https://localtheaterdatabase.com$path" -w "" | grep -i "^x-ltd-cache" | tr -d '\r' | cut -d' ' -f2)
+              timing=$(curl -s -o /dev/null -w "%{http_code} %{time_starttransfer}s/%{time_total}s" "https://localtheaterdatabase.com$path")
+              echo "$timing $path (first: $cache)"
             done
           done
           sleep 10

@@ -6,6 +6,7 @@ import { badgeMessage, LEVELS } from "@/lib/badges";
 import { HeaderNav } from "./HeaderNav";
 import { BadgeMessage } from "./badges/BadgeMessage";
 import { BugReporter } from "./BugReporter";
+import { RegionButton } from "./RegionButton";
 import { SITE_NAME } from "@/lib/brand";
 
 export { SITE_NAME };
@@ -40,15 +41,24 @@ export function SiteHeader({ query, hideSearch = false }: { query?: string; hide
     <header className="relative border-b border-rule bg-page">
       <div className="mx-auto max-w-[1180px] px-4 py-2.5 md:px-8 md:py-3">
         <div className="flex items-center gap-7">
-          <Link href="/" className="link-quiet whitespace-nowrap text-xl font-extrabold tracking-[-0.02em] md:text-[22px]">
-            {SITE_NAME}
-          </Link>
+          {/* The region sits beside the name on desktop; phones have no room, so it starts the second row */}
+          <span className="flex min-w-0 items-center gap-2.5">
+            <Link href="/" className="link-quiet whitespace-nowrap text-xl font-extrabold tracking-[-0.02em] md:text-[22px]">
+              {SITE_NAME}
+            </Link>
+            <span className="hidden md:block">
+              <RegionButton />
+            </span>
+          </span>
           {!hideSearch && <SearchField id="q" defaultValue={query} className="hidden h-12 max-w-[560px] flex-1 md:flex" />}
           <Suspense fallback={<div className="ml-auto h-11 w-11" />}>
             <UserNav />
           </Suspense>
         </div>
-        {!hideSearch && <SearchField id="q-m" defaultValue={query} className="mt-2.5 flex h-[46px] md:hidden" />}
+        <div className="mt-2.5 flex items-center gap-2 md:hidden">
+          <RegionButton />
+          {!hideSearch && <SearchField id="q-m" defaultValue={query} className="flex h-[46px] min-w-0 flex-1" />}
+        </div>
       </div>
     </header>
   );

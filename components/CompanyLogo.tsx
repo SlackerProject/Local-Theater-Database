@@ -1,8 +1,9 @@
 import { mediaUrl } from "@/lib/media";
+import { SHOW_COMPANY_LOGOS } from "@/lib/brand";
 
 // A company's logo, the way a headshot stands for a person: on white in a
 // rounded square, so logos of any shape sit centered. Without one, the
-// company's initials.
+// company's initials. Shows nothing while logos are switched off.
 export function CompanyLogo({
   thumbKey,
   name,
@@ -14,6 +15,7 @@ export function CompanyLogo({
   size?: number;
   className?: string;
 }) {
+  if (!SHOW_COMPANY_LOGOS) return null;
   const src = mediaUrl(thumbKey);
   const box = { width: size, height: size };
   if (src) {

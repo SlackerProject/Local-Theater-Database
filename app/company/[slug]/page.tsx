@@ -11,6 +11,7 @@ import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { LogoUploader } from "@/components/uploads/UploadPanels";
+import { SHOW_COMPANY_LOGOS } from "@/lib/brand";
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -93,19 +94,21 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
           )}
         </p>
         {org.description && <p className="m-0 max-w-[620px]">{org.description}</p>}
-        <div className="flex flex-col gap-1">
-          {user ? (
-            <LogoUploader organizationId={org.id} hasLogo={!!org.logo} />
-          ) : (
-            !org.logo && (
-              <Link href={`/signin?next=${encodeURIComponent(`/company/${slug}`)}`} className="self-start text-[15px] font-semibold">
-                Sign in to add a logo
-              </Link>
-            )
-          )}
-          {!!myPendingLogos && <span className="text-sm text-muted">Your logo is waiting for a moderator.</span>}
-          {org.logo?.photographer_credit && <span className="text-xs text-muted">Logo: {org.logo.photographer_credit}</span>}
-        </div>
+        {SHOW_COMPANY_LOGOS && (
+          <div className="flex flex-col gap-1">
+            {user ? (
+              <LogoUploader organizationId={org.id} hasLogo={!!org.logo} />
+            ) : (
+              !org.logo && (
+                <Link href={`/signin?next=${encodeURIComponent(`/company/${slug}`)}`} className="self-start text-[15px] font-semibold">
+                  Sign in to add a logo
+                </Link>
+              )
+            )}
+            {!!myPendingLogos && <span className="text-sm text-muted">Your logo is waiting for a moderator.</span>}
+            {org.logo?.photographer_credit && <span className="text-xs text-muted">Logo: {org.logo.photographer_credit}</span>}
+          </div>
+        )}
         <div className="mt-1">
           <FollowButton
             target={{ organizationId: org.id }}

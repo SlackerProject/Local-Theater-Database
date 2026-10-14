@@ -18,3 +18,14 @@ jobs:
           echo "Token check:"; curl -s -H "$auth" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -c '{success, status: .result.status}'
           echo "Domains:"; curl -s -H "$auth" "https://api.cloudflare.com/client/v4/zones?per_page=50" | jq -r 'if .success then (.result[] | "\(.name) (\(.status), plan: \(.plan.name))") else (.errors | tostring) end'
           echo "workers.dev:"; curl -s -H "$auth" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -c '{success, subdomain: .result.subdomain, errors}'
+      - name: Read the domain's security settings (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          zone=$(curl -s -H "$auth" "https://api.cloudflare.com/client/v4/zones?name=localtheaterdatabase.com" | jq -r '.result[0].id')
+          for s in ech tls_1_3 min_tls_version always_use_https http3 ssl security_level; do
+            printf "%-18s " "$s"; curl -s -H "$auth" "https://api.cloudflare.com/client/v4/zones/$zone/settings/$s" | jq -c 'if .success then .result.value else (.errors[0].message) end'
+          done
+          printf "%-18s " "bot_fight_mode"; curl -s -H "$auth" "https://api.cloudflare.com/client/v4/zones/$zone/bot_management" | jq -c 'if .success then .result.fight_mode else (.errors[0].message) end'
+          printf "%-18s " "dnssec"; curl -s -H "$auth" "https://api.cloudflare.com/client/v4/zones/$zone/dnssec" | jq -c 'if .success then .result.status else (.errors[0].message) end'

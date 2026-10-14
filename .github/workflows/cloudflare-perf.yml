@@ -1,0 +1,35 @@
+# Run by hand: watches the live site's CPU time per request (wrangler tail)
+# while requesting the main pages a few times. Read-only.
+name: Cloudflare performance
+
+on:
+  workflow_dispatch:
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Request pages while tailing the worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler tail local-theater-database --format json > tail.jsonl 2> tail.err &
+          sleep 15
+          for round in 1 2 3; do
+            for path in / /shows /people /companies /auditions /hotlist /production/rent-mass-arts-center-2026 /person/wynter-williams /company/mass-arts-center /show/rent /signin; do
+              curl -s -o /dev/null -w "%{http_code} %{time_starttransfer}s/%{time_total}s $path\n" "https://localtheaterdatabase.com$path"
+            done
+          done
+          sleep 10
+          kill %1 || true
+          echo "--- tail fields"; head -c 600 tail.jsonl; echo; tail -5 tail.err
+          echo "--- per request: outcome, cpu ms, wall ms, url"
+          jq -r '[.outcome, (.cpuTime // "?"), (.wallTime // "?"), .event.request.url] | @tsv' tail.jsonl | sort -k4 | head -80

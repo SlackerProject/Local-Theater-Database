@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+
 import { ACCEPT_ATTR, checkFile, posterPalette, processImage, uploadProcessed, type ProcessedImage } from "@/lib/imageUpload";
 import { MEDIA_BUCKET, PHOTO_LIMIT, RIGHTS_TEXT, mediaUrl, type MediaPalette } from "@/lib/media";
 import type { FormState } from "@/lib/submission";
@@ -68,8 +68,9 @@ function FilePicker({ label, multiple, onFiles }: { label: string; multiple?: bo
   );
 }
 
+// Supabase loads on the first upload, so it isn't part of the page's download
 async function currentUserId() {
-  const supabase = createClient();
+  const supabase = (await import("@/lib/supabase/client")).createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("Your session ended. Sign in again, then upload.");
   return { supabase, userId: data.user.id };

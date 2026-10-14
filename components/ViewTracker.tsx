@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+// Supabase loads only when needed, so it isn't part of every page's download
+const loadSupabase = () => import("@/lib/supabase/client").then((m) => m.createClient());
 
 // Counts a visit for the Hotlist without storing anything personal: the
 // browser keeps a random id of its own, and only a one-way SHA-256 of that
@@ -31,9 +32,9 @@ export function ViewTracker({ table, id }: { table: "people" | "productions" | "
     visitorHash().then((hash) => {
       if (!hash || cancelled) return;
       // The request is only sent once it's awaited (then)
-      createClient()
-        .rpc("record_view", { p_table: table, p_id: id, p_visitor_hash: hash })
-        .then(() => undefined);
+      loadSupabase().then((supabase) =>
+        supabase.rpc("record_view", { p_table: table, p_id: id, p_visitor_hash: hash }).then(() => undefined),
+      );
     });
     return () => {
       cancelled = true;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+// Supabase loads only when needed, so it isn't part of every page's download
+const loadSupabase = () => import("@/lib/supabase/client").then((m) => m.createClient());
 
 // "Report a problem" in the footer. The report carries the page address,
 // the browser and window size, and the last few errors the page hit, so a
@@ -60,7 +61,7 @@ export function BugReporter() {
       local_time: new Date().toString(),
       errors: [...recentErrors],
     };
-    const { error: e } = await createClient().rpc("report_bug", { p_page_url: window.location.href, p_message: message, p_details: details });
+    const { error: e } = await (await loadSupabase()).rpc("report_bug", { p_page_url: window.location.href, p_message: message, p_details: details });
     if (e) {
       setState("idle");
       setError(e.message);

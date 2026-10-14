@@ -4,7 +4,8 @@
   // See https://opennext.js.org/cloudflare
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "local-theater-database",
-  "main": ".open-next/worker.js",
+  // cloudflare-worker.mjs wraps the generated .open-next/worker.js with an edge cache
+  "main": "cloudflare-worker.mjs",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },

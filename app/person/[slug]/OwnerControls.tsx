@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+// Supabase loads only when needed, so it isn't part of the page's download
+const loadSupabase = () => import("@/lib/supabase/client").then((m) => m.createClient());
 import { PositionSelect } from "@/components/PositionSelect";
 import {
   addOwnCredit,
@@ -235,7 +236,7 @@ export function AddCreditForm({ slug }: { slug: string }) {
     if (picked || q.length < 2) return;
     const mine = ++seq.current;
     const t = setTimeout(async () => {
-      const { data } = await createClient().rpc("lookup_productions", { p_query: q });
+      const { data } = await (await loadSupabase()).rpc("lookup_productions", { p_query: q });
       if (mine === seq.current) setMatches(data ?? []);
     }, 200);
     return () => clearTimeout(t);

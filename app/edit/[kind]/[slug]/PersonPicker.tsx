@@ -40,13 +40,11 @@ export function PersonPicker({
   value,
   onChange,
   pendingNew,
-  allowYoung = false,
 }: {
   id: string;
   value: PersonValue | null;
   onChange: (v: PersonValue | null) => void;
   pendingNew: string[];
-  allowYoung?: boolean; // cast: offer "Young performer (under 18)"
 }) {
   const [name, setName] = useState("");
   const [found, setFound] = useState<Match[]>([]);
@@ -96,11 +94,6 @@ export function PersonPicker({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {allowYoung && !isNew && (
-        <button type="button" onClick={() => onChange({ young: true })} className={`${small} self-start`}>
-          Young performer (under 18)
-        </button>
-      )}
       <input
         id={id}
         value={name}

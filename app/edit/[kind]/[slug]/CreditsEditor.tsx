@@ -221,9 +221,22 @@ function ReplacePerson({
 }) {
   const [v, setV] = useState<PersonValue | null>(null);
   const [problem, setProblem] = useState("");
+  const young = !!v && "young" in v;
   return (
     <div className="flex flex-col gap-2">
-      <PersonPicker id={id} value={v} onChange={setV} pendingNew={pendingNew} allowYoung={allowYoung} />
+      {young ? (
+        <p className="m-0 text-[15px]">
+          <strong>Young performer</strong> <span className="text-muted">(under 18 · listed by role only, no name is recorded)</span>
+        </p>
+      ) : (
+        <PersonPicker id={id} value={v} onChange={setV} pendingNew={pendingNew} />
+      )}
+      {allowYoung && (
+        <label className="flex cursor-pointer items-center gap-2 text-[15px]">
+          <input type="checkbox" checked={young} onChange={(e) => setV(e.target.checked ? { young: true } : null)} className="h-5 w-5 accent-ink" />
+          Young performer (under 18): no name is recorded
+        </label>
+      )}
       {problem && <span className="text-sm font-semibold">{problem}</span>}
       <span className="flex gap-2">
         <button
@@ -686,6 +699,7 @@ function AddLines({
   const [mode, setMode] = useState<"none" | "person" | "role" | "paste">("none");
   const [roles, setRoles] = useState("");
   const [understudy, setUnderstudy] = useState(false);
+  const [young, setYoung] = useState(false);
   const [person, setPerson] = useState<PersonValue | null>(null);
   const [problem, setProblem] = useState("");
   const [paste, setPaste] = useState("");
@@ -696,6 +710,7 @@ function AddLines({
     setMode("none");
     setRoles("");
     setUnderstudy(false);
+    setYoung(false);
     setPerson(null);
     setProblem("");
     setPaste("");
@@ -708,11 +723,13 @@ function AddLines({
   };
 
   function addPerson() {
-    const p = personProblem(person);
+    // A young performer has no name at all
+    const who: PersonValue | null = young && kind === "cast" ? { young: true } : person;
+    const p = personProblem(who);
     if (p) return setProblem(p);
     const r = rolesFrom(roles);
     if (!r.list.length) return setProblem(kind === "cast" ? "Enter at least one role." : "Choose the position.");
-    ops.addCredits(addsFor(kind, r.list, understudy || r.understudy, person!));
+    ops.addCredits(addsFor(kind, r.list, understudy || r.understudy, who!));
     close();
   }
 
@@ -778,12 +795,18 @@ function AddLines({
   if (mode === "person") {
     return (
       <div className="flex max-w-[640px] flex-col gap-3 border border-[#CFCFCF] bg-page p-3">
-        <div className="flex flex-col gap-1">
-          <label htmlFor={`add-${kind}-person`} className="text-sm font-bold">
-            Person
-          </label>
-          <PersonPicker id={`add-${kind}-person`} value={person} onChange={setPerson} pendingNew={pendingNew} allowYoung={kind === "cast"} />
-        </div>
+        {young ? (
+          <p className="m-0 text-[15px]">
+            <strong>Young performer</strong> <span className="text-muted">(under 18 · listed by role only, no name is recorded)</span>
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`add-${kind}-person`} className="text-sm font-bold">
+              Person
+            </label>
+            <PersonPicker id={`add-${kind}-person`} value={person} onChange={setPerson} pendingNew={pendingNew} />
+          </div>
+        )}
         <label className="flex flex-col gap-1 text-sm font-bold">
           {kind === "cast" ? (
             <>
@@ -806,10 +829,25 @@ function AddLines({
           )}
         </label>
         {kind === "cast" && (
-          <label className="flex cursor-pointer items-center gap-2 text-[15px]">
-            <input type="checkbox" checked={understudy} onChange={(e) => setUnderstudy(e.target.checked)} className="h-5 w-5 accent-ink" />
-            Understudy (covers these roles rather than playing them)
-          </label>
+          <div className="flex flex-col gap-1">
+            <label className="flex cursor-pointer items-center gap-2 text-[15px]">
+              <input type="checkbox" checked={understudy} onChange={(e) => setUnderstudy(e.target.checked)} className="h-5 w-5 accent-ink" />
+              Understudy (covers these roles rather than playing them)
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-[15px]">
+              <input
+                type="checkbox"
+                checked={young}
+                onChange={(e) => {
+                  setYoung(e.target.checked);
+                  // Ticked: the name box goes, and anything typed in it is cleared
+                  if (e.target.checked) setPerson(null);
+                }}
+                className="h-5 w-5 accent-ink"
+              />
+              Young performer (under 18): no name is recorded
+            </label>
+          </div>
         )}
         {problem && <span className="text-sm font-semibold">{problem}</span>}
         <span className="flex gap-2">

@@ -367,7 +367,7 @@ function FieldRow({
     if (field.input === "state") v = "MA";
     if (field.input === "town" && raw) {
       const town = maTown(raw);
-      if (!town) return setProblem("Choose the city or town from the Massachusetts list.");
+      if (!town) return setProblem("That isn’t a Massachusetts city or town. Check the spelling; villages belong to their town (East Walpole is in Walpole).");
       v = town;
     }
     if (field.input === "zip" && raw && !/^\d{5}(-\d{4})?$/.test(raw)) return setProblem("The ZIP code should be 5 digits, like 02081.");

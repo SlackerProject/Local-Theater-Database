@@ -226,7 +226,7 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
         problems.push("The company website should start with https://");
       }
       const orgTown = maTown(s.organization.town);
-      if (!orgTown) problems.push("Choose the company’s city or town from the Massachusetts list.");
+      if (!orgTown) problems.push("The company’s city or town isn’t a Massachusetts city or town. Check the spelling; villages belong to their town (East Walpole is in Walpole).");
       if (!s.organization.inArea) problems.push(`Confirm the new company performs in ${SERVICE_AREA}.`);
       organization = {
         new: {
@@ -247,7 +247,7 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
       location = { id: s.location.choice.match.id, label: s.location.choice.match.label };
     } else if (s.location.choice.kind === "new" && clean(s.location.query)) {
       const locTown = maTown(s.location.town);
-      if (!locTown) problems.push("Choose the location’s city or town from the Massachusetts list.");
+      if (!locTown) problems.push("The location’s city or town isn’t a Massachusetts city or town. Check the spelling; villages belong to their town (East Walpole is in Walpole).");
       location = {
         new: {
           name: clean(s.location.query),

@@ -357,7 +357,67 @@ export const MA_TOWNS = [
 ] as const;
 
 // The list's spelling for what was typed ("walpole" or "Walpole, MA" -> Walpole)
+// Common ways people write a town, and the neighborhoods and villages that
+// belong to one, so typing "Foxboro" or "Dorchester" just works
+const ALSO_KNOWN_AS: Record<string, string> = {
+  foxboro: "Foxborough",
+  marlboro: "Marlborough",
+  middleboro: "Middleborough",
+  "north attleboro": "North Attleborough",
+  northboro: "Northborough",
+  southboro: "Southborough",
+  westboro: "Westborough",
+  boxboro: "Boxborough",
+  tyngsboro: "Tyngsborough",
+  attleborough: "Attleboro",
+  manchester: "Manchester-by-the-Sea",
+  // Boston neighborhoods
+  allston: "Boston",
+  brighton: "Boston",
+  charlestown: "Boston",
+  dorchester: "Boston",
+  "east boston": "Boston",
+  "hyde park": "Boston",
+  "jamaica plain": "Boston",
+  mattapan: "Boston",
+  roslindale: "Boston",
+  roxbury: "Boston",
+  "south boston": "Boston",
+  "west roxbury": "Boston",
+  // Villages
+  "east walpole": "Walpole",
+  "south walpole": "Walpole",
+  "newton centre": "Newton",
+  "newton center": "Newton",
+  "west newton": "Newton",
+  newtonville: "Newton",
+  auburndale: "Newton",
+  "newton highlands": "Newton",
+  "newton upper falls": "Newton",
+  "newton lower falls": "Newton",
+  waban: "Newton",
+  "chestnut hill": "Newton",
+  hyannis: "Barnstable",
+  osterville: "Barnstable",
+  cotuit: "Barnstable",
+  centerville: "Barnstable",
+  "west barnstable": "Barnstable",
+  "south yarmouth": "Yarmouth",
+  "west yarmouth": "Yarmouth",
+  "yarmouth port": "Yarmouth",
+  "dennis port": "Dennis",
+  "east dennis": "Dennis",
+  "woods hole": "Falmouth",
+  "east falmouth": "Falmouth",
+  "north falmouth": "Falmouth",
+  wollaston: "Quincy",
+};
+
 export function maTown(value: string) {
-  const v = value.trim().replace(/\s*,\s*(MA|Mass\.?|Massachusetts)\.?$/i, "").toLowerCase();
-  return MA_TOWNS.find((t) => t.toLowerCase() === v) ?? null;
+  const v = value
+    .trim()
+    .replace(/\s*,\s*(MA|Mass\.?|Massachusetts)\.?$/i, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+  return MA_TOWNS.find((t) => t.toLowerCase() === v) ?? ALSO_KNOWN_AS[v] ?? null;
 }

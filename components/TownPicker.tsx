@@ -3,10 +3,14 @@
 import { useId, useState } from "react";
 import { MA_TOWNS, maTown } from "@/lib/ma-towns";
 
-// City or town: type a few letters, then pick one of Massachusetts' 351
-// cities and towns. Only a town from the list can be chosen, so addresses
+// City or town, typed in full ("Mansfield"). It must be one of
+// Massachusetts' 351 cities and towns (any capitalization), so addresses
 // stay consistent. Shows ", MA" after it, since the site covers
 // Massachusetts only.
+//
+// The suggestion list under the box is switched off for now (it wasn't
+// working reliably); set SHOW_SUGGESTIONS to true to bring it back.
+const SHOW_SUGGESTIONS = false;
 export function TownPicker({
   id,
   value,
@@ -25,7 +29,7 @@ export function TownPicker({
   const [open, setOpen] = useState(false);
   const chosen = maTown(value);
   const q = query.trim().toLowerCase();
-  const matches = q
+  const matches = q && SHOW_SUGGESTIONS
     ? [...MA_TOWNS.filter((t) => t.toLowerCase().startsWith(q)), ...MA_TOWNS.filter((t) => !t.toLowerCase().startsWith(q) && t.toLowerCase().includes(q))].slice(0, 8)
     : [];
 
@@ -42,11 +46,10 @@ export function TownPicker({
           id={inputId}
           value={query}
           autoComplete="off"
-          role="combobox"
-          aria-controls={listId}
-          aria-expanded={open && matches.length > 0}
-          aria-autocomplete="list"
-          placeholder="Start typing the town"
+          {...(SHOW_SUGGESTIONS
+            ? { role: "combobox", "aria-controls": listId, "aria-expanded": open && matches.length > 0, "aria-autocomplete": "list" as const }
+            : {})}
+          placeholder="e.g. Mansfield"
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -84,7 +87,7 @@ export function TownPicker({
       )}
       {query.trim() && !chosen && !open && (
         <span className="text-sm font-semibold">
-          Choose a Massachusetts city or town from the list. Villages like East Walpole belong to their town (Walpole).
+          That isn’t a Massachusetts city or town. Check the spelling; villages like East Walpole belong to their town (Walpole).
         </span>
       )}
     </div>

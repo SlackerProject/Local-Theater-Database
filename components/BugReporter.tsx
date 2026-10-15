@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { FEEDBACK_KINDS, feedbackKind, type FeedbackKind } from "@/lib/feedback";
 // Supabase loads only when needed, so it isn't part of every page's download
 const loadSupabase = () => import("@/lib/supabase/client").then((m) => m.createClient());
 
-// "Report a problem" in the footer. The report carries the page address,
-// the browser and window size, and the last few errors the page hit, so a
-// moderator can copy it straight into a request for a fix.
+// "Give feedback" in the footer: a bug, an idea, wrong information or
+// anything else. It carries the page address, the browser and window size,
+// and the last few errors the page hit, so a moderator can copy a bug
+// straight into a request for a fix.
 
 const recentErrors: string[] = [];
 let listening = false;
@@ -33,6 +35,7 @@ function listenForErrors() {
 
 export function BugReporter() {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [kind, setKind] = useState<FeedbackKind>("bug");
   const [message, setMessage] = useState("");
   const [trap, setTrap] = useState(""); // a hidden field only bots fill in
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
@@ -49,7 +52,7 @@ export function BugReporter() {
 
   async function send() {
     if (trap) return setState("sent");
-    if (message.trim().length < 5) return setError("Please describe what went wrong.");
+    if (message.trim().length < 5) return setError("Please write a few words.");
     setState("sending");
     setError("");
     const details = {
@@ -61,7 +64,12 @@ export function BugReporter() {
       local_time: new Date().toString(),
       errors: [...recentErrors],
     };
-    const { error: e } = await (await loadSupabase()).rpc("report_bug", { p_page_url: window.location.href, p_message: message, p_details: details });
+    const { error: e } = await (await loadSupabase()).rpc("send_feedback", {
+      p_kind: kind,
+      p_page_url: window.location.href,
+      p_message: message,
+      p_details: details,
+    });
     if (e) {
       setState("idle");
       setError(e.message);
@@ -74,7 +82,7 @@ export function BugReporter() {
   return (
     <>
       <button type="button" onClick={open} className="link-quiet cursor-pointer border-0 bg-transparent p-0 text-sm text-muted underline-offset-[3px] hover:underline">
-        Report a problem
+        Give feedback
       </button>
       <dialog
         ref={dialog}
@@ -84,12 +92,12 @@ export function BugReporter() {
       >
         <div className="flex flex-col gap-3 p-5">
           <h2 id={ids.title} className="subheading">
-            Report a problem
+            Give feedback
           </h2>
           {state === "sent" ? (
             <>
               <p role="status" className="m-0">
-                Thanks! The moderators have your report.
+                Thanks! The moderators have your feedback.
               </p>
               <button type="button" onClick={() => dialog.current?.close()} className="btn-primary self-start">
                 Close
@@ -97,9 +105,24 @@ export function BugReporter() {
             </>
           ) : (
             <>
+              <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
+                <legend className="mb-1 text-[15px] font-semibold">What is it about?</legend>
+                {FEEDBACK_KINDS.map((k) => (
+                  <label key={k.value} className="flex min-h-9 cursor-pointer items-center gap-2.5 text-[15px]">
+                    <input
+                      type="radio"
+                      name={`${ids.msg}-kind`}
+                      value={k.value}
+                      checked={kind === k.value}
+                      onChange={() => setKind(k.value)}
+                      className="h-5 w-5 flex-none accent-ink"
+                    />
+                    {k.label}
+                  </label>
+                ))}
+              </fieldset>
               <label htmlFor={ids.msg} className="text-[15px] font-semibold">
-                What went wrong?{" "}
-                <span className="font-normal text-muted">What did you do, and what happened instead?</span>
+                {feedbackKind(kind).prompt} <span className="font-normal text-muted">{feedbackKind(kind).hint}</span>
               </label>
               <textarea
                 id={ids.msg}
@@ -107,7 +130,7 @@ export function BugReporter() {
                 maxLength={2000}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="e.g. I pressed “I’m going” and nothing happened."
+                placeholder={feedbackKind(kind).placeholder}
                 className="field w-full p-3"
               />
               <input
@@ -120,7 +143,7 @@ export function BugReporter() {
                 name="website"
               />
               <p className="m-0 text-sm text-muted">
-                This page’s address and your browser type are sent with your report to help fix it.
+                This page’s address and your browser type are sent with it, to help us follow up.
               </p>
               {error && (
                 <p role="alert" className="m-0 font-semibold">
@@ -129,7 +152,7 @@ export function BugReporter() {
               )}
               <div className="flex gap-2">
                 <button type="button" disabled={state === "sending"} onClick={send} className="btn-primary">
-                  {state === "sending" ? "Sending…" : "Send report"}
+                  {state === "sending" ? "Sending…" : "Send feedback"}
                 </button>
                 <button type="button" onClick={() => dialog.current?.close()} className="btn-secondary">
                   Cancel

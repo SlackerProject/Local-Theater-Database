@@ -149,6 +149,14 @@ export async function addCrewPositions(names: string[]): Promise<Done> {
 }
 
 // Bug reports from the footer: fixed, dismissed, or reopened
+// Feedback filed under the wrong kind (a bug that is really an idea...)
+export async function setFeedbackKind(id: string, kind: string): Promise<Done> {
+  const supabase = await createClient();
+  const r = await call(() => supabase.rpc("set_feedback_kind", { p_id: id, p_kind: kind }));
+  revalidatePath("/moderate/bugs");
+  return r;
+}
+
 export async function resolveBug(id: string, status: "open" | "fixed" | "dismissed"): Promise<Done> {
   const supabase = await createClient();
   const r = await call(() => supabase.rpc("resolve_bug", { p_id: id, p_status: status }));

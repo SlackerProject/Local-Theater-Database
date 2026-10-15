@@ -5,11 +5,11 @@ const TABS = [
   { href: "/moderate", label: "Review queue" },
   { href: "/moderate/members", label: "Members" },
   { href: "/moderate/changes", label: "Recent changes" },
-  { href: "/moderate/bugs", label: "Bug reports" },
+  { href: "/moderate/bugs", label: "Feedback" },
 ] as const;
 
 // The moderators' tools, one tab each; the review queue shows how many
-// decisions are waiting (in red), Bug reports how many are open
+// decisions are waiting (in red), Feedback how many are open
 export async function ModerationNav({ current }: { current: (typeof TABS)[number]["href"] }) {
   const supabase = await createClient();
   const [{ count }, { data: waiting }] = await Promise.all([

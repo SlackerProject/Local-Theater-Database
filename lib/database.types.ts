@@ -257,6 +257,7 @@ export type Database = {
           created_at: string
           details: Json
           id: string
+          kind: string
           message: string
           page_url: string
           reported_by: string | null
@@ -268,6 +269,7 @@ export type Database = {
           created_at?: string
           details?: Json
           id?: string
+          kind?: string
           message: string
           page_url: string
           reported_by?: string | null
@@ -279,6 +281,7 @@ export type Database = {
           created_at?: string
           details?: Json
           id?: string
+          kind?: string
           message?: string
           page_url?: string
           reported_by?: string | null
@@ -2049,6 +2052,19 @@ export type Database = {
         }[]
       }
       seen_count: { Args: { p_person_id: string }; Returns: number }
+      send_feedback: {
+        Args: {
+          p_details?: Json
+          p_kind: string
+          p_message: string
+          p_page_url: string
+        }
+        Returns: undefined
+      }
+      set_feedback_kind: {
+        Args: { p_id: string; p_kind: string }
+        Returns: undefined
+      }
       set_founding_open: { Args: { p_open: boolean }; Returns: undefined }
       set_home_counts: { Args: { p_show: boolean }; Returns: undefined }
       set_member_role: {

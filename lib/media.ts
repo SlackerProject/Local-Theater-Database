@@ -5,7 +5,7 @@ export const PHOTO_LIMIT = 40; // per production, enforced by the database too
 
 // Exact wording required on every upload (Milestone 3)
 export const RIGHTS_TEXT =
-  "I took these photos or have permission to share them, and no one pictured is under 18.";
+  "I took these photos or have permission to share them. No one pictured is under 18.";
 
 // Public address of a stored file (the bucket is public; names are random ids)
 export function mediaUrl(key: string | null | undefined) {

@@ -21,7 +21,8 @@ export function RightsCheckbox({ checked, onChange }: { checked: boolean; onChan
         className="mt-0.5 h-5 w-5 flex-none accent-ink"
       />
       <span>
-        {RIGHTS_TEXT} <span className="text-muted">Required.</span>
+        {RIGHTS_TEXT}{" "}
+        <span className="text-muted">Required. Photos can’t show anyone under 18: young performers are listed by role only.</span>
       </span>
     </label>
   );

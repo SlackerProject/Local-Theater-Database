@@ -5,8 +5,10 @@ import { lookup } from "@/app/add/TypeAhead";
 import { personNameKey, type Match } from "@/lib/submission";
 import { Icon, PLUS, input, small } from "./ui";
 
-// Who a cast or crew line names: someone on the site, or someone new
+// Who a cast or crew line names: someone on the site, someone new, or (cast
+// only) a young performer, who is never named
 export type PersonValue =
+  | { young: true }
   | { person_id: string; person_label: string }
   | {
       new_name: string;
@@ -20,7 +22,7 @@ export type PersonValue =
 // Why a person can't be added yet, or null
 export function personProblem(v: PersonValue | null): string | null {
   if (!v) return "Pick the person from the list, or add them as someone new.";
-  if ("person_id" in v) return null;
+  if ("young" in v || "person_id" in v) return null;
   if (v.clash && !v.distinct) return `${v.new_name} is already on the site. Pick them from the list, or tick that it’s a different person.`;
   if (!v.adult_confirmed) return "Confirm that this person is 18 or older.";
   return null;
@@ -38,11 +40,13 @@ export function PersonPicker({
   value,
   onChange,
   pendingNew,
+  allowYoung = false,
 }: {
   id: string;
   value: PersonValue | null;
   onChange: (v: PersonValue | null) => void;
   pendingNew: string[];
+  allowYoung?: boolean; // cast: offer "Young performer (under 18)"
 }) {
   const [name, setName] = useState("");
   const [found, setFound] = useState<Match[]>([]);
@@ -63,6 +67,20 @@ export function PersonPicker({
     };
   }, [name]);
 
+  // A young performer: no name box at all, so a name can never be typed
+  if (value && "young" in value) {
+    return (
+      <span className="flex min-h-11 flex-wrap items-center gap-2">
+        <span>
+          <strong>Young performer</strong> <span className="text-sm text-muted">(under 18 · listed by role only, no name is recorded)</span>
+        </span>
+        <button type="button" onClick={() => onChange(null)} className={small}>
+          Change
+        </button>
+      </span>
+    );
+  }
+
   if (value && "person_id" in value) {
     return (
       <span className="flex min-h-11 flex-wrap items-center gap-2">
@@ -78,6 +96,11 @@ export function PersonPicker({
 
   return (
     <div className="flex flex-col gap-1.5">
+      {allowYoung && !isNew && (
+        <button type="button" onClick={() => onChange({ young: true })} className={`${small} self-start`}>
+          Young performer (under 18)
+        </button>
+      )}
       <input
         id={id}
         value={name}

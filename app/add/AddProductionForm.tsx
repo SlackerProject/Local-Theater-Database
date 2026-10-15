@@ -841,6 +841,10 @@ function oneRolePerRow(rows: CreditRow[]): CreditRow[] {
     if (r.kind === "crew") return r.person.trim() ? [r] : [];
     const read = readUnderstudy(r.role);
     const roles = splitRoles(read.text);
+    // A young performer keeps no name, whatever an old draft held
+    if (r.young) {
+      return roles.map((role, i) => ({ ...emptyCredit("cast", i ? `${r.id}-${i}` : r.id), role, young: true, ...((!!r.understudy || read.understudy) && { understudy: true }) }));
+    }
     if (!r.person.trim()) return roles.map((role) => ({ ...emptyCredit("cast"), role }));
     const understudy = !!r.understudy || read.understudy;
     if (roles.length <= 1) return [{ ...r, role: roles[0] ?? r.role.trim(), ...(understudy && { understudy: true }) }];
@@ -852,18 +856,23 @@ const personKeyOf = (r: CreditRow) =>
   r.choice.kind === "existing" ? `id:${r.choice.match.id}` : `new:${personNameKey(r.person)}`;
 
 function FormCredits({ state, update }: { state: FormState; update: (fn: (s: FormState) => FormState) => void }) {
-  const named = state.credits.filter((c) => c.person.trim());
-  const notCast = state.credits.filter((c) => c.kind === "cast" && !c.person.trim() && c.role.trim());
+  // Rows with someone in them (or a young performer, who has no name)
+  const named = state.credits.filter((c) => c.person.trim() || (c.young && c.kind === "cast"));
+  const notCast = state.credits.filter((c) => c.kind === "cast" && !c.young && !c.person.trim() && c.role.trim());
 
-  const added: CreditAdd[] = named.map((r) => ({
-    kind: r.kind,
-    role: r.role,
-    ...(r.choice.kind === "existing"
-      ? { person_id: r.choice.match.id, person_label: r.choice.match.label }
-      : { new_name: r.person.trim(), adult_confirmed: r.adultConfirmed }),
-    ...(r.understudy && { understudy: true }),
-    ...(r.distinct && { distinct: true }),
-  }));
+  const added: CreditAdd[] = named.map((r) =>
+    r.young
+      ? { kind: "cast" as const, role: r.role, young: true, ...(r.understudy && { understudy: true }) }
+      : {
+          kind: r.kind,
+          role: r.role,
+          ...(r.choice.kind === "existing"
+            ? { person_id: r.choice.match.id, person_label: r.choice.match.label }
+            : { new_name: r.person.trim(), adult_confirmed: r.adultConfirmed }),
+          ...(r.understudy && { understudy: true }),
+          ...(r.distinct && { distinct: true }),
+        },
+  );
 
   const edits: CreditEdits = { removed: new Set(), added, addedRoles: notCast.map((r) => r.role), renamedRoles: {}, removedRoles: new Set() };
 
@@ -873,6 +882,11 @@ function FormCredits({ state, update }: { state: FormState; update: (fn: (s: For
       update((s) => {
         const rows = [...s.credits];
         for (const a of adds) {
+          // A young performer: the role only, never a name
+          if (a.young) {
+            rows.push({ ...emptyCredit("cast"), role: a.role, young: true, ...(a.understudy && { understudy: true }) });
+            continue;
+          }
           const row: CreditRow = {
             ...emptyCredit(a.kind),
             role: a.role,

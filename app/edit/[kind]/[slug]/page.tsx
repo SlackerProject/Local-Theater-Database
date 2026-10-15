@@ -57,7 +57,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
       .from("productions")
       .select(
         `year, title_override, show:shows(id, title), organization:organizations(name), location:locations(name),
-         credits(id, kind, role_name, billing_order, is_understudy, person:people(id, display_name), character:show_characters(id, name)),
+         credits(id, kind, role_name, billing_order, is_understudy, is_young_performer, person:people(id, display_name), character:show_characters(id, name)),
          performances(id, starts_at, label, is_cancelled)`,
       )
       .eq("id", record.id)
@@ -71,11 +71,12 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
       .map((c) => ({
         id: c.id,
         kind: c.kind,
-        person: c.person?.display_name ?? "Unknown",
+        person: c.is_young_performer ? "Young performer" : (c.person?.display_name ?? "Unknown"),
         role: c.character?.name ?? c.role_name ?? "",
         characterId: c.character?.id ?? null,
         personId: c.person?.id ?? "",
         understudy: c.is_understudy,
+        young: c.is_young_performer,
       }));
     performances = (p?.performances ?? [])
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at))

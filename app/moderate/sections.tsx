@@ -253,7 +253,7 @@ export async function AwardsSection() {
     supabase.from("award_bodies").select("id, name").in("id", pick("body_id").length ? pick("body_id") : ["00000000-0000-0000-0000-000000000000"]),
     supabase.from("award_categories").select("id, name").in("id", pick("category_id").length ? pick("category_id") : ["00000000-0000-0000-0000-000000000000"]),
     supabase.from("productions").select("id, slug, year, title_override, show:shows(title)").in("id", pick("production_id").length ? pick("production_id") : ["00000000-0000-0000-0000-000000000000"]),
-    supabase.from("credits").select("id, role_name, person:people(display_name), character:show_characters(name)").in("id", pick("credit_id").length ? pick("credit_id") : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("credits").select("id, role_name, is_young_performer, person:people(display_name), character:show_characters(name)").in("id", pick("credit_id").length ? pick("credit_id") : ["00000000-0000-0000-0000-000000000000"]),
   ]);
   const points = await pointsFor(proposals.map((p) => p.proposed_by));
 
@@ -282,7 +282,7 @@ export async function AwardsSection() {
                   </Link>
                 </>
               )}
-              {credit && ` · ${credit.person?.display_name} (${credit.character?.name ?? credit.role_name})`}
+              {credit && ` · ${credit.is_young_performer ? "Young performer" : credit.person?.display_name} (${credit.character?.name ?? credit.role_name})`}
             </p>
             {p.note && <p className="callout m-0 whitespace-pre-line text-[15px]">{p.note}</p>}
             <AwardButtons id={p.id} />

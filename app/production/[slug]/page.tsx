@@ -23,6 +23,27 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 
 type CastPerson = { slug: string; display_name: string; headshot: { thumb_key: string | null } | null };
 
+// Young performers: the role only, with no name, link or picture
+function YoungPerformers({
+  credits,
+}: {
+  credits: { id: string; role_name: string | null; is_understudy: boolean; character: { name: string } | null }[];
+}) {
+  return (
+    <ul className="m-0 grid list-none grid-cols-1 gap-x-10 p-0 md:grid-cols-2">
+      {credits.map((c) => (
+        <li key={c.id} className="flex min-h-[66px] items-center border-b border-rule py-2.5">
+          <span>
+            {c.is_understudy && "Understudy for "}
+            <span className="font-bold">{c.character?.name ?? c.role_name}</span>
+            <span className="text-muted"> · Young performer</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // The cast, one entry per person: every role they play, then any they understudy
 function CastGrid({ people }: { people: PersonCredits<CastPerson>[] }) {
   return (
@@ -96,7 +117,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
        organization:organizations(slug, name, logo:media!organizations_logo_fk(thumb_key)),
        location:locations(id, slug, name, street_address, town, state),
        performances(id, starts_at, label, is_cancelled),
-       credits(id, kind, role_name, billing_order, is_understudy,
+       credits(id, kind, role_name, billing_order, is_understudy, is_young_performer,
                person:people(slug, display_name, headshot:media!people_headshot_fk(thumb_key)),
                character:show_characters(name))`,
     )
@@ -147,8 +168,10 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
 
   const c = showColors(p);
   const title = p.title_override ?? p.show.title;
-  const credits = (p.credits ?? []).filter((x) => x.person).sort((a, b) => a.billing_order - b.billing_order);
+  // Young performers have no person: they show as their role only
+  const credits = (p.credits ?? []).filter((x) => x.person || x.is_young_performer).sort((a, b) => a.billing_order - b.billing_order);
   const cast = credits.filter((x) => x.kind === "cast");
+  const youngCast = cast.filter((x) => x.is_young_performer);
   // Creative team in the positions' order (Director first); positions not
   // on the list come last, then billing order
   const { data: positionRows } = await supabase.from("crew_positions").select("name, rank");
@@ -408,7 +431,15 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
               </>
             ) : (
               <>
-                <CastGrid people={castPlaying} />
+                {castPlaying.length === 0 && understudiesOnly.length === 0 ? (
+                  // Every cast credit is a young performer
+                  <p className="m-0 pt-3 text-muted">This production featured young performers, who aren’t listed here.</p>
+                ) : (
+                  <>
+                    <CastGrid people={castPlaying} />
+                    {youngCast.length > 0 && <YoungPerformers credits={youngCast} />}
+                  </>
+                )}
                 {understudiesOnly.length > 0 && (
                   <>
                     <h3 className="subheading mt-6">Understudies</h3>

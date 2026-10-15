@@ -36,6 +36,8 @@ export type CreditRow = {
   adultConfirmed: boolean;
   // Cast: the person understudies the role(s) instead of playing them
   understudy?: boolean;
+  // Cast: a young performer (under 18): the role only, no person is ever recorded
+  young?: boolean;
   // A new person who shares a name with someone on the site, confirmed different
   distinct?: boolean;
 };
@@ -113,7 +115,8 @@ export function personNameKey(name: string) {
 // Someone already on the site with a new person's name
 export type SameNameMatch = { id: string; label: string; slug: string; detail: string | null };
 // One role each; understudy: covers the role rather than playing it
-export type BundleCredit = { kind: "cast" | "crew"; role: string; person_key: string; understudy?: boolean };
+// young: a young performer (under 18), with no person (person_key is empty)
+export type BundleCredit = { kind: "cast" | "crew"; role: string; person_key: string; understudy?: boolean; young?: boolean };
 // An uploaded poster and the palette read from it in the browser (migration 0007)
 export type BundlePoster = {
   storage_key: string;
@@ -291,13 +294,22 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   // Cast rows without a person are roles not cast yet
   const roles: string[] = [];
   for (const c of s.credits) {
-    if (c.kind !== "cast" || clean(c.person)) continue;
+    if (c.kind !== "cast" || clean(c.person) || c.young) continue;
     for (const role of splitRoles(readUnderstudy(c.role).text)) {
       if (!roles.some((r) => r.toLowerCase() === role.toLowerCase())) roles.push(role);
     }
   }
 
   for (const c of s.credits) {
+    // Young performers: the role only, never a person
+    if (c.young && c.kind === "cast") {
+      if (!clean(c.role)) missingRole++;
+      const read = readUnderstudy(c.role);
+      for (const role of splitRoles(read.text)) {
+        credits.push({ kind: "cast", role, person_key: "", young: true, ...((!!c.understudy || read.understudy) && { understudy: true }) });
+      }
+      continue;
+    }
     if (!clean(c.person)) continue;
     if (!clean(c.role)) missingRole++;
 
@@ -411,6 +423,8 @@ export function summarize(s: FormState) {
     existingIds.size && `${existingIds.size} existing`,
     pending && `${pending} pending check`,
   ].filter(Boolean);
+  const young = s.credits.filter((c) => c.young && c.kind === "cast" && clean(c.role)).length;
+  if (young) peopleParts.push(`${young} young ${young === 1 ? "performer" : "performers"}`);
 
   const live = s.existingProduction;
   return {
@@ -420,7 +434,7 @@ export function summarize(s: FormState) {
     location: live?.hasLocation ? "Existing" : status(s.location.choice, !!clean(s.location.query)),
     poster: s.poster ? "Added" : "—",
     people: peopleParts.length ? peopleParts.join(" · ") : "—",
-    credits: rows.length,
+    credits: rows.length + young,
     performances: s.performances.length,
   };
 }
@@ -461,7 +475,7 @@ export function checkBundle(b: Bundle): string[] {
   }
   if (b.credits.some((c) => blank(c.role))) problems.push("Every cast and crew line needs a role.");
   const keys = new Set(b.people.map((p) => p.key));
-  if (b.credits.some((c) => !keys.has(c.person_key))) problems.push("A cast or crew line is missing its person.");
+  if (b.credits.some((c) => !c.young && !keys.has(c.person_key))) problems.push("A cast or crew line is missing its person.");
   if (b.people.some((p) => "new" in p && blank(p.new.display_name))) problems.push("Every new person needs a name.");
   return problems;
 }
@@ -502,7 +516,7 @@ function itemsToForm(
   const byKey = new Map(items.people.map((p) => [p.key, p]));
   form.credits = items.credits.map((c) => {
     const person = byKey.get(c.person_key);
-    const row = { ...emptyCredit(c.kind), role: c.role, ...(c.understudy && { understudy: true }) };
+    const row = { ...emptyCredit(c.kind), role: c.role, ...(c.understudy && { understudy: true }), ...(c.young && { young: true }) };
     if (!person) return row;
     return "new" in person
       ? { ...row, person: person.new.display_name, choice: { kind: "new" as const }, adultConfirmed: true, ...(person.new.distinct && { distinct: true }) }

@@ -142,7 +142,7 @@ async function Submissions() {
                   ))}
                   {leftOut.credits.map((c, i) => (
                     <li key={`c${i}`} className="border-b border-rule py-1.5">
-                      {c.kind === "cast" ? "Cast" : "Crew"}: <strong>{c.role}</strong> · {personName(leftOut.people, c.person_key)}
+                      {c.kind === "cast" ? "Cast" : "Crew"}: <strong>{c.role}</strong> · {c.young ? "Young performer" : personName(leftOut.people, c.person_key)}
                     </li>
                   ))}
                 </ul>

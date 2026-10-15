@@ -355,7 +355,9 @@ export function ReviewCard({
                   value={c.value.role}
                   onChange={(e) => setCredits((cs) => cs.map((x, j) => (j === i ? { ...x, value: { ...x.value, role: e.target.value } } : x)))}
                 />
-                {p && "new" in p ? (
+                {c.value.young ? (
+                  <span className="flex-[1_1_160px] px-2.5 text-muted">Young performer (under 18, no name)</span>
+                ) : p && "new" in p ? (
                   <input
                     className={`${inputBase} flex-[1_1_160px]`}
                     aria-label="Person"
@@ -365,7 +367,7 @@ export function ReviewCard({
                 ) : (
                   <span className="flex-[1_1_160px] px-2.5">{p ? p.label : "?"}</span>
                 )}
-                <Tag isNew={!!p && "new" in p && !(sameAs[p.key] && sameAs[p.key] !== "distinct")} />
+                {!c.value.young && <Tag isNew={!!p && "new" in p && !(sameAs[p.key] && sameAs[p.key] !== "distinct")} />}
               </div>
             );
           })}

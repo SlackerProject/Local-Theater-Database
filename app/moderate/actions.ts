@@ -214,3 +214,36 @@ export async function rejectSubmission(id: string, note: string): Promise<Review
   if (error) return { ok: false, problems: [error.message] };
   redirect("/moderate?rejected=1");
 }
+
+// ---------------------------------------------------------------------
+// Young performers: a moderator turns named cast credits into
+// young-performer credits (no person). A person left with no credits is
+// deleted with their photos; the files are removed from storage here.
+// ---------------------------------------------------------------------
+export type YoungPreview = { name: string; otherCredits: number; photos: number; claimed: boolean; willDelete: boolean }[];
+
+export async function youngPerformerPreview(creditIds: string[]): Promise<{ ok: true; people: YoungPreview } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("young_performer_preview", { p_credit_ids: creditIds });
+  if (error) return { ok: false, error: error.message };
+  return {
+    ok: true,
+    people: (data ?? []).map((r) => ({
+      name: r.display_name,
+      otherCredits: r.other_credits,
+      photos: r.photos,
+      claimed: r.claimed,
+      willDelete: r.will_delete,
+    })),
+  };
+}
+
+export async function convertToYoungPerformer(creditIds: string[], path: string): Promise<Done> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("convert_to_young_performer", { p_credit_ids: creditIds });
+  if (error) return { ok: false, error: error.message };
+  const keys = ((data as { storage_keys?: string[] } | null)?.storage_keys ?? []).filter(Boolean);
+  if (keys.length) await supabase.storage.from(MEDIA_BUCKET).remove(keys);
+  for (const p of [path, "/people", "/hotlist", "/"]) revalidatePath(p);
+  return { ok: true };
+}

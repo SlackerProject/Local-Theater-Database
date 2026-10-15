@@ -106,10 +106,13 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
                         const sw = e.production ? swatch(showColors(e.production)) : null;
                         const role = e.credit?.character?.name ?? e.credit?.role_name;
                         const person = e.person && !e.person.is_hidden ? e.person : null;
+                        const young = !!e.credit?.is_young_performer;
                         return (
                           <li key={e.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-3">
                             <span className="flex flex-wrap items-center gap-x-2">
-                              {person ? (
+                              {young ? (
+                                <span className="font-bold">Young performer</span>
+                              ) : person ? (
                                 <Link href={`/person/${person.slug}`} className="font-bold">
                                   {person.display_name}
                                 </Link>
@@ -127,7 +130,7 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
                               )}
                               {person && role && <span className="text-muted">as {role}</span>}
                             </span>
-                            {person && e.production && sw && (
+                            {(person || young) && e.production && sw && (
                               <Link href={`/production/${e.production.slug}`} className="link-quiet inline-flex items-center gap-2">
                                 <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border" style={{ background: sw.background, borderColor: sw.borderColor }} />
                                 {productionTitle(e)}

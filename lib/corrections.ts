@@ -83,6 +83,8 @@ export type CreditAdd = {
   distinct?: boolean;
   // Cast: covers the role rather than playing it
   understudy?: boolean;
+  // Cast: a young performer (under 18), listed by role only: no person or name
+  young?: boolean;
 };
 export type PerformanceEdit = { id?: string; date: string; time: string; label: string; cancelled?: boolean };
 

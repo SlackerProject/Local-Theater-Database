@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { lookup } from "@/app/add/TypeAhead";
 import { personNameKey } from "@/lib/submission";
 import { readUnderstudy, splitRoles } from "@/lib/credits";
@@ -8,9 +9,11 @@ import type { CreditAdd } from "@/lib/corrections";
 import { PositionSelect } from "@/components/PositionSelect";
 import { PersonPicker, personProblem, type PersonValue } from "./PersonPicker";
 import { CROSS, Icon, PENCIL, PLUS, UNDO, changedRow, input, small } from "./ui";
+import { convertToYoungPerformer, youngPerformerPreview, type YoungPreview } from "@/app/moderate/actions";
 
 // One credit as it is now. characterId: the show role a cast credit is
-// linked to; understudy: they cover the role rather than play it.
+// linked to; understudy: they cover the role rather than play it; young: a
+// young performer (under 18), with no person (personId is empty).
 export type CreditLine = {
   id: string;
   kind: "cast" | "crew";
@@ -19,6 +22,7 @@ export type CreditLine = {
   role: string;
   characterId: string | null;
   understudy: boolean;
+  young: boolean;
 };
 // One of the show's roles; inUse = someone is credited in it (any production)
 export type RoleLine = { id: string; name: string; inUse: boolean };
@@ -46,11 +50,14 @@ const tidy = (s: string) => s.trim().replace(/\s+/g, " ");
 const same = (a: string, b: string) => tidy(a).toLowerCase() === tidy(b).toLowerCase();
 
 // Who an added line names, as a grouping key
-const addedKey = (a: CreditAdd) => (a.person_id ? `id:${a.person_id}` : `new:${personNameKey(a.new_name ?? "")}`);
+const addedKey = (a: CreditAdd) =>
+  a.young ? "young" : a.person_id ? `id:${a.person_id}` : `new:${personNameKey(a.new_name ?? "")}`;
 
 function addsFor(kind: "cast" | "crew", roles: string[], understudy: boolean, v: PersonValue): CreditAdd[] {
   return roles.map((role) =>
-    "person_id" in v
+    "young" in v
+      ? { kind: "cast" as const, role, young: true, ...(understudy && { understudy: true }) }
+      : "person_id" in v
       ? { kind, role, person_id: v.person_id, person_label: v.person_label, ...(understudy && { understudy: true }) }
       : { kind, role, new_name: v.new_name, adult_confirmed: true, ...(v.distinct && { distinct: true }), ...(understudy && { understudy: true }) },
   );
@@ -58,6 +65,7 @@ function addsFor(kind: "cast" | "crew", roles: string[], understudy: boolean, v:
 
 // The person a group is about, to add more roles for them
 function groupPerson(g: Group): PersonValue {
+  if (g.young) return { young: true };
   if (g.personId) return { person_id: g.personId, person_label: g.name };
   return { new_name: g.name, adult_confirmed: true, clash: false, distinct: !!g.added[0]?.a.distinct };
 }
@@ -73,6 +81,7 @@ type Group = {
   personId: string | null;
   name: string;
   isNew: boolean;
+  young: boolean; // a young performer: one line per credit, never named
   lines: CreditLine[]; // as it is now
   added: { a: CreditAdd; i: number }[];
   order: number;
@@ -83,17 +92,29 @@ function groupCredits(kind: "cast" | "crew", credits: CreditLine[], added: Credi
   credits
     .filter((c) => c.kind === kind)
     .forEach((c, n) => {
-      const key = `id:${c.personId}`;
-      const g = groups.get(key) ?? { key, personId: c.personId, name: c.person, isNew: false, lines: [], added: [], order: n };
+      // Young performers aren't one person, so each credit is its own line
+      const key = c.young ? `young:${c.id}` : `id:${c.personId}`;
+      const g =
+        groups.get(key) ??
+        { key, personId: c.young ? null : c.personId, name: c.young ? "Young performer" : c.person, isNew: false, young: c.young, lines: [], added: [], order: n };
       g.lines.push(c);
       groups.set(key, g);
     });
   added.forEach((a, i) => {
     if (a.kind !== kind) return;
-    const key = addedKey(a);
+    const key = a.young ? `young-add:${i}` : addedKey(a);
     const g =
       groups.get(key) ??
-      ({ key, personId: a.person_id ?? null, name: a.person_label ?? a.new_name ?? "", isNew: !a.person_id, lines: [], added: [], order: 10000 + i } as Group);
+      ({
+        key,
+        personId: a.person_id ?? null,
+        name: a.young ? "Young performer" : (a.person_label ?? a.new_name ?? ""),
+        isNew: !a.young && !a.person_id,
+        young: !!a.young,
+        lines: [],
+        added: [],
+        order: 10000 + i,
+      } as Group);
     g.added.push({ a, i });
     groups.set(key, g);
   });
@@ -185,12 +206,24 @@ function MoreRoles({ kind, onAdd, onCancel }: { kind: "cast" | "crew"; onAdd: (r
 }
 
 // Choosing someone else for every role a person has
-function ReplacePerson({ id, pendingNew, onDone, onCancel }: { id: string; pendingNew: string[]; onDone: (v: PersonValue) => void; onCancel: () => void }) {
+function ReplacePerson({
+  id,
+  pendingNew,
+  onDone,
+  onCancel,
+  allowYoung = false,
+}: {
+  id: string;
+  pendingNew: string[];
+  onDone: (v: PersonValue) => void;
+  onCancel: () => void;
+  allowYoung?: boolean;
+}) {
   const [v, setV] = useState<PersonValue | null>(null);
   const [problem, setProblem] = useState("");
   return (
     <div className="flex flex-col gap-2">
-      <PersonPicker id={id} value={v} onChange={setV} pendingNew={pendingNew} />
+      <PersonPicker id={id} value={v} onChange={setV} pendingNew={pendingNew} allowYoung={allowYoung} />
       {problem && <span className="text-sm font-semibold">{problem}</span>}
       <span className="flex gap-2">
         <button
@@ -219,14 +252,16 @@ function PeopleList({
   edits,
   ops,
   fresh = false,
+  canConvert = false,
 }: {
   kind: "cast" | "crew";
   credits: CreditLine[];
   edits: CreditEdits;
   ops: CreditOps;
   fresh?: boolean; // a new production: everything is new, so nothing is marked as a change
+  canConvert?: boolean; // moderators: "Convert to young performer"
 }) {
-  const [open, setOpen] = useState<{ key: string; what: "more" | "replace" } | null>(null);
+  const [open, setOpen] = useState<{ key: string; what: "more" | "replace" | "convert" } | null>(null);
   const groups = groupCredits(kind, credits, edits.added);
   const pendingNew = pendingNewOf(edits.added);
   const roleWord = kind === "cast" ? "role" : "position";
@@ -252,12 +287,20 @@ function PeopleList({
             <span className={`flex min-h-9 flex-col justify-center ${allGone ? "text-muted line-through" : ""}`}>
               <strong>{g.name}</strong>
               {g.isNew && <span className="text-sm text-muted">New to the site</span>}
+              {g.young && <span className="text-sm text-muted">Under 18 · no name recorded</span>}
             </span>
 
-            {open?.key === g.key && open.what === "replace" ? (
+            {open?.key === g.key && open.what === "convert" ? (
+              <ConvertPanel
+                creditIds={live.filter((l) => l.kind === "cast").map((l) => l.id)}
+                name={g.name}
+                onClose={() => setOpen(null)}
+              />
+            ) : open?.key === g.key && open.what === "replace" ? (
               <ReplacePerson
                 id={`replace-${g.key}`}
                 pendingNew={pendingNew}
+                allowYoung={kind === "cast"}
                 onCancel={() => setOpen(null)}
                 onDone={(v) => {
                   // Same roles, someone else
@@ -317,12 +360,21 @@ function PeopleList({
               ) : (
                 !open || open.key !== g.key ? (
                   <>
-                    <button type="button" onClick={() => setOpen({ key: g.key, what: "more" })} aria-label={`Add a ${roleWord} for ${g.name}`} className={small}>
-                      <Icon d={PLUS} /> {kind === "cast" ? "Role" : "Position"}
-                    </button>
-                    <button type="button" onClick={() => setOpen({ key: g.key, what: "replace" })} aria-label={`Replace ${g.name}`} className={small}>
-                      Change person
-                    </button>
+                    {!g.young && (
+                      <>
+                        <button type="button" onClick={() => setOpen({ key: g.key, what: "more" })} aria-label={`Add a ${roleWord} for ${g.name}`} className={small}>
+                          <Icon d={PLUS} /> {kind === "cast" ? "Role" : "Position"}
+                        </button>
+                        <button type="button" onClick={() => setOpen({ key: g.key, what: "replace" })} aria-label={`Replace ${g.name}`} className={small}>
+                          Change person
+                        </button>
+                      </>
+                    )}
+                    {canConvert && kind === "cast" && !g.young && live.some((l) => l.kind === "cast") && (
+                      <button type="button" onClick={() => setOpen({ key: g.key, what: "convert" })} aria-label={`Convert ${g.name} to a young performer`} className={small}>
+                        Convert to young performer
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -354,6 +406,7 @@ export function CastEditor({
   roles,
   rolesOnly = false,
   fresh = false,
+  canConvert = false,
   edits,
   ops,
 }: {
@@ -362,6 +415,7 @@ export function CastEditor({
   roles: RoleLine[];
   rolesOnly?: boolean; // the show's own page: its roles, without who plays them
   fresh?: boolean; // a new production (the Add form): nothing is marked as a change
+  canConvert?: boolean; // moderators can turn a named cast member into a young performer
   edits: CreditEdits;
   ops: CreditOps;
 }) {
@@ -397,6 +451,7 @@ export function CastEditor({
         <ReplacePerson
           id={`pick-${key}`}
           pendingNew={pendingNew}
+          allowYoung
           onCancel={() => setPicking(null)}
           onDone={(v) => {
             ops.addCredits(addsFor("cast", [name], false, v));
@@ -430,7 +485,7 @@ export function CastEditor({
       {!rolesOnly && (
         <>
           <ColumnLabels labels={["Person", "Roles"]} wide />
-          <PeopleList kind="cast" credits={credits} edits={edits} ops={ops} fresh={fresh} />
+          <PeopleList kind="cast" credits={credits} edits={edits} ops={ops} fresh={fresh} canConvert={canConvert} />
         </>
       )}
 
@@ -727,7 +782,7 @@ function AddLines({
           <label htmlFor={`add-${kind}-person`} className="text-sm font-bold">
             Person
           </label>
-          <PersonPicker id={`add-${kind}-person`} value={person} onChange={setPerson} pendingNew={pendingNew} />
+          <PersonPicker id={`add-${kind}-person`} value={person} onChange={setPerson} pendingNew={pendingNew} allowYoung={kind === "cast"} />
         </div>
         <label className="flex flex-col gap-1 text-sm font-bold">
           {kind === "cast" ? (
@@ -860,5 +915,79 @@ function AddLines({
         <Icon d={PLUS} /> {rolesOnly ? "Paste a list of roles" : "Paste a whole list"}
       </button>
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Moderators: turn a named cast member into a young performer. Shows what
+// will be removed first; the change happens at once (not on Save).
+// ---------------------------------------------------------------------
+function ConvertPanel({ creditIds, name, onClose }: { creditIds: string[]; name: string; onClose: () => void }) {
+  const router = useRouter();
+  const [preview, setPreview] = useState<YoungPreview | null>(null);
+  const [problem, setProblem] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    youngPerformerPreview(creditIds).then((r) => {
+      if (!live) return;
+      if (r.ok) setPreview(r.people);
+      else setProblem(r.error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [creditIds]);
+
+  const p = preview?.[0];
+  return (
+    <div className="callout flex flex-col gap-2 text-[15px]">
+      <strong>Convert {name} to a young performer?</strong>
+      <span>
+        Their {creditIds.length === 1 ? "role" : `${creditIds.length} roles`} here will be listed as “Young performer”, with no name, link
+        or photo.
+      </span>
+      {!preview && !problem && <span className="text-muted">Checking what this affects…</span>}
+      {p &&
+        (p.willDelete ? (
+          <span className="font-semibold">
+            {name} has no other credits, so their page{p.photos ? ` and ${p.photos} ${p.photos === 1 ? "photo" : "photos"}` : ""} will be
+            deleted permanently, and their name removed from the site’s records. This can’t be undone.
+          </span>
+        ) : p.claimed ? (
+          <span>{name} has claimed their page, so it stays; only these credits change.</span>
+        ) : (
+          <span>
+            {name}’s page stays, because they have {p.otherCredits} other {p.otherCredits === 1 ? "credit" : "credits"}; only these credits
+            change.
+          </span>
+        ))}
+      {problem && (
+        <span role="alert" className="font-semibold">
+          {problem}
+        </span>
+      )}
+      <span className="flex gap-2">
+        <button
+          type="button"
+          disabled={!preview || busy}
+          onClick={async () => {
+            setBusy(true);
+            const r = await convertToYoungPerformer(creditIds, window.location.pathname);
+            setBusy(false);
+            if (!r.ok) return setProblem(r.error ?? "That didn’t work.");
+            onClose();
+            router.refresh();
+          }}
+          className="btn-primary min-h-10 px-4 text-[15px]"
+        >
+          {busy ? "Converting…" : "Convert"}
+        </button>
+        <button type="button" onClick={onClose} className={small}>
+          Cancel
+        </button>
+      </span>
+    </div>
   );
 }

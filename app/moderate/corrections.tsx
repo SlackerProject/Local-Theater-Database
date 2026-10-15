@@ -150,7 +150,7 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
   if (table === "productions" && p.entity_id) {
     const creditIds = [...(c.credits?.remove ?? []), ...(c.credits?.update ?? []).map((u) => u.id)];
     const { data: credits } = creditIds.length
-      ? await supabase.from("credits").select("id, kind, role_name, is_understudy, person:people(display_name), character:show_characters(name)").in("id", creditIds)
+      ? await supabase.from("credits").select("id, kind, role_name, is_understudy, is_young_performer, person:people(display_name), character:show_characters(name)").in("id", creditIds)
       : { data: [] };
     const credit = new Map((credits ?? []).map((cr) => [cr.id, cr]));
     const people = await names(supabase, "people", (c.credits?.add ?? []).map((a) => a.person_id).filter((x): x is string => !!x));
@@ -163,7 +163,7 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
         key: `credit:remove:${id}`,
         what: `Remove from ${cr?.kind === "crew" ? "creative team" : "cast"}`,
         current: cr
-          ? `${cr.person?.display_name} — ${cr.is_understudy ? "Understudy for " : ""}${cr.character?.name ?? cr.role_name ?? ""}`
+          ? `${cr.is_young_performer ? "Young performer" : cr.person?.display_name} — ${cr.is_understudy ? "Understudy for " : ""}${cr.character?.name ?? cr.role_name ?? ""}`
           : "(already gone)",
         proposed: "Removed",
       });
@@ -173,13 +173,17 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
       if (cr?.kind === "crew") crewRoles.push(u.role);
       rows.push({
         key: `credit:update:${u.id}`,
-        what: `Change ${cr?.kind === "crew" ? "position" : "role"}: ${cr?.person?.display_name ?? "?"}`,
+        what: `Change ${cr?.kind === "crew" ? "position" : "role"}: ${cr?.is_young_performer ? "Young performer" : (cr?.person?.display_name ?? "?")}`,
         current: cr ? (cr.character?.name ?? cr.role_name ?? "") : "(credit is gone)",
         proposed: u.role,
       });
     }
     (c.credits?.add ?? []).forEach((a, i) => {
-      const who = a.person_id ? (people.get(a.person_id) ?? a.person_label ?? "(unknown person)") : `${a.new_name} (new person, confirmed 18+)`;
+      const who = a.young
+        ? "Young performer (under 18, no name)"
+        : a.person_id
+          ? (people.get(a.person_id) ?? a.person_label ?? "(unknown person)")
+          : `${a.new_name} (new person, confirmed 18+)`;
       const match = a.new_name && !a.distinct ? sameName[personNameKey(a.new_name)]?.[0] : undefined;
       rows.push({
         key: `credit:add:${i}`,

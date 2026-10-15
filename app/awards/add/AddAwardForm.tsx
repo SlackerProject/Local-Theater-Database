@@ -60,14 +60,14 @@ export function AddAwardForm({ bodies, categories, defaultYear, isModerator }: {
     let live = true;
     createClient()
       .from("credits")
-      .select("id, kind, role_name, billing_order, person:people(display_name), character:show_characters(name)")
+      .select("id, kind, role_name, billing_order, is_young_performer, person:people(display_name), character:show_characters(name)")
       .eq("production_id", production.id)
       .order("kind")
       .order("billing_order")
       .then(({ data }) => {
         if (!live) return;
         setCredits(
-          (data ?? []).map((c) => ({ id: c.id, kind: c.kind, person: c.person?.display_name ?? "?", role: c.character?.name ?? c.role_name ?? "" })),
+          (data ?? []).map((c) => ({ id: c.id, kind: c.kind, person: c.is_young_performer ? "Young performer" : (c.person?.display_name ?? "?"), role: c.character?.name ?? c.role_name ?? "" })),
         );
       });
     return () => {

@@ -250,6 +250,7 @@ export function CorrectionForm({
           credits={credits ?? []}
           roles={roles}
           rolesOnly={!credits}
+          canConvert={isModerator && !!credits}
           edits={creditEdits}
           ops={ops}
         />

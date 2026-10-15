@@ -339,8 +339,9 @@ export type Database = {
           hidden_on_person_page: boolean
           id: string
           is_understudy: boolean
+          is_young_performer: boolean
           kind: Database["public"]["Enums"]["credit_kind"]
-          person_id: string
+          person_id: string | null
           production_id: string
           role_name: string | null
           updated_at: string
@@ -354,8 +355,9 @@ export type Database = {
           hidden_on_person_page?: boolean
           id?: string
           is_understudy?: boolean
+          is_young_performer?: boolean
           kind: Database["public"]["Enums"]["credit_kind"]
-          person_id: string
+          person_id?: string | null
           production_id: string
           role_name?: string | null
           updated_at?: string
@@ -369,8 +371,9 @@ export type Database = {
           hidden_on_person_page?: boolean
           id?: string
           is_understudy?: boolean
+          is_young_performer?: boolean
           kind?: Database["public"]["Enums"]["credit_kind"]
-          person_id?: string
+          person_id?: string | null
           production_id?: string
           role_name?: string | null
           updated_at?: string
@@ -1778,6 +1781,10 @@ export type Database = {
         Returns: string
       }
       claim_state: { Args: { p_person_id: string }; Returns: string }
+      convert_to_young_performer: {
+        Args: { p_credit_ids: string[] }
+        Returns: Json
+      }
       correction_changes: { Args: { p_changes: Json }; Returns: Json }
       correction_fields: { Args: { p_table: string }; Returns: string[] }
       deletion_blockers: {
@@ -2102,6 +2109,17 @@ export type Database = {
       }
       unpublish_post: { Args: { p_id: string }; Returns: undefined }
       vouch_claim: { Args: { p_claim_id: string }; Returns: undefined }
+      young_performer_preview: {
+        Args: { p_credit_ids: string[] }
+        Returns: {
+          claimed: boolean
+          display_name: string
+          other_credits: number
+          person_id: string
+          photos: number
+          will_delete: boolean
+        }[]
+      }
     }
     Enums: {
       award_result: "nominated" | "won"

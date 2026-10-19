@@ -13,14 +13,14 @@ function ActionRow({ buttons }: { buttons: { label: string; primary?: boolean; d
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2 md:items-end">
+      <div className="flex flex-wrap items-center gap-2 md:justify-end">
         {buttons.map((b) => (
           <button
             key={b.label}
             type="button"
             title={b.disabled}
-            className={b.primary ? "btn-primary" : "btn-secondary"}
+            className={`${b.primary ? "btn-primary" : "btn-secondary"} min-h-10 px-4 text-sm`}
             disabled={pending || !!b.disabled}
             onClick={() =>
               start(async () => {
@@ -36,12 +36,12 @@ function ActionRow({ buttons }: { buttons: { label: string; primary?: boolean; d
         ))}
       </div>
       {buttons.filter((b) => b.disabled).map((b) => (
-        <span key={b.label} className="text-sm text-muted">
+        <span key={b.label} className="max-w-[260px] text-sm text-muted md:text-right">
           {b.disabled}
         </span>
       ))}
       {error && (
-        <p role="alert" className="callout m-0 text-[15px]">
+        <p role="alert" className="callout m-0 max-w-[320px] text-[15px]">
           {error}
         </p>
       )}

@@ -11,6 +11,8 @@ import { AnnouncementActions, AnnouncementText } from "@/components/Announcement
 import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
 import { SiteUpdateNotice } from "@/components/SiteUpdateNotice";
 import { KeepAllButton, NotificationActions } from "./NotificationActions";
+import { FeedbackReplyBox, FeedbackThread, type FeedbackMessage } from "@/components/FeedbackReply";
+import { feedbackKind } from "@/lib/feedback";
 
 export const metadata: Metadata = { title: "Notifications" };
 
@@ -39,7 +41,7 @@ async function Notifications() {
   if (!user) redirect("/signin?next=/notifications");
 
   const supabase = await createClient();
-  const [{ data: rows }, { data: page }, { data: news }, { data: siteUpdates }] = await Promise.all([
+  const [{ data: rows }, { data: page }, { data: news }, { data: siteUpdates }, { data: replies }] = await Promise.all([
     supabase
       .from("notifications")
       .select("id, status, resolution, dispute_note, created_at, revision:revisions(id, entity_table, entity_id, action, before, after, changed_by, changed_at)")
@@ -62,7 +64,23 @@ async function Notifications() {
       .eq("kind", "site_update")
       .order("created_at", { ascending: false })
       .limit(10),
+    supabase
+      .from("notifications")
+      .select("id, status, created_at, feedback:bug_reports(id, kind, message, created_at)")
+      .eq("user_id", user.id)
+      .eq("kind", "feedback_reply")
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
+  // One entry per piece of feedback (the newest notification for it)
+  const feedback = [...new Map((replies ?? []).filter((n) => n.feedback).map((n) => [n.feedback!.id, n] as const)).values()];
+  const { data: messageRows } = feedback.length
+    ? await supabase
+        .from("feedback_messages")
+        .select("id, bug_report_id, from_moderator, body, created_at, author:profiles!feedback_messages_author_id_fkey(display_name)")
+        .in("bug_report_id", feedback.map((n) => n.feedback!.id))
+        .order("created_at")
+    : { data: [] };
   const updates = (siteUpdates ?? []).filter((n) => n.post);
   const ctx = await announcementContext(
     supabase,
@@ -72,6 +90,35 @@ async function Notifications() {
 
   return (
     <>
+      {feedback.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="heading">Replies to your feedback</h2>
+          <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
+            {feedback.map((n) => {
+              const f = n.feedback!;
+              const unread = n.status === "unread";
+              return (
+                <li key={n.id} className="flex gap-3 border-b border-rule py-4">
+                  <span aria-hidden="true" className={`mt-2 h-2.5 w-2.5 flex-none rounded-full ${unread ? "bg-ink" : "bg-transparent"}`} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <span className={unread ? "font-semibold" : ""}>
+                      A moderator replied to your feedback
+                      {unread && <span className="sr-only"> (new)</span>}
+                    </span>
+                    <span className="text-sm text-muted">
+                      {feedbackKind(f.kind).label} · you sent it {formatWhen(f.created_at)}
+                    </span>
+                    <p className="m-0 border-l-2 border-rule pl-3 text-[15px] text-muted whitespace-pre-line">{f.message}</p>
+                    <FeedbackThread messages={(messageRows ?? []).filter((m) => m.bug_report_id === f.id) as FeedbackMessage[]} viewer="sender" />
+                    <FeedbackReplyBox id={f.id} viewer="sender" notificationId={unread ? n.id : undefined} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {updates.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="heading">Site updates</h2>

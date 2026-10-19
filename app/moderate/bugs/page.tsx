@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
 import { BugActions } from "./BugActions";
+import { FeedbackReplyBox, FeedbackThread, type FeedbackMessage } from "@/components/FeedbackReply";
 import { SITE_NAME } from "@/lib/brand";
 import { FEEDBACK_KINDS, feedbackKind } from "@/lib/feedback";
 
@@ -54,7 +55,7 @@ async function Feedback({ searchParams }: Pick<PageProps<"/moderate/bugs">, "sea
   const supabase = await createClient();
   let query = supabase
     .from("bug_reports")
-    .select("id, kind, page_url, message, details, status, created_at, resolved_at, reporter:profiles!bug_reports_reported_by_fkey(username, display_name)")
+    .select("id, kind, page_url, message, details, status, created_at, resolved_at, reported_by, reporter:profiles!bug_reports_reported_by_fkey(username, display_name)")
     .order("created_at", { ascending: false })
     .limit(100);
   if (!all) query = query.eq("status", "open");
@@ -63,6 +64,14 @@ async function Feedback({ searchParams }: Pick<PageProps<"/moderate/bugs">, "sea
     query,
     supabase.from("bug_reports").select("kind").eq("status", "open").limit(1000),
   ]);
+  const { data: messageRows } = reports?.length
+    ? await supabase
+        .from("feedback_messages")
+        .select("id, bug_report_id, from_moderator, body, created_at, author:profiles!feedback_messages_author_id_fkey(display_name)")
+        .in("bug_report_id", reports.map((r) => r.id))
+        .order("created_at")
+    : { data: [] };
+  const thread = (id: string): FeedbackMessage[] => (messageRows ?? []).filter((m) => m.bug_report_id === id);
   const openCount = (k: string | null) => (openRows ?? []).filter((r) => !k || r.kind === k).length;
 
   const href = (next: { kind?: string | null; all?: boolean }) => {
@@ -80,7 +89,8 @@ async function Feedback({ searchParams }: Pick<PageProps<"/moderate/bugs">, "sea
       <p className="m-0 max-w-[720px] text-[15px] text-muted">
         What people sent with “Give feedback” in the footer. <strong className="text-ink">Copy for Claude</strong> copies the page, the
         message and the technical details, ready to paste into a chat. If something was filed under the wrong kind, change it with{" "}
-        <strong className="text-ink">Kind</strong>.
+        <strong className="text-ink">Kind</strong>. <strong className="text-ink">Reply</strong> writes back to the sender; they see it in
+        their notifications and can answer, which reopens the feedback.
       </p>
 
       <nav aria-label="Kinds of feedback" className="flex flex-wrap items-center gap-2">
@@ -150,6 +160,12 @@ async function Feedback({ searchParams }: Pick<PageProps<"/moderate/bugs">, "sea
               <summary className="cursor-pointer font-semibold">Copy text</summary>
               <pre className="m-0 mt-2 whitespace-pre-wrap break-words rounded-md bg-soft p-3 font-mono text-[13px]">{copyText}</pre>
             </details>
+            <FeedbackThread messages={thread(r.id)} viewer="moderator" />
+            {r.reported_by ? (
+              <FeedbackReplyBox id={r.id} viewer="moderator" open={r.status === "open"} />
+            ) : (
+              <span className="text-sm text-muted">Sent while signed out, so there’s no one to reply to.</span>
+            )}
             <BugActions id={r.id} kind={r.kind} status={r.status} copyText={copyText} />
           </article>
         );

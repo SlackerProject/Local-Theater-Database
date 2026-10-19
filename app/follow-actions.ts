@@ -144,6 +144,14 @@ export async function dismissNotification(id: string): Promise<Result> {
   return error ? fail(error.message) : done(["/notifications", "/calendar"]);
 }
 
+// The sender of feedback answers a moderator's reply
+export async function answerFeedback(id: string, body: string): Promise<Result> {
+  const { supabase, userId } = await signedIn();
+  if (!userId) return fail("Sign in first.");
+  const { error } = await supabase.rpc("answer_feedback", { p_id: id, p_body: body });
+  return error ? fail(error.message) : done(["/notifications"]);
+}
+
 export async function wantToSeeFromNotification(id: string, productionId: string): Promise<Result> {
   const { supabase, userId } = await signedIn();
   if (!userId) return fail("Sign in first.");

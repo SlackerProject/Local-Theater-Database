@@ -8,7 +8,22 @@ import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal"
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
 
-const item = "flex flex-col gap-2.5 border-t border-rule pt-4";
+// One waiting item: the details on the left, the buttons on the right
+// (below on phones), so a moderator can go down the list quickly
+const item = "grid gap-2 border-t border-rule py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-6";
+const body = "flex min-w-0 flex-col gap-1 text-[15px]";
+const lead = "m-0 text-base";
+const quote = "m-0 border-l-2 border-rule pl-3 whitespace-pre-line text-[15px] text-muted";
+
+// A section heading with how many are waiting; the id is the jump link
+// from the summary at the top of the queue
+export function QueueHeading({ id, title, count }: { id: string; title: string; count: number }) {
+  return (
+    <h2 id={id} className="heading flex scroll-mt-6 items-baseline gap-2">
+      {title} <span className="text-base font-semibold text-muted">{count}</span>
+    </h2>
+  );
+}
 
 // ---------------------------------------------------------------------
 // "Is this you?" claims
@@ -27,13 +42,16 @@ export async function ClaimsSection({ user }: { user: CurrentUser }) {
     .order("created_at", { ascending: true });
   const claimPoints = await pointsFor((claims ?? []).map((c) => c.user_id));
 
+  // Moderators' queue hides empty sections; trusted editors only see this one
+  if (!claims?.length) return hasRole(user, "moderator") ? null : <p className="m-0 text-muted">No claims waiting for review.</p>;
+
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="heading">Page claims</h2>
-      {!claims?.length && <p className="m-0 text-muted">No claims waiting for review.</p>}
-      {claims?.map((c) => (
+    <section className="flex flex-col">
+      <QueueHeading id="claims" title="Page claims" count={claims.length} />
+      {claims.map((c) => (
         <article key={c.id} className={item}>
-          <p className="m-0 text-lg">
+          <div className={body}>
+          <p className={lead}>
             <strong>
               {c.claimant?.display_name} (@{c.claimant?.username})
             </strong>{" "}
@@ -49,7 +67,7 @@ export async function ClaimsSection({ user }: { user: CurrentUser }) {
           </p>
           <span className="text-sm text-muted">Claimed {when(c.created_at)}</span>
           {c.evidence_url ? (
-            <p className="m-0">
+            <p className="m-0 min-w-0">
               Evidence:{" "}
               <a href={c.evidence_url} target="_blank" rel="noopener noreferrer nofollow" className="break-all font-semibold">
                 {c.evidence_url}
@@ -58,8 +76,9 @@ export async function ClaimsSection({ user }: { user: CurrentUser }) {
           ) : (
             <p className="m-0 text-muted">No evidence link given.</p>
           )}
-          {c.evidence_note && <p className="callout m-0 whitespace-pre-line text-[15px]">{c.evidence_note}</p>}
-          {c.vouched_by && <p className="m-0 text-[15px]">✓ {c.voucher?.display_name ?? "A trusted editor"} knows this person.</p>}
+          {c.evidence_note && <p className={quote}>{c.evidence_note}</p>}
+          {c.vouched_by && <p className="m-0">✓ {c.voucher?.display_name ?? "A trusted editor"} knows this person.</p>}
+          </div>
           <ClaimButtons
             id={c.id}
             canVerify={hasRole(user, "moderator")}
@@ -99,16 +118,17 @@ export async function DisputesSection() {
     : { data: [] };
   const pageFor = new Map((pages ?? []).map((p) => [p.id, p.slug]));
 
+  if (!disputes?.length) return null;
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="heading">Disputed changes</h2>
-      {!disputes?.length && <p className="m-0 text-muted">No disputes waiting for review.</p>}
-      {disputes?.map((d) => {
+    <section className="flex flex-col">
+      <QueueHeading id="disputes" title="Disputed changes" count={disputes.length} />
+      {disputes.map((d) => {
         const change = d.revision ? described.get(d.revision.id) : null;
         const slug = d.owner?.person_id ? pageFor.get(d.owner.person_id) : undefined;
         return (
           <article key={d.id} className={item}>
-            <p className="m-0 text-lg">
+            <div className={body}>
+            <p className={lead}>
               <strong>{d.owner?.display_name}</strong> disputes this change to{" "}
               {slug ? <Link href={`/person/${slug}`}>their page</Link> : "their page"}:
             </p>
@@ -121,11 +141,8 @@ export async function DisputesSection() {
                 </>
               )}
             </p>
-            {d.dispute_note ? (
-              <p className="callout m-0 text-[15px]">“{d.dispute_note}”</p>
-            ) : (
-              <p className="m-0 text-sm text-muted">No reason given.</p>
-            )}
+            {d.dispute_note ? <p className={quote}>“{d.dispute_note}”</p> : <p className="m-0 text-sm text-muted">No reason given.</p>}
+            </div>
             <DisputeButtons id={d.id} canUndo={!!d.revision && UNDOABLE.has(`${d.revision.entity_table}:${d.revision.action}`)} />
           </article>
         );
@@ -172,16 +189,17 @@ export async function AuditionsSection() {
     : { data: [] };
   const locationName = new Map((locs ?? []).map((l) => [l.id, l.town ? `${l.name}, ${l.town}` : l.name]));
 
+  if (!proposals?.length) return null;
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="heading">Audition dates</h2>
-      {!proposals?.length && <p className="m-0 text-muted">No audition dates waiting for review.</p>}
-      {proposals?.map((p) => {
+    <section className="flex flex-col">
+      <QueueHeading id="auditions" title="Audition dates" count={proposals.length} />
+      {proposals.map((p) => {
         const prod = p.entity_id ? prodFor.get(p.entity_id) : undefined;
         const c = (p.changes ?? {}) as AuditionChanges;
         return (
           <article key={p.id} className={item}>
-            <p className="m-0 text-lg">
+            <div className={body}>
+            <p className={lead}>
               <strong>{p.proposer?.display_name}</strong> <ContributorTag points={points.get(p.proposed_by)} /> sent audition
               details for{" "}
               {prod ? (
@@ -195,7 +213,7 @@ export async function AuditionsSection() {
             </p>
             <span className="text-sm text-muted">Sent {when(p.created_at)}. Publishing replaces the current audition details.</span>
             {c.sessions?.length ? (
-              <ul className="m-0 flex list-none flex-col gap-1 p-0">
+              <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
                 {c.sessions.map((s, i) => (
                   <li key={i}>
                     <strong>{s.label || "Auditions"}:</strong> {sessionText(s)}
@@ -208,12 +226,13 @@ export async function AuditionsSection() {
             ) : (
               <p className="m-0">No dates (the page will say “Audition dates: TBD”).</p>
             )}
-            {c.note && <p className="callout m-0 whitespace-pre-line text-[15px]">{c.note}</p>}
+            {c.note && <p className={quote}>{c.note}</p>}
             {c.url && (
-              <a href={c.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-[15px] font-semibold">
+              <a href={c.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all font-semibold">
                 {c.url}
               </a>
             )}
+            </div>
             <AuditionButtons id={p.id} />
           </article>
         );
@@ -258,8 +277,8 @@ export async function AwardsSection() {
   const points = await pointsFor(proposals.map((p) => p.proposed_by));
 
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="heading">Awards</h2>
+    <section className="flex flex-col">
+      <QueueHeading id="awards" title="Awards" count={proposals.length} />
       {proposals.map((p) => {
         const c = (p.changes ?? {}) as AwardChanges;
         const body = c.body_id ? bodies?.find((b) => b.id === c.body_id)?.name : `${c.new_body} (new)`;
@@ -268,10 +287,11 @@ export async function AwardsSection() {
         const credit = credits?.find((x) => x.id === c.credit_id);
         return (
           <article key={p.id} className={item}>
-            <p className="m-0 text-lg">
-              <strong>{p.proposer?.display_name}</strong> <ContributorTag points={points.get(p.proposed_by)} /> added an award
+            <div className={body}>
+            <p className={lead}>
+              <strong>{p.proposer?.display_name}</strong> <ContributorTag points={points.get(p.proposed_by)} /> added an award{" "}
+              <span className="text-sm text-muted">· {when(p.created_at)}</span>
             </p>
-            <span className="text-sm text-muted">Sent {when(p.created_at)}</span>
             <p className="m-0">
               <strong>{c.result === "won" ? "Won" : "Nominated"}</strong>, {cat}, {body} awards {c.year}
               {prod && (
@@ -284,7 +304,8 @@ export async function AwardsSection() {
               )}
               {credit && ` · ${credit.is_young_performer ? "Young performer" : credit.person?.display_name} (${credit.character?.name ?? credit.role_name})`}
             </p>
-            {p.note && <p className="callout m-0 whitespace-pre-line text-[15px]">{p.note}</p>}
+            {p.note && <p className={quote}>{p.note}</p>}
+            </div>
             <AwardButtons id={p.id} />
           </article>
         );

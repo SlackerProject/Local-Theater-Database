@@ -15,7 +15,8 @@ export type ReviewRow = {
   sameName?: { distinctKey: string; name: string; match: { label: string; slug: string; detail: string | null } };
 };
 
-const cell = "border border-[#CFCFCF] p-2.5 align-top text-left";
+const small = "min-h-10 px-4 text-sm";
+const cell = "border border-[#CFCFCF] px-2 py-1.5 align-top text-left";
 
 // One correction: tick the changes to keep, then approve them; the rest
 // are left out. A correction that's only a note gets "Mark done".
@@ -26,6 +27,7 @@ export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; 
   const [distinct, setDistinct] = useState<Set<string>>(new Set());
   const sameNameRows = rows.filter((r) => r.sameName && keep.has(r.key));
   const [reply, setReply] = useState("");
+  const [replying, setReplying] = useState(false);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
@@ -47,10 +49,10 @@ export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; 
   return (
     <div className="flex flex-col gap-3">
       {rows.length > 0 ? (
-        <table className="w-full border-collapse text-[15px]">
+        <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-soft">
-              <th scope="col" className={`${cell} w-12`}>
+              <th scope="col" className={`${cell} w-9`}>
                 <span className="sr-only">Keep</span>
               </th>
               <th scope="col" className={cell}>What</th>
@@ -76,7 +78,7 @@ export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; 
                           return next;
                         })
                       }
-                      className="h-5 w-5 accent-ink"
+                      className="h-[18px] w-[18px] accent-ink"
                     />
                   </td>
                   <td className={`${cell} font-semibold`}>{r.what}</td>
@@ -131,29 +133,36 @@ export function CorrectionReview({ id, rows, newPositions = [] }: { id: string; 
         );
       })}
       <NewPositions positions={newPositions} selected={addPositions} onChange={setAddPositions} />
-      <label className="flex max-w-[620px] flex-col gap-1 text-sm font-semibold">
-        Reply to the contributor <span className="font-normal text-muted">(optional, shown on their submissions page)</span>
-        <input value={reply} onChange={(e) => setReply(e.target.value)} className="field h-11 px-3 text-base font-normal" />
-      </label>
-      <div className="flex flex-wrap gap-2">
+      {replying && (
+        <label className="flex max-w-[620px] flex-col gap-1 text-sm font-semibold">
+          Reply to the contributor <span className="font-normal text-muted">(shown on their submissions page)</span>
+          <input autoFocus value={reply} onChange={(e) => setReply(e.target.value)} className="field h-10 px-3 text-base font-normal" />
+        </label>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
         {rows.length > 0 ? (
           <>
-            <button type="button" disabled={pending || keep.size === 0} onClick={() => run([...keep])} className="btn-primary">
+            <button type="button" disabled={pending || keep.size === 0} onClick={() => run([...keep])} className={`btn-primary ${small}`}>
               {keep.size === rows.length ? "Approve all" : `Approve ${keep.size} of ${rows.length}`}
             </button>
-            <button type="button" disabled={pending} onClick={() => run([])} className="btn-secondary">
+            <button type="button" disabled={pending} onClick={() => run([])} className={`btn-secondary ${small}`}>
               Reject all
             </button>
           </>
         ) : (
           <>
-            <button type="button" disabled={pending} onClick={() => run([], true)} className="btn-primary">
+            <button type="button" disabled={pending} onClick={() => run([], true)} className={`btn-primary ${small}`}>
               Mark done
             </button>
-            <button type="button" disabled={pending} onClick={() => run([])} className="btn-secondary">
+            <button type="button" disabled={pending} onClick={() => run([])} className={`btn-secondary ${small}`}>
               Dismiss
             </button>
           </>
+        )}
+        {!replying && (
+          <button type="button" onClick={() => setReplying(true)} className="btn-text text-[15px]">
+            Add a reply
+          </button>
         )}
       </div>
       {error && (

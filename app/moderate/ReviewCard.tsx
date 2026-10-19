@@ -35,6 +35,7 @@ const inputBase = "field box-border h-12 min-w-0 px-3";
 const input = `${inputBase} w-full`;
 const pillAccent = "btn-primary";
 const pillLight = "btn-secondary";
+const small = "min-h-10 px-4 text-sm";
 
 function Tag({ isNew }: { isNew: boolean }) {
   return isNew ? (
@@ -42,6 +43,22 @@ function Tag({ isNew }: { isNew: boolean }) {
   ) : (
     <span className="flex-none rounded border border-rule px-2 py-0.5 text-[13px] font-bold text-muted">In database</span>
   );
+}
+
+// "Fri, Oct 3 7:30 PM", short enough to list a whole run on one line
+function perfShort(p: BundlePerformance) {
+  const day = p.date
+    ? new Date(`${p.date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
+    : "?";
+  const t = p.time ? new Date(`2000-01-01T${p.time}:00Z`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }) : "";
+  return `${day}${t ? ` ${t}` : ""}${p.label ? ` (${p.label})` : ""}`;
+}
+
+const dateText = (d: string) =>
+  d ? new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "";
+
+function NewTag() {
+  return <span className="ml-1 rounded bg-ink px-1 py-px align-[1px] text-[11px] font-bold uppercase tracking-wide text-white">New</span>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -108,6 +125,9 @@ export function ReviewCard({
   );
   const [credits, setCredits] = useState<Item<BundleCredit>[]>(submitted.credits.map((value) => ({ include: true, value })));
   const [note, setNote] = useState("");
+  const [noting, setNoting] = useState(false);
+  // The short read-only summary first; the full editor only when needed
+  const [editing, setEditing] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
   const [addPositions, setAddPositions] = useState<Set<string>>(new Set());
@@ -195,17 +215,38 @@ export function ReviewCard({
   }
 
   return (
-    <article className="flex flex-col gap-6 border-t-2 border-ink pt-5">
-      <div className="flex flex-col gap-1">
-        {addTo && <span className="tag self-start">Additions to a live production</span>}
-        <h2 className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</h2>
+    <article className={`flex flex-col border-t border-rule py-4 ${editing ? "gap-6" : "gap-3"}`}>
+      <div className="flex flex-col gap-0.5">
+        <h3 className="m-0 text-xl font-extrabold leading-tight tracking-[-0.01em]">
+          {title}
+          {addTo && <span className="tag ml-2 align-middle text-[12px]">Additions to a live production</span>}
+        </h3>
         <span className="text-sm text-muted">
-          Submitted by {submittedBy} {medal} on {submittedAt}. Correct anything that’s wrong, untick anything you can’t approve.
+          By {submittedBy} {medal} · {submittedAt}
+          {editing && ". Correct anything that’s wrong, untick anything you can’t approve."}
         </span>
       </div>
 
+      {!editing && (
+        <Summary
+          addTo={addTo}
+          show={show}
+          org={org}
+          year={year}
+          opening={opening}
+          closing={closing}
+          poster={poster}
+          location={location}
+          performances={performances}
+          credits={credits}
+          person={person}
+          isNew={(p) => !!p && "new" in p && !(sameAs[p.key] && sameAs[p.key] !== "distinct")}
+          roles={submitted.roles ?? []}
+        />
+      )}
+
       {/* Core: always approved with the submission, but editable */}
-      {!addTo && show && org && (
+      {editing && !addTo && show && org && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-muted">Show <Tag isNew={"new" in show} /></div>
@@ -272,7 +313,7 @@ export function ReviewCard({
       )}
 
       {/* Poster: optional, can be left out */}
-      {poster && (
+      {editing && poster && (
         <section className="flex flex-col gap-2">
           <h3 className="subheading">Poster</h3>
           <div className={`flex flex-wrap items-end gap-3 ${poster.include ? "" : "opacity-55"}`}>
@@ -288,7 +329,7 @@ export function ReviewCard({
       )}
 
       {/* Location: optional, can be left out */}
-      {location && (
+      {editing && location && (
         <section className="flex flex-col gap-2">
           <h3 className="subheading">Location</h3>
           <div className={`flex items-start gap-2 ${location.include ? "" : "opacity-55"}`}>
@@ -313,7 +354,7 @@ export function ReviewCard({
       )}
 
       {/* Performances */}
-      {performances.length > 0 && (
+      {editing && performances.length > 0 && (
         <section className="flex flex-col gap-1">
           <h3 className="subheading">Performances ({performances.filter((p) => p.include).length} of {performances.length})</h3>
           {performances.map((p, i) => {
@@ -336,7 +377,7 @@ export function ReviewCard({
       )}
 
       {/* Cast and crew */}
-      {credits.length > 0 && (
+      {editing && credits.length > 0 && (
         <section className="flex flex-col gap-1">
           <h3 className="subheading">Cast and crew ({credits.filter((c) => c.include).length} of {credits.length})</h3>
           {credits.map((c, i) => {
@@ -371,10 +412,18 @@ export function ReviewCard({
               </div>
             );
           })}
-          {people
+          {people.some((p) => "new" in p) && (
+            <p className="m-0 pt-1 text-sm text-muted">
+              Fixing a new person’s name fixes it on every line they appear on. The contributor confirmed each new person is 18 or older.
+            </p>
+          )}
+        </section>
+      )}
+
+      {people
             .filter((p) => matchesFor(p).length > 0 && credits.some((c) => c.include && c.value.person_key === p.key))
             .map((p) => (
-              <fieldset key={p.key} className="callout m-0 mt-2 flex flex-col gap-1.5 border-0 text-[15px]">
+              <fieldset key={p.key} className="callout m-0 flex flex-col gap-1.5 border-0 text-[15px]">
                 <legend className="float-left mb-1 w-full font-bold">
                   {"new" in p ? p.new.display_name : ""} is already on the site. Is this the same person?
                 </legend>
@@ -410,15 +459,8 @@ export function ReviewCard({
                 </label>
               </fieldset>
             ))}
-          {people.some((p) => "new" in p) && (
-            <p className="m-0 pt-1 text-sm text-muted">
-              Fixing a new person’s name fixes it on every line they appear on. The contributor confirmed each new person is 18 or older.
-            </p>
-          )}
-        </section>
-      )}
 
-      {!!submitted.roles?.length && (
+      {editing && !!submitted.roles?.length && (
         <section className="flex flex-col gap-1">
           <h3 className="subheading">Roles not cast yet ({submitted.roles.length})</h3>
           <p className="m-0 text-[15px]">{submitted.roles.join(", ")}</p>
@@ -437,30 +479,205 @@ export function ReviewCard({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 border-t border-rule pt-4">
-        <Field label="Note to the contributor (optional)">
-          <input
-            className="field h-12 rounded-[10px] px-3.5 font-normal"
-            value={note}
-            placeholder={leftOutCount ? "e.g. Javert needs a source: please add a cast-list link" : ""}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </Field>
-        <p className="m-0 text-sm text-muted">
-          {leftOutCount
-            ? `Leaving out ${leftOutCount} ${leftOutCount === 1 ? "item" : "items"}. ${submittedBy.split(" (")[0]} can fix and resubmit ${leftOutCount === 1 ? "it" : "them"} from their submissions page.`
-            : "Everything is included."}{" "}
-          Rejecting sends the whole submission back to them to fix.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <button type="button" className={pillAccent} disabled={pending} onClick={approve}>
+      <div className="flex flex-col gap-2">
+        {(noting || editing) && (
+          <Field label="Note to the contributor (optional)">
+            <input
+              className="field h-10 rounded-[8px] px-3 font-normal"
+              value={note}
+              autoFocus={noting && !editing}
+              placeholder={leftOutCount ? "e.g. Javert needs a source: please add a cast-list link" : ""}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </Field>
+        )}
+        {(editing || leftOutCount > 0) && (
+          <p className="m-0 text-sm text-muted">
+            {leftOutCount
+              ? `Leaving out ${leftOutCount} ${leftOutCount === 1 ? "item" : "items"}. ${submittedBy.split(" (")[0]} can fix and resubmit ${leftOutCount === 1 ? "it" : "them"} from their submissions page.`
+              : "Everything is included."}{" "}
+            Rejecting sends the whole submission back to them to fix.
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={`${pillAccent} ${small}`} disabled={pending} onClick={approve}>
             {pending ? "Working…" : leftOutCount ? "Approve selected" : "Approve"}
           </button>
-          <button type="button" className={pillLight} disabled={pending} onClick={reject}>
+          <button type="button" className={`${pillLight} ${small}`} disabled={pending} onClick={() => setEditing((e) => !e)}>
+            {editing ? "Done editing" : "Edit or leave things out"}
+          </button>
+          <button type="button" className={`${pillLight} ${small}`} disabled={pending} onClick={reject}>
             Reject all
           </button>
+          {!noting && !editing && (
+            <button type="button" className="btn-text text-[15px]" onClick={() => setNoting(true)}>
+              Add a note
+            </button>
+          )}
         </div>
       </div>
     </article>
+  );
+}
+
+// The submission at a glance: the facts as label/value lines and the cast
+// and crew in columns. Anything left out in the editor is struck through.
+function Summary({
+  addTo,
+  show,
+  org,
+  year,
+  opening,
+  closing,
+  poster,
+  location,
+  performances,
+  credits,
+  person,
+  isNew,
+  roles,
+}: {
+  addTo: boolean;
+  show: Extract<Bundle, { show: unknown }>["show"] | null;
+  org: Extract<Bundle, { organization: unknown }>["organization"] | null;
+  year: string;
+  opening: string;
+  closing: string;
+  poster: Item<BundlePoster> | null;
+  location: Item<Ref<NewLocation>> | null;
+  performances: Item<BundlePerformance>[];
+  credits: Item<BundleCredit>[];
+  person: (key: string) => BundlePerson | undefined;
+  isNew: (p: BundlePerson | undefined) => boolean;
+  roles: string[];
+}) {
+  const out = (include: boolean) => (include ? "" : "text-muted line-through");
+  const dt = "font-semibold text-muted";
+  const castCount = credits.filter((c) => c.value.kind === "cast").length;
+  const lines = (kind: "cast" | "crew") =>
+    credits.map((c, i) => ({ c, i })).filter(({ c }) => c.value.kind === kind);
+
+  return (
+    <div className="flex flex-col gap-3 text-[15px]">
+      <div className="flex gap-4">
+        {poster && (
+          <a href={mediaUrl(poster.value.storage_key)!} target="_blank" rel="noopener noreferrer" className={`block w-[64px] flex-none ${poster.include ? "" : "opacity-40"}`} title="Poster (opens full size)">
+            <div className="flex aspect-[4/5] w-full items-center overflow-hidden rounded-[3px]" style={{ background: poster.value.palette.ground }}>
+              <img src={mediaUrl(poster.value.thumb_key)!} alt="Submitted poster" className="h-full w-full object-contain" />
+            </div>
+          </a>
+        )}
+        <dl className="m-0 grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5">
+          {!addTo && show && (
+            <>
+              <dt className={dt}>Show</dt>
+              <dd className="m-0">
+                {"new" in show ? (
+                  <>
+                    {show.new.title}
+                    <NewTag />
+                    <span className="text-muted">
+                      {" "}
+                      · {SHOW_TYPES.find((t) => t.value === show.new.type)?.label}
+                      {show.new.authors && ` · ${show.new.authors}`}
+                    </span>
+                  </>
+                ) : (
+                  show.label
+                )}
+              </dd>
+            </>
+          )}
+          {!addTo && org && (
+            <>
+              <dt className={dt}>Company</dt>
+              <dd className="m-0">
+                {"new" in org ? (
+                  <>
+                    {org.new.name}
+                    <NewTag />
+                    {(org.new.town || org.new.website_url) && (
+                      <span className="text-muted"> · {[org.new.town, org.new.website_url].filter(Boolean).join(" · ")}</span>
+                    )}
+                  </>
+                ) : (
+                  org.label
+                )}
+              </dd>
+            </>
+          )}
+          {!addTo && (
+            <>
+              <dt className={dt}>Dates</dt>
+              <dd className="m-0">{opening || closing ? [dateText(opening), dateText(closing)].filter(Boolean).join(" – ") : year}</dd>
+            </>
+          )}
+          {location && (
+            <>
+              <dt className={dt}>Venue</dt>
+              <dd className={`m-0 ${out(location.include)}`}>
+                {"new" in location.value ? (
+                  <>
+                    {[location.value.new.name, location.value.new.street_address, location.value.new.town].filter(Boolean).join(", ")}
+                    <NewTag />
+                  </>
+                ) : (
+                  location.value.label
+                )}
+              </dd>
+            </>
+          )}
+          {performances.length > 0 && (
+            <>
+              <dt className={dt}>Shows</dt>
+              <dd className="m-0">
+                {performances.map((p, i) => (
+                  <span key={i}>
+                    {i > 0 && ", "}
+                    <span className={out(p.include)}>{perfShort(p.value)}</span>
+                  </span>
+                ))}
+              </dd>
+            </>
+          )}
+          {roles.length > 0 && (
+            <>
+              <dt className={dt}>Roles not cast</dt>
+              <dd className="m-0">{roles.join(", ")}</dd>
+            </>
+          )}
+        </dl>
+      </div>
+
+      {(["cast", "crew"] as const).map((kind) => {
+        const rows = lines(kind);
+        if (!rows.length) return null;
+        return (
+          <div key={kind} className="flex flex-col gap-1">
+            <span className="text-sm font-semibold text-muted">
+              {kind === "cast" ? `Cast (${castCount})` : `Creative team (${rows.length})`}
+            </span>
+            <ul className="m-0 list-none columns-1 gap-6 p-0 text-sm sm:columns-2 lg:columns-3">
+              {rows.map(({ c, i }) => {
+                const p = person(c.value.person_key);
+                return (
+                  <li key={i} className={`break-inside-avoid py-px ${out(c.include)}`}>
+                    <span className="text-muted">{c.value.understudy ? `U/S ${c.value.role}` : c.value.role}:</span>{" "}
+                    {c.value.young ? (
+                      <span className="text-muted">Young performer</span>
+                    ) : (
+                      <>
+                        {p ? ("new" in p ? p.new.display_name : p.label) : "?"}
+                        {isNew(p) && <NewTag />}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
   );
 }

@@ -15,6 +15,7 @@ import { CorrectionReview, type ReviewRow } from "./CorrectionReview";
 import { unlistedPositions } from "@/lib/positions";
 import { personNameKey, sameNameMatches } from "@/lib/same-name";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
+import { QueueHeading } from "./sections";
 
 const TABLES = Object.keys(KIND_FOR_TABLE) as PageTable[];
 
@@ -47,13 +48,13 @@ export async function CorrectionsSection() {
   const cards = await Promise.all((proposals ?? []).map((p) => buildCard(supabase, p, knownPositions)));
   const points = await pointsFor((proposals ?? []).map((p) => p.proposed_by));
 
+  if (!cards.length) return null;
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="heading">Corrections</h2>
-      {!cards.length && <p className="m-0 text-muted">No corrections waiting for review.</p>}
+    <section className="flex flex-col">
+      <QueueHeading id="corrections" title="Corrections" count={cards.length} />
       {cards.map((c) => (
-        <article key={c.id} className="flex flex-col gap-3 border-t border-rule pt-4">
-          <p className="m-0 text-lg">
+        <article key={c.id} className="flex flex-col gap-2 border-t border-rule py-3">
+          <p className="m-0 text-base">
             <Link href={`/moderate/members?q=${encodeURIComponent(c.username)}`} className="font-bold">
               {c.who}
             </Link>{" "}
@@ -65,14 +66,12 @@ export async function CorrectionsSection() {
             ) : (
               "a page that no longer exists"
             )}{" "}
-            <span className="text-muted">({c.noun})</span>
+            <span className="text-muted">({c.noun})</span> <span className="text-sm text-muted">· {c.sent}</span>
           </p>
-          <span className="text-sm text-muted">Sent {c.sent}</span>
           {c.note && (
-            <div className="callout m-0 flex flex-col gap-1 text-[15px]">
-              <strong>Notes to moderator</strong>
-              <span className="whitespace-pre-line">{c.note}</span>
-            </div>
+            <p className="m-0 border-l-2 border-rule pl-3 whitespace-pre-line text-[15px] text-muted">
+              <strong className="text-ink">Note:</strong> {c.note}
+            </p>
           )}
           <CorrectionReview id={c.id} rows={c.rows} newPositions={c.newPositions} />
         </article>

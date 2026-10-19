@@ -143,7 +143,8 @@ export function BugReporter() {
                 name="website"
               />
               <p className="m-0 text-sm text-muted">
-                This page’s address and your browser type are sent with it, to help us follow up.
+                This page’s address and your browser type are sent with it, to help us follow up. If you’re signed in, a
+                moderator can reply to you in your notifications.
               </p>
               {error && (
                 <p role="alert" className="m-0 font-semibold">

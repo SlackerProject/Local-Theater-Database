@@ -9,7 +9,8 @@ import { sameNameMatches } from "@/lib/same-name";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ReviewCard } from "./ReviewCard";
 import { UploadQueue, type QueueGroup } from "./UploadQueue";
-import { AuditionsSection, AwardsSection, ClaimsSection, DisputesSection } from "./sections";
+import { AuditionsSection, AwardsSection, ClaimsSection, DisputesSection, QueueHeading } from "./sections";
+import { KIND_FOR_TABLE } from "@/lib/corrections";
 import { CorrectionsSection } from "./corrections";
 import { ModerationNav } from "./ModerationNav";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
@@ -63,6 +64,14 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       .order("created_at", { ascending: true }),
   ]);
 
+  // How many of each are waiting, for the summary at the top
+  const [{ count: claimCount }, { count: disputeCount }, { data: otherProposals }] = await Promise.all([
+    supabase.from("person_claims").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("notifications").select("id", { count: "exact", head: true }).eq("status", "disputed"),
+    supabase.from("edit_proposals").select("entity_table").eq("status", "pending").neq("entity_table", "production_submission").limit(2000),
+  ]);
+  const proposalCount = (tables: string[]) => (otherProposals ?? []).filter((p) => tables.includes(p.entity_table)).length;
+
   const { data: positionRows } = await supabase.from("crew_positions").select("name");
   const knownPositions = (positionRows ?? []).map((p) => p.name);
 
@@ -106,15 +115,36 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
     groups.set(target.key, group);
   }
 
+  const waiting = [
+    { id: "claims", label: "page claims", n: claimCount ?? 0 },
+    { id: "disputes", label: "disputes", n: disputeCount ?? 0 },
+    { id: "corrections", label: "corrections", n: proposalCount(Object.keys(KIND_FOR_TABLE)) },
+    { id: "auditions", label: "audition dates", n: proposalCount(["auditions"]) },
+    { id: "awards", label: "awards", n: proposalCount(["award_entries"]) },
+    { id: "submissions", label: "productions", n: proposals?.length ?? 0 },
+    { id: "uploads", label: "uploads", n: uploads?.length ?? 0 },
+  ].filter((w) => w.n > 0);
+
   return (
     <>
       <ModerationNav current="/moderate" />
-      <ClaimsSection user={user} />
-      <DisputesSection />
-      <CorrectionsSection />
-      <AuditionsSection />
-      <AwardsSection />
-      <h2 className="heading -mb-2 mt-4">Production submissions</h2>
+      <nav aria-label="Waiting for review" className="-mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[15px]">
+        {waiting.length ? (
+          <>
+            <span className="font-semibold">Waiting:</span>
+            {waiting.map((w, i) => (
+              <span key={w.id}>
+                <a href={`#${w.id}`} className="font-semibold">
+                  {w.n} {w.label}
+                </a>
+                {i < waiting.length - 1 && <span className="text-muted"> ·</span>}
+              </span>
+            ))}
+          </>
+        ) : (
+          <span className="text-muted">Nothing waiting for review. All caught up.</span>
+        )}
+      </nav>
       {typeof params.approved === "string" && (
         <Banner>
           Approved and published.{" "}
@@ -126,31 +156,40 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
         </Banner>
       )}
       {params.rejected && <Banner>Submission rejected and sent back to the contributor.</Banner>}
-      {error && <p className="callout m-0">Couldn’t load the queue: {error.message}</p>}
-      {!proposals?.length && !error && <p className="m-0 text-muted">No submissions waiting for review.</p>}
+      <ClaimsSection user={user} />
+      <DisputesSection />
+      <CorrectionsSection />
+      <AuditionsSection />
+      <AwardsSection />
+      {(!!proposals?.length || error) && (
+        <section className="flex flex-col">
+          <QueueHeading id="submissions" title="Production submissions" count={proposals?.length ?? 0} />
+          {error && <p className="callout m-0">Couldn’t load the queue: {error.message}</p>}
 
-      {proposals?.map((p) => (
-        <ReviewCard
-          key={p.id}
-          id={p.id}
-          submitted={p.changes as unknown as Bundle}
-          submittedBy={`${p.proposer?.display_name} (@${p.proposer?.username})`}
-          medal={<ContributorTag points={points.get(p.proposed_by)} />}
-          knownPositions={knownPositions}
-          sameName={sameName}
-          submittedAt={new Date(p.created_at).toLocaleString("en-US", {
-            timeZone: "America/New_York",
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        />
-      ))}
+          {proposals?.map((p) => (
+            <ReviewCard
+              key={p.id}
+              id={p.id}
+              submitted={p.changes as unknown as Bundle}
+              submittedBy={`${p.proposer?.display_name} (@${p.proposer?.username})`}
+              medal={<ContributorTag points={points.get(p.proposed_by)} />}
+              knownPositions={knownPositions}
+              sameName={sameName}
+              submittedAt={new Date(p.created_at).toLocaleString("en-US", {
+                timeZone: "America/New_York",
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            />
+          ))}
+        </section>
+      )}
 
-      <h2 className="heading -mb-2 mt-8">Photos, posters, headshots and logos</h2>
-      {groups.size === 0 ? (
-        <p className="m-0 text-muted">No uploads waiting for review.</p>
-      ) : (
-        <UploadQueue groups={[...groups.values()]} />
+      {groups.size > 0 && (
+        <section className="flex flex-col gap-2">
+          <QueueHeading id="uploads" title="Photos, posters, headshots and logos" count={uploads?.length ?? 0} />
+          <UploadQueue groups={[...groups.values()]} />
+        </section>
       )}
     </>
   );

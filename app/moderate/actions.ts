@@ -164,6 +164,15 @@ export async function resolveBug(id: string, status: "open" | "fixed" | "dismiss
   return r;
 }
 
+// Write back to whoever sent feedback (they see it in their notifications);
+// "done" also marks the feedback done
+export async function replyToFeedback(id: string, body: string, done: boolean): Promise<Done> {
+  const supabase = await createClient();
+  const r = await call(() => supabase.rpc("reply_to_feedback", { p_id: id, p_body: body, p_done: done }));
+  revalidatePath("/moderate/bugs");
+  return r;
+}
+
 // Corrections: approve the ticked changes (none = rejected). A note-only
 // correction is "marked done" instead.
 export async function reviewCorrection(id: string, accept: string[], note: string, noteOnlyDone: boolean): Promise<Done> {

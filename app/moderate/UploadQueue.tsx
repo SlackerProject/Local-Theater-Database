@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { PaletteSwatches } from "@/components/uploads/UploadPanels";
 import type { MediaPalette } from "@/lib/media";
 import { reviewUploads } from "./actions";
 
@@ -46,7 +45,7 @@ export function UploadQueue({ groups }: { groups: QueueGroup[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5">
       {notice && (
         <p role="status" className="callout m-0">
           {notice}
@@ -63,21 +62,21 @@ export function UploadQueue({ groups }: { groups: QueueGroup[] }) {
         </div>
       )}
       {groups.map((g) => (
-        <section key={g.key} className="flex flex-col gap-3 border-t-2 border-ink pt-4">
+        <section key={g.key} className="flex flex-col gap-2 border-t border-rule pt-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="m-0 text-xl font-extrabold">
+            <h3 className="m-0 text-base font-bold">
               <Link href={g.href}>{g.label}</Link>{" "}
-              <span className="text-base font-normal text-muted">
+              <span className="text-sm font-normal text-muted">
                 · {g.items.length} {g.items.length === 1 ? "upload" : "uploads"}
               </span>
             </h3>
             {g.items.length > 1 && (
-              <button type="button" className="btn-primary" disabled={pending} onClick={() => review(g.items.map((i) => i.id), true)}>
+              <button type="button" className="btn-primary min-h-10 px-4 text-sm" disabled={pending} onClick={() => review(g.items.map((i) => i.id), true)}>
                 Approve all {g.items.length}
               </button>
             )}
           </div>
-          <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-3 lg:grid-cols-5">
             {g.items.map((item) => (
               <UploadCard key={item.id} item={item} pending={pending} onReview={review} />
             ))}
@@ -100,45 +99,42 @@ function UploadCard({
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState("");
   return (
-    <li className="flex flex-col gap-2.5 border-b border-rule pb-4">
+    <li className="flex min-w-0 flex-col gap-1.5">
       <a href={item.full} target="_blank" rel="noopener noreferrer" className="block" title="Open full size">
         <div
-          className={`flex w-full items-center overflow-hidden rounded-md ${item.kind === "production_photo" ? "aspect-[4/3]" : "aspect-[4/5] max-w-[220px]"}`}
+          className="flex aspect-square w-full items-center overflow-hidden rounded-md"
           style={{ background: item.palette?.ground ?? "#F5F5F4" }}
         >
           <img src={item.thumb} alt={`${KIND[item.kind]} uploaded by ${item.uploader}`} className="h-full w-full object-contain" />
         </div>
       </a>
-      <div className="flex flex-col gap-0.5 text-sm">
+      <div className="flex flex-col text-[13px] leading-snug" title={`${item.uploadedAt}. Rights and 18+ confirmed by the uploader.`}>
         <span>
-          <span className="tag mr-1.5">{KIND[item.kind]}</span>
-          by {item.uploader} {item.uploaderMedal} · {item.uploadedAt}
+          <strong>{KIND[item.kind]}</strong> by {item.uploader.split(" (")[0]} {item.uploaderMedal}
         </span>
-        {item.credit && <span className="text-muted">Photo credit: {item.credit}</span>}
-        <span className="text-muted">Rights and 18+ confirmed by the uploader.</span>
+        {item.credit && <span className="truncate text-muted">Credit: {item.credit}</span>}
       </div>
-      {item.palette && <PaletteSwatches palette={item.palette} />}
       {rejecting ? (
         <div className="flex flex-col gap-2">
-          <label className="flex flex-col gap-1 text-[15px] font-semibold">
-            Reason <span className="font-normal text-muted">(optional, kept for the record)</span>
-            <input className="field h-12 px-3 font-normal" value={note} onChange={(e) => setNote(e.target.value)} />
+          <label className="flex flex-col gap-1 text-sm font-semibold">
+            Reason <span className="font-normal text-muted">(optional)</span>
+            <input autoFocus className="field h-10 px-2 font-normal" value={note} onChange={(e) => setNote(e.target.value)} />
           </label>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-primary" disabled={pending} onClick={() => onReview([item.id], false, note)}>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" className="btn-primary min-h-9 px-3 text-sm" disabled={pending} onClick={() => onReview([item.id], false, note)}>
               Reject and delete
             </button>
-            <button type="button" className="btn-secondary" disabled={pending} onClick={() => setRejecting(false)}>
+            <button type="button" className="btn-secondary min-h-9 px-3 text-sm" disabled={pending} onClick={() => setRejecting(false)}>
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn-primary" disabled={pending} onClick={() => onReview([item.id], true)}>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" className="btn-primary min-h-9 px-3 text-sm" disabled={pending} onClick={() => onReview([item.id], true)}>
             Approve
           </button>
-          <button type="button" className="btn-secondary" disabled={pending} onClick={() => setRejecting(true)}>
+          <button type="button" className="btn-secondary min-h-9 px-3 text-sm" disabled={pending} onClick={() => setRejecting(true)}>
             Reject
           </button>
         </div>

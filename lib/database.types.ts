@@ -542,6 +542,48 @@ export type Database = {
           },
         ]
       }
+      feedback_messages: {
+        Row: {
+          author_id: string | null
+          body: string
+          bug_report_id: string
+          created_at: string
+          from_moderator: boolean
+          id: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          bug_report_id: string
+          created_at?: string
+          from_moderator: boolean
+          id?: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          bug_report_id?: string
+          created_at?: string
+          from_moderator?: boolean
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_messages_bug_report_id_fkey"
+            columns: ["bug_report_id"]
+            isOneToOne: false
+            referencedRelation: "bug_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follows: {
         Row: {
           created_at: string
@@ -787,6 +829,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          bug_report_id: string | null
           created_at: string
           credit_id: string | null
           dispute_note: string | null
@@ -803,6 +846,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bug_report_id?: string | null
           created_at?: string
           credit_id?: string | null
           dispute_note?: string | null
@@ -819,6 +863,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bug_report_id?: string | null
           created_at?: string
           credit_id?: string | null
           dispute_note?: string | null
@@ -835,6 +880,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_bug_report_id_fkey"
+            columns: ["bug_report_id"]
+            isOneToOne: false
+            referencedRelation: "bug_reports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_credit_id_fkey"
             columns: ["credit_id"]
@@ -1724,6 +1776,10 @@ export type Database = {
     Functions: {
       add_crew_positions: { Args: { p_names: string[] }; Returns: number }
       allow_distinct_person: { Args: { p_name: string }; Returns: undefined }
+      answer_feedback: {
+        Args: { p_body: string; p_id: string }
+        Returns: undefined
+      }
       apply_auditions: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_award: { Args: { p_proposal_id: string }; Returns: undefined }
       apply_correction: {
@@ -1988,6 +2044,10 @@ export type Database = {
       refresh_badges: { Args: { p_user: string }; Returns: undefined }
       reject_submission: {
         Args: { p_note?: string; p_proposal_id: string }
+        Returns: undefined
+      }
+      reply_to_feedback: {
+        Args: { p_body: string; p_done?: boolean; p_id: string }
         Returns: undefined
       }
       report_bug: {

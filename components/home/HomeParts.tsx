@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Tile } from "@/lib/home";
-import { getHotProductions } from "@/lib/hotlist";
+import { getHotProductions, hotlistUpdated } from "@/lib/hotlist";
 import { latestUpdates, postDate } from "@/lib/updates";
 
 // Pieces of the home page (home.html / home-mobile.html)
@@ -54,7 +54,7 @@ export function PlayingNow({ tiles }: { tiles: Tile[] }) {
 
 // "This week's Hotlist": the top 10 productions
 export async function HotlistBox() {
-  const productions = await getHotProductions(10);
+  const [productions, updated] = await Promise.all([getHotProductions(10), hotlistUpdated()]);
   const row = "link-quiet flex items-center gap-3 border-b border-rule py-2.5 text-ink";
   const rank = "w-[22px] flex-none text-right text-xl font-extrabold text-muted";
 
@@ -62,7 +62,7 @@ export async function HotlistBox() {
     <aside aria-label="This week's Hotlist" className="flex min-w-0 flex-col gap-[18px] rounded-[10px] border border-rule p-6">
       <div className="flex flex-col gap-0.5">
         <h2 className="heading">This week’s Hotlist</h2>
-        <span className="text-[13px] text-muted">The most-visited productions, counted once per visitor per day.</span>
+        <span className="text-[13px] text-muted">The most-visited productions over the last 7 days. {updated}.</span>
       </div>
       <section>
         {productions.length ? (

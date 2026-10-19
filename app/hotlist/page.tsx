@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getHotProductions, type Move } from "@/lib/hotlist";
+import { getHotProductions, hotlistUpdated, type Move } from "@/lib/hotlist";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 
 export const metadata: Metadata = { title: "Hotlist" };
@@ -13,10 +13,11 @@ export default function HotlistPage() {
       <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <div className="flex flex-col gap-2">
           <h1 className="display text-[40px] md:text-[56px]">Hotlist</h1>
-          <p className="m-0 text-muted">The 20 most-visited productions this week, counted once per visitor per day.</p>
+          <p className="m-0 text-muted">The 20 most-visited productions over the last 7 days, counted once per visitor per day.</p>
         </div>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
           <List />
+          <Updated />
         </Suspense>
       </main>
       <SiteFooter />
@@ -51,6 +52,10 @@ async function List() {
       ))}
     </ol>
   );
+}
+
+async function Updated() {
+  return <p className="-mt-4 m-0 text-sm text-muted">{await hotlistUpdated()}</p>;
 }
 
 // Compared with last week, when there's a week of history

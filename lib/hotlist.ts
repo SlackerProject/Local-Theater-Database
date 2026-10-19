@@ -1,4 +1,6 @@
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { currentTime } from "@/lib/calendar";
 import { showColors, swatch } from "@/lib/palette";
 import { mediaUrl } from "@/lib/media";
 
@@ -29,6 +31,14 @@ function movement(rank: number, lastWeek: number | null, history: boolean): Move
   if (lastWeek > rank) return { kind: "up", by: lastWeek - rank };
   if (lastWeek < rank) return { kind: "down", by: rank - lastWeek };
   return null;
+}
+
+// "Updated 2:14 PM": the list is worked out fresh for each visit (pages
+// are kept at most a minute), so this is when the visitor's copy was made
+export async function hotlistUpdated() {
+  await connection();
+  const time = currentTime().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+  return `Updated ${time}`;
 }
 
 const shortDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });

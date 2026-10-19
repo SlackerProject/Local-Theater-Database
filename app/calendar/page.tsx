@@ -169,7 +169,8 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
     const run = toRun(p, false, null);
     if (!run) continue;
     savedRuns.push(run);
-    const pf = w.status === "going" && p.performances.find((x) => x.id === w.performance_id);
+    // A night they were going to stays on the calendar after it becomes "seen"
+    const pf = (w.status === "going" || w.status === "seen") && p.performances.find((x) => x.id === w.performance_id);
     if (pf) going.push({ performanceId: pf.id, run, date: localDate(pf.starts_at), startsAt: pf.starts_at });
   }
   const savedIds = new Set(savedRuns.map((r) => r.id));

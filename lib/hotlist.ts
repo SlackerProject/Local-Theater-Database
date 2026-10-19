@@ -5,7 +5,7 @@ import { showColors, swatch } from "@/lib/palette";
 import { mediaUrl } from "@/lib/media";
 
 // The live Hotlist of productions (unique visitors over the rolling 7
-// days), shared by /hotlist and the home page's "This week's Hotlist".
+// days), shared by /hotlist and the home page's Hotlist box.
 // People aren't ranked publicly (views of person pages are still counted
 // in case that changes).
 

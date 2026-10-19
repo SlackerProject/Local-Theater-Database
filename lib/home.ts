@@ -95,7 +95,8 @@ export async function playingNow(): Promise<Tile[]> {
 }
 
 // Upcoming runs (not yet closed) involving people or companies the member
-// follows, soonest first
+// follows, soonest first. Shows they've already seen (including a night
+// they were going to that has passed) are left out.
 export async function comingUpFromFollows(userId: string): Promise<Tile[]> {
   await connection();
   const supabase = await createClient();
@@ -105,18 +106,23 @@ export async function comingUpFromFollows(userId: string): Promise<Tile[]> {
   const orgIds = (follows ?? []).flatMap((f) => (f.organization_id ? [f.organization_id] : []));
   if (!personIds.length && !orgIds.length) return [];
 
-  const [{ data: byPeople }, { data: byOrgs }] = await Promise.all([
+  const [{ data: byPeople }, { data: byOrgs }, { data: watched }] = await Promise.all([
     personIds.length
       ? supabase.from("credits").select(`production:productions!inner(${TILE_SELECT})`).in("person_id", personIds).gte("production.closing_date", today)
       : Promise.resolve({ data: [] }),
     orgIds.length
       ? supabase.from("productions").select(TILE_SELECT).in("organization_id", orgIds).gte("closing_date", today)
       : Promise.resolve({ data: [] }),
+    supabase.from("watch_list").select("production_id, status, performance:performances(starts_at)").eq("user_id", userId).in("status", ["going", "seen"]),
   ]);
+  const now = currentTime().toISOString();
+  const seen = new Set(
+    (watched ?? []).filter((w) => w.status === "seen" || (w.performance && w.performance.starts_at < now)).map((w) => w.production_id),
+  );
   const rows = [
     ...((byPeople ?? []) as unknown as { production: ProdRow & { is_hidden: boolean } }[]).map((c) => c.production),
     ...((byOrgs ?? []) as unknown as (ProdRow & { is_hidden: boolean })[]),
-  ].filter((p) => p && !p.is_hidden);
+  ].filter((p) => p && !p.is_hidden && !seen.has(p.id));
   const unique = [...new Map(rows.map((p) => [p.id, p])).values()].sort((a, b) =>
     (a.opening_date ?? "9999").localeCompare(b.opening_date ?? "9999"),
   );

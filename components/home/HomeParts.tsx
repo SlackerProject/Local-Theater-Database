@@ -52,18 +52,15 @@ export function PlayingNow({ tiles }: { tiles: Tile[] }) {
   );
 }
 
-// "This week's Hotlist": the top 10 productions
+// The Hotlist: the top 10 productions
 export async function HotlistBox() {
   const [productions, updated] = await Promise.all([getHotProductions(10), hotlistUpdated()]);
   const row = "link-quiet flex items-center gap-3 border-b border-rule py-2.5 text-ink";
   const rank = "w-[22px] flex-none text-right text-xl font-extrabold text-muted";
 
   return (
-    <aside aria-label="This week's Hotlist" className="flex min-w-0 flex-col gap-[18px] rounded-[10px] border border-rule p-6">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="heading">This week’s Hotlist</h2>
-        <span className="text-[13px] text-muted">The most-visited productions over the last 7 days. {updated}.</span>
-      </div>
+    <aside aria-label="Hotlist" className="flex min-w-0 flex-col gap-[18px] rounded-[10px] border border-rule p-6">
+      <h2 className="heading">Hotlist</h2>
       <section>
         {productions.length ? (
           productions.map((p) => (
@@ -85,6 +82,7 @@ export async function HotlistBox() {
       <Link href="/hotlist" className="btn-secondary min-h-12">
         See the full Hotlist
       </Link>
+      <span className="-mt-2 text-[13px] text-muted">The most-visited productions over the last 7 days. {updated}.</span>
     </aside>
   );
 }

@@ -74,13 +74,14 @@ const auditionWhen = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 // The theater map: a choice of view, a pin per venue and a card for the
-// chosen one. "Near me" or a town zooms in on the closest theaters.
+// chosen one. A ZIP code zooms in on the closest theaters (the site never
+// asks for the visitor's location).
 export function VenueMap({ venues, now }: { venues: MapVenue[]; now: string }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const pins = useRef(new Map<string, HTMLButtonElement>());
   const here = useRef<Marker | null>(null);
-  const townId = useId();
+  const zipId = useId();
   const params = useSearchParams();
   const [view, setView] = useState<View>(() => (isView(params.get("view")) ? (params.get("view") as View) : "all"));
   const daysId = useId();
@@ -91,7 +92,7 @@ export function VenueMap({ venues, now }: { venues: MapVenue[]; now: string }) {
   const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [origin, setOrigin] = useState<Point | null>(null);
-  const [town, setTown] = useState("");
+  const [zip, setZip] = useState("");
   const [finding, setFinding] = useState(false);
   const [problem, setProblem] = useState("");
 
@@ -181,7 +182,7 @@ export function VenueMap({ venues, now }: { venues: MapVenue[]; now: string }) {
     });
   }, [ready, shown, origin]);
 
-  // "Near me" or a town: mark the spot
+  // A ZIP code: mark the spot
   useEffect(() => {
     if (!ready || !origin || !map.current) return;
     import("maplibre-gl").then(({ default: maplibregl }) => {
@@ -195,40 +196,21 @@ export function VenueMap({ venues, now }: { venues: MapVenue[]; now: string }) {
     });
   }, [ready, origin]);
 
-  function nearMe() {
-    setProblem("");
-    if (!navigator.geolocation) return setProblem("Your browser can’t share a location. Type a town instead.");
-    setFinding(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setFinding(false);
-        setOrigin({ lat: p.coords.latitude, lng: p.coords.longitude, label: "you" });
-      },
-      () => {
-        setFinding(false);
-        setProblem("Couldn’t get your location. Type a town instead.");
-      },
-      { timeout: 10000, maximumAge: 600000 },
-    );
-  }
-
-  // Towns are looked up with OpenStreetMap's free search (only the town
-  // name is sent)
-  async function findTown(e: React.FormEvent) {
+  // ZIP codes are looked up with OpenStreetMap's free search (only the
+  // ZIP code is sent)
+  async function findZip(e: React.FormEvent) {
     e.preventDefault();
-    const q = town.trim();
-    if (!q) return;
+    const q = zip.trim();
     setProblem("");
+    if (!/^\d{5}$/.test(q)) return setProblem("Please enter a 5-digit ZIP code, like 02134.");
     setFinding(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=${encodeURIComponent(`${q}, Massachusetts`)}`,
-      );
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&postalcode=${q}`);
       const [hit] = (await res.json()) as { lat: string; lon: string }[];
       if (hit) setOrigin({ lat: Number(hit.lat), lng: Number(hit.lon), label: q });
-      else setProblem(`Couldn’t find “${q}”. Check the spelling, or try a nearby town.`);
+      else setProblem(`Couldn’t find ZIP code ${q}. Please check it and try again.`);
     } catch {
-      setProblem("Couldn’t look that town up right now. Please try again.");
+      setProblem("Couldn’t look that ZIP code up right now. Please try again.");
     } finally {
       setFinding(false);
     }
@@ -294,31 +276,23 @@ export function VenueMap({ venues, now }: { venues: MapVenue[]; now: string }) {
         )}
       </p>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
-        <button type="button" onClick={nearMe} disabled={finding} className="btn-secondary min-h-11 gap-2 px-4 text-[15px]">
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-          </svg>
-          Near me
+      <form onSubmit={findZip} className="flex flex-wrap items-center gap-2" role="search" aria-label="Find theaters near a ZIP code">
+        <label htmlFor={zipId} className="text-[15px] font-semibold">
+          Theaters near ZIP code
+        </label>
+        <input
+          id={zipId}
+          value={zip}
+          onChange={(e) => setZip(e.target.value.replace(/\D/g, "").slice(0, 5))}
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="02134"
+          className="field h-11 w-[110px] px-3 tabular-nums"
+        />
+        <button type="submit" disabled={finding} className="btn-secondary min-h-11 px-4 text-[15px]">
+          {finding ? "Finding…" : "Go"}
         </button>
-        <form onSubmit={findTown} className="flex items-center gap-2" role="search" aria-label="Find theaters near a town">
-          <label htmlFor={townId} className="text-[15px] font-semibold">
-            or near
-          </label>
-          <input
-            id={townId}
-            value={town}
-            onChange={(e) => setTown(e.target.value)}
-            placeholder="Town"
-            autoComplete="address-level2"
-            className="field h-11 w-[150px] px-3"
-          />
-          <button type="submit" disabled={finding} className="btn-secondary min-h-11 px-4 text-[15px]">
-            Go
-          </button>
-        </form>
-      </div>
+      </form>
       {problem && (
         <p role="alert" className="callout m-0 text-[15px]">
           {problem}

@@ -1940,13 +1940,16 @@ export type Database = {
         Args: never
         Returns: {
           address: string
+          auditions_soon: boolean
           companies: Json
           id: string
           latitude: number
           longitude: number
           name: string
+          next_audition: Json
           next_show: Json
-          playing_soon: boolean
+          recent: boolean
+          shows_soon: boolean
           slug: string
         }[]
       }

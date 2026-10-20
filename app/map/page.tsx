@@ -18,7 +18,7 @@ export default function MapPage() {
         <div className="flex flex-col gap-1.5">
           <h1 className="display text-[40px] md:text-[56px]">Theater map</h1>
           <p className="m-0 max-w-[720px] text-muted">
-            Where local companies have performed in the last two years. Choose a pin to see who performs there and what’s on next.
+            Find community theaters near you. Choose a pin to see who performs there and what’s coming up.
           </p>
         </div>
         <Suspense fallback={<div className="h-[60vh] rounded-lg bg-soft" aria-label="Loading the map" />}>
@@ -43,7 +43,10 @@ async function Venues() {
     lng: Number(v.longitude),
     companies: (v.companies as MapVenue["companies"] | null) ?? [],
     next: (v.next_show as MapVenue["next"]) ?? null,
-    playingSoon: v.playing_soon,
+    audition: (v.next_audition as MapVenue["audition"]) ?? null,
+    recent: v.recent,
+    showsSoon: v.shows_soon,
+    auditionsSoon: v.auditions_soon,
   }));
   return <VenueMap venues={venues} />;
 }

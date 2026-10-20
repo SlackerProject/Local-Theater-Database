@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { after } from "next/server";
+import { fillVenuePins } from "@/lib/geocode";
 import { redirect } from "next/navigation";
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -44,6 +46,8 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
 
   const params = await searchParams;
   const supabase = await createClient();
+  // New venues get their map pins while moderators work the queue
+  after(() => fillVenuePins(supabase));
   const [{ data: proposals, error }, { data: uploads }] = await Promise.all([
     supabase
       .from("edit_proposals")

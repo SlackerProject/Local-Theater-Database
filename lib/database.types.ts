@@ -656,10 +656,13 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          geocode_failed: boolean
+          geocoded_at: string | null
           id: string
           latitude: number | null
           longitude: number | null
           name: string
+          pin_by_hand: boolean
           postal_code: string | null
           seating_capacity: number | null
           slug: string
@@ -672,10 +675,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          geocode_failed?: boolean
+          geocoded_at?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           name: string
+          pin_by_hand?: boolean
           postal_code?: string | null
           seating_capacity?: number | null
           slug: string
@@ -688,10 +694,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          geocode_failed?: boolean
+          geocoded_at?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           name?: string
+          pin_by_hand?: boolean
           postal_code?: string | null
           seating_capacity?: number | null
           slug?: string
@@ -1927,6 +1936,20 @@ export type Database = {
         }[]
       }
       ma_town: { Args: { p_town: string }; Returns: string }
+      map_venues: {
+        Args: never
+        Returns: {
+          address: string
+          companies: Json
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          next_show: Json
+          playing_soon: boolean
+          slug: string
+        }[]
+      }
       mark_badges_seen: { Args: never; Returns: undefined }
       mark_past_going_seen: { Args: never; Returns: number }
       mark_update_read: { Args: { p_post_id: string }; Returns: undefined }
@@ -2134,6 +2157,10 @@ export type Database = {
           p_role: Database["public"]["Enums"]["user_role"]
           p_user: string
         }
+        Returns: undefined
+      }
+      set_venue_pin: {
+        Args: { p_id: string; p_latitude: number; p_longitude: number }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }

@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { fillVenuePins } from "@/lib/geocode";
 import { MEDIA_BUCKET } from "@/lib/media";
 import { createClient } from "@/lib/supabase/server";
 import { checkBundle, isEmptyLeftOut, type Bundle, type LeftOut } from "@/lib/submission";
@@ -31,6 +33,7 @@ export async function approveSubmission(
     p_note: note,
   });
   if (error) return { ok: false, problems: [error.message] };
+  after(() => fillVenuePins(supabase)); // a new venue gets its map pin
 
   const { data: production } = await supabase.from("productions").select("slug").eq("id", productionId).single();
   redirect(`/moderate?approved=${encodeURIComponent(production?.slug ?? "")}`);
@@ -179,6 +182,7 @@ export async function reviewCorrection(id: string, accept: string[], note: strin
   const supabase = await createClient();
   if (noteOnlyDone) return call(() => supabase.rpc("resolve_suggestion", { p_proposal_id: id, p_done: true, p_note: note }));
   const result = await call(() => supabase.rpc("review_correction", { p_proposal_id: id, p_accept: accept, p_note: note }));
+  after(() => fillVenuePins(supabase)); // a new or moved venue gets its map pin
   for (const p of ["/", "/calendar", "/shows", "/people", "/companies"]) revalidatePath(p);
   return result;
 }

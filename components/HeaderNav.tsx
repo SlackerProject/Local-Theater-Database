@@ -125,6 +125,19 @@ function ActiveBar() {
   return <span aria-hidden="true" className="absolute inset-x-2.5 bottom-0.5 h-0.5 bg-ink" />;
 }
 
+// The theater map, for everyone
+function MapLink({ active }: { active: boolean }) {
+  return (
+    <Link href="/map" aria-label="Theater map" title="Theater map" aria-current={active ? "page" : undefined} className={iconLink}>
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z" />
+        <circle cx="12" cy="9.8" r="2.3" />
+      </svg>
+      {active && <ActiveBar />}
+    </Link>
+  );
+}
+
 function CalendarLink({ active }: { active: boolean }) {
   return (
     <Link href="/calendar" aria-label="Your calendar" aria-current={active ? "page" : undefined} className={iconLink}>
@@ -187,7 +200,7 @@ export function HeaderNav({ user }: { user: User }) {
 
   return (
     <>
-      {/* Desktop: Shows, People, Companies, then Sign in, or the calendar, bell and account menu */}
+      {/* Desktop: Shows, People, Companies, the map pin, then Sign in, or the calendar, bell and account menu */}
       <nav aria-label="Main" className="ml-auto hidden items-center gap-6 text-[15px] font-semibold md:flex">
         {BROWSE.map((l) => (
           <Link key={l.href} href={l.href} className="link-quiet whitespace-nowrap">
@@ -196,6 +209,7 @@ export function HeaderNav({ user }: { user: User }) {
         ))}
         {user ? (
           <span className="flex items-center gap-1">
+            <MapLink active={path === "/map"} />
             <CalendarLink active={path === "/calendar"} />
             <Bell count={user.unread} active={path === "/notifications"} />
             <div ref={accountRef} className="relative">
@@ -222,6 +236,7 @@ export function HeaderNav({ user }: { user: User }) {
           </span>
         ) : (
           <span className="flex items-center gap-2">
+            <MapLink active={path === "/map"} />
             <Link href="/signin" className="link-quiet inline-flex min-h-11 items-center whitespace-nowrap px-3.5">
               Sign in
             </Link>
@@ -232,8 +247,9 @@ export function HeaderNav({ user }: { user: User }) {
         )}
       </nav>
 
-      {/* Phones: calendar and bell (signed in), then a 44px menu button; links live in the menu */}
+      {/* Phones: the map pin, calendar and bell (signed in), then a 44px menu button; links live in the menu */}
       <div ref={mobileRef} className="ml-auto flex items-center md:hidden">
+        <MapLink active={path === "/map"} />
         {user ? (
           <>
             <CalendarLink active={path === "/calendar"} />

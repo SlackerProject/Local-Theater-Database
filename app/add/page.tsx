@@ -8,7 +8,7 @@ import { emptyCredit, emptyFormState, looksLikeFormState } from "@/lib/submissio
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AddProductionForm } from "./AddProductionForm";
 
-export const metadata: Metadata = { title: "Add a production" };
+export const metadata: Metadata = { title: "Add a Production" };
 
 export default function AddProductionPage({ searchParams }: PageProps<"/add">) {
   return (
@@ -17,8 +17,8 @@ export default function AddProductionPage({ searchParams }: PageProps<"/add">) {
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
           <div className="flex flex-col gap-2">
-            <h1 className="display text-[40px] md:text-[56px]">Add a production</h1>
-            <p className="m-0 max-w-[640px] text-muted">
+            <h1 className="display text-[40px] md:text-[56px]">Add a Production</h1>
+            <p className="m-0 max-w-[640px] italic text-muted">
               One form adds the show, the company, the location, and everyone in it. Anything new gets created as you go.
             </p>
           </div>

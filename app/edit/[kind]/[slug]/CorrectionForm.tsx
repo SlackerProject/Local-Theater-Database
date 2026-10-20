@@ -287,7 +287,7 @@ export function CorrectionForm({
       )}
 
       <section aria-labelledby="note-h" className="flex flex-col gap-3">
-        <SectionHeading id="note-h">Notes to moderator</SectionHeading>
+        <SectionHeading id="note-h">Notes to Moderator</SectionHeading>
         <label htmlFor="note" className="text-[15px] text-muted">
           Where does this come from? A program, a website link, a cast list…
         </label>

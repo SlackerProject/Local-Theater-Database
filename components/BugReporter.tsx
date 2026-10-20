@@ -92,7 +92,7 @@ export function BugReporter() {
       >
         <div className="flex flex-col gap-3 p-5">
           <h2 id={ids.title} className="subheading">
-            Give feedback
+            Give Feedback
           </h2>
           {state === "sent" ? (
             <>

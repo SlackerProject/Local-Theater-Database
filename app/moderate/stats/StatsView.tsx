@@ -80,7 +80,7 @@ export function StatsView({ s }: { s: StatsData }) {
         />
       </Group>
 
-      <Group title="The database">
+      <Group title="The Database">
         <Stat label="Productions" value={c.productions} sub={`${n(c.productions_upcoming)} running or coming up · +${n(c.productions_new_30d)} in 30 days`} />
         <Stat label="People" value={c.people} sub={`+${n(c.people_new_30d)} in 30 days`} />
         <Stat label="Companies" value={c.companies} sub={`+${n(c.companies_new_30d)} in 30 days`} />
@@ -91,7 +91,7 @@ export function StatsView({ s }: { s: StatsData }) {
         <Stat label="Award entries" value={c.awards} />
       </Group>
 
-      <Group title="Contributions, last 30 days">
+      <Group title="Contributions, Last 30 Days">
         <Stat label="Edits" value={a.edits_30d} sub={`${n(a.edits_7d)} this week`} />
         <Stat label="Contributors" value={a.contributors_30d} sub="members who edited or sent something in" />
         <Stat label="Reviewed" value={a.approved_30d + a.rejected_30d} sub={`${n(a.approved_30d)} approved · ${n(a.rejected_30d)} rejected`} />
@@ -102,7 +102,7 @@ export function StatsView({ s }: { s: StatsData }) {
         />
       </Group>
 
-      <Group title="Members’ shows and follows">
+      <Group title="Members’ Shows and Follows">
         <Stat label="Follows" value={e.follows} sub="people and companies followed" />
         <Stat label="Seen" value={e.seen} sub="productions marked seen" />
         <Stat label="Want to see / Going" value={e.want_to_see + e.going} sub={`${n(e.want_to_see)} want to see · ${n(e.going)} going`} />
@@ -111,7 +111,7 @@ export function StatsView({ s }: { s: StatsData }) {
 
       <section className="flex min-w-0 flex-col gap-3">
         <h2 className="heading">
-          Visitors, last 14 days{" "}
+          Visitors, Last 14 Days{" "}
           <span className="text-base font-semibold text-muted">
             {s.visitors.length ? `${dayLabel(s.visitors[0].day, { month: "short", day: "numeric" })} – ${dayLabel(s.visitors[s.visitors.length - 1].day, { month: "short", day: "numeric" })}` : ""}
           </span>
@@ -127,7 +127,7 @@ export function StatsView({ s }: { s: StatsData }) {
       </section>
 
       <section className="flex min-w-0 flex-col gap-3">
-        <h2 className="heading">Growth, last 12 weeks</h2>
+        <h2 className="heading">Growth, Last 12 Weeks</h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] border-collapse text-[15px] tabular-nums">
             <thead>
@@ -156,16 +156,16 @@ export function StatsView({ s }: { s: StatsData }) {
 
       <div className="grid gap-10 md:grid-cols-3">
         <Ranked
-          title="Top contributors, 30 days"
+          title="Top Contributors, 30 Days"
           empty="No edits yet."
           rows={s.top_contributors.map((t) => ({ key: t.username, label: <Link href={`/moderate/members?q=${encodeURIComponent(t.username)}`}>{t.name}</Link>, value: `${n(t.edits)} edits` }))}
         />
         <Ranked
-          title="Companies with the most productions"
+          title="Companies with the Most Productions"
           empty="No productions yet."
           rows={s.top_companies.map((t) => ({ key: t.slug, label: <Link href={`/company/${t.slug}`}>{t.name}</Link>, value: n(t.productions) }))}
         />
-        <Ranked title="Productions by year" empty="No productions yet." rows={s.by_year.map((y) => ({ key: String(y.year), label: String(y.year), value: n(y.productions) }))} />
+        <Ranked title="Productions by Year" empty="No productions yet." rows={s.by_year.map((y) => ({ key: String(y.year), label: String(y.year), value: n(y.productions) }))} />
       </div>
     </>
   );

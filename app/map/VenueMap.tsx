@@ -17,38 +17,41 @@ export type MapVenue = {
   next: { title: string; year: number; slug: string; opening: string | null; closing: string | null; company: string } | null;
   audition: { title: string; year: number; slug: string; starts_at: string; label: string | null; company: string } | null;
   recent: boolean;
-  showsSoon: boolean;
-  auditionsSoon: boolean;
+  nextPerformance: string | null; // within the next 90 days
 };
 
 type Point = { lat: number; lng: number; label: string };
 type View = "all" | "shows" | "auditions";
+const DAY_CHOICES = [30, 60, 90] as const;
+type Days = (typeof DAY_CHOICES)[number];
 
-// The three ways to look at the map. "Soon" means the next 30 days.
-const VIEWS: { value: View; label: string; match: (v: MapVenue) => boolean; says: (n: number) => string; empty: string }[] = [
+// The three ways to look at the map. "Soon" is the next 30, 60 or 90
+// days (the visitor picks).
+const VIEWS: { value: View; label: string; match: (v: MapVenue, cutoff: string) => boolean; says: [string, string]; none: string }[] = [
   {
     value: "all",
     label: "All theaters",
     match: (v) => v.recent,
-    says: (n) => `${n} ${n === 1 ? "theater" : "theaters"} where local companies have performed in the last two years.`,
-    empty: "No theaters on the map yet.",
+    says: ["theater where local companies have performed in the last two years", "theaters where local companies have performed in the last two years"],
+    none: "No theaters on the map yet.",
   },
   {
     value: "shows",
     label: "Shows soon",
-    match: (v) => v.showsSoon,
-    says: (n) => `${n} ${n === 1 ? "theater has" : "theaters have"} a performance in the next 30 days.`,
-    empty: "No performances on the map in the next 30 days.",
+    match: (v, cutoff) => !!v.nextPerformance && v.nextPerformance < cutoff,
+    says: ["theater has a performance in the next", "theaters have a performance in the next"],
+    none: "No performances in the next",
   },
   {
     value: "auditions",
     label: "Auditions soon",
-    match: (v) => v.auditionsSoon,
-    says: (n) => `${n} ${n === 1 ? "place is" : "places are"} holding auditions in the next 30 days.`,
-    empty: "No auditions in the next 30 days yet. Check back soon.",
+    match: (v, cutoff) => !!v.audition && v.audition.starts_at < cutoff,
+    says: ["place is holding auditions in the next", "places are holding auditions in the next"],
+    none: "No auditions in the next",
   },
 ];
 const isView = (x: string | null): x is View => x === "all" || x === "shows" || x === "auditions";
+const isDays = (x: number): x is Days => (DAY_CHOICES as readonly number[]).includes(x);
 
 // Free map pictures from OpenFreeMap (no account, no tracking)
 const STYLE = "https://tiles.openfreemap.org/styles/positron";
@@ -70,10 +73,9 @@ function runDates(n: NonNullable<MapVenue["next"]>) {
 const auditionWhen = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-// The theater map: a choice of view, a pin per venue, a card for the
-// chosen one, and a list beside it (nearest first once the visitor shares
-// a location or a town)
-export function VenueMap({ venues }: { venues: MapVenue[] }) {
+// The theater map: a choice of view, a pin per venue and a card for the
+// chosen one. "Near me" or a town zooms in on the closest theaters.
+export function VenueMap({ venues, now }: { venues: MapVenue[]; now: string }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const pins = useRef(new Map<string, HTMLButtonElement>());
@@ -81,6 +83,11 @@ export function VenueMap({ venues }: { venues: MapVenue[] }) {
   const townId = useId();
   const params = useSearchParams();
   const [view, setView] = useState<View>(() => (isView(params.get("view")) ? (params.get("view") as View) : "all"));
+  const daysId = useId();
+  const [days, setDays] = useState<Days>(() => {
+    const d = Number(params.get("days"));
+    return isDays(d) ? d : 30;
+  });
   const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [origin, setOrigin] = useState<Point | null>(null);
@@ -88,21 +95,27 @@ export function VenueMap({ venues }: { venues: MapVenue[] }) {
   const [finding, setFinding] = useState(false);
   const [problem, setProblem] = useState("");
 
+  const cutoff = useMemo(() => new Date(new Date(now).getTime() + days * 86400000).toISOString(), [now, days]);
   const current = VIEWS.find((v) => v.value === view)!;
-  const shown = useMemo(() => venues.filter(current.match), [venues, current]);
-  const list = useMemo(() => {
-    const rows = shown.map((v) => ({ v, distance: origin ? miles(origin, v) : null }));
-    return origin ? rows.sort((a, b) => a.distance! - b.distance!) : rows;
-  }, [shown, origin]);
+  const shown = useMemo(() => venues.filter((v) => current.match(v, cutoff)), [venues, current, cutoff]);
   const chosen = shown.find((v) => v.id === selected) ?? null;
 
-  // Switching views: the address keeps the view (so a link can share it)
+  // The address keeps the view and the days (so a link can share them)
+  function remember(nextView: View, nextDays: Days) {
+    const url = new URL(window.location.href);
+    if (nextView === "all") url.searchParams.delete("view");
+    else url.searchParams.set("view", nextView);
+    if (nextDays === 30) url.searchParams.delete("days");
+    else url.searchParams.set("days", String(nextDays));
+    window.history.replaceState(null, "", url);
+  }
   function pickView(next: View) {
     setView(next);
-    const url = new URL(window.location.href);
-    if (next === "all") url.searchParams.delete("view");
-    else url.searchParams.set("view", next);
-    window.history.replaceState(null, "", url);
+    remember(next, days);
+  }
+  function pickDays(next: Days) {
+    setDays(next);
+    remember(view, next);
   }
 
   // The map itself, loaded only on this page
@@ -182,12 +195,6 @@ export function VenueMap({ venues }: { venues: MapVenue[] }) {
     });
   }, [ready, origin]);
 
-  function choose(v: MapVenue) {
-    setSelected(v.id);
-    map.current?.easeTo({ center: [v.lng, v.lat], zoom: Math.max(map.current.getZoom(), 11) });
-    box.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-
   function nearMe() {
     setProblem("");
     if (!navigator.geolocation) return setProblem("Your browser can’t share a location. Type a town instead.");
@@ -233,7 +240,7 @@ export function VenueMap({ venues }: { venues: MapVenue[] }) {
       <div role="radiogroup" aria-label="Show on the map" className="grid grid-cols-3 gap-1 rounded-xl bg-soft p-1 sm:max-w-[560px]">
         {VIEWS.map((v) => {
           const on = v.value === view;
-          const count = venues.filter(v.match).length;
+          const count = venues.filter((x) => v.match(x, cutoff)).length;
           return (
             <button
               key={v.value}
@@ -251,8 +258,40 @@ export function VenueMap({ venues }: { venues: MapVenue[] }) {
           );
         })}
       </div>
-      <p className="-mt-1 m-0 text-[15px]" aria-live="polite">
-        {shown.length ? current.says(shown.length) : current.empty}
+      {/* What's shown, in a sentence; the number of days is a choice */}
+      <p className="-mt-1 m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[15px]" aria-live="polite">
+        {view === "all" ? (
+          shown.length ? (
+            `${shown.length} ${current.says[shown.length === 1 ? 0 : 1]}.`
+          ) : (
+            current.none
+          )
+        ) : (
+          <>
+            <span>{shown.length ? `${shown.length} ${current.says[shown.length === 1 ? 0 : 1]}` : current.none}</span>
+            <label htmlFor={daysId} className="sr-only">
+              How many days ahead
+            </label>
+            <select
+              id={daysId}
+              value={days}
+              onChange={(e) => pickDays(Number(e.target.value) as Days)}
+              className="field h-10 cursor-pointer px-2 text-[15px] font-semibold"
+            >
+              {DAY_CHOICES.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <span>days.</span>
+            {!shown.length && (
+              <button type="button" onClick={() => pickView("all")} className="btn-text text-[15px]">
+                See all theaters
+              </button>
+            )}
+          </>
+        )}
       </p>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
@@ -286,54 +325,12 @@ export function VenueMap({ venues }: { venues: MapVenue[] }) {
         </p>
       )}
 
-      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="relative h-[55vh] min-h-[360px] overflow-hidden rounded-lg border border-rule bg-soft md:h-[640px]">
-          <div ref={box} className="h-full w-full" />
-          {chosen && (
-            <VenueCard v={chosen} view={view} distance={origin ? miles(origin, chosen) : null} onClose={() => setSelected(null)} />
-          )}
-        </div>
-
-        <section aria-label="Theaters" className="flex min-w-0 flex-col gap-2 md:h-[640px]">
-          <p className="m-0 text-sm text-muted">{origin ? `Nearest to ${origin.label} first` : "A to Z"}</p>
-          {list.length ? (
-            <ol className="m-0 flex list-none flex-col overflow-y-auto border-t border-rule p-0 md:flex-1">
-              {list.map(({ v, distance }) => (
-                <li key={v.id}>
-                  <button
-                    type="button"
-                    onClick={() => choose(v)}
-                    aria-pressed={v.id === selected}
-                    className={`flex w-full cursor-pointer gap-3 border-0 border-b border-rule px-2 py-2.5 text-left ${v.id === selected ? "bg-soft" : "bg-transparent hover:bg-soft"}`}
-                  >
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="font-bold leading-snug">{v.name}</span>
-                      <span className="truncate text-sm text-muted">{listLine(v, view)}</span>
-                    </span>
-                    {distance !== null && <span className="flex-none text-sm tabular-nums text-muted">{distanceText(distance)}</span>}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <div className="flex flex-col items-start gap-3 border-t border-rule pt-4">
-              <p className="m-0 text-muted">{current.empty}</p>
-              <button type="button" onClick={() => pickView("all")} className="btn-secondary min-h-11 px-4 text-[15px]">
-                See all theaters
-              </button>
-            </div>
-          )}
-        </section>
+      <div className="relative h-[60vh] min-h-[380px] overflow-hidden rounded-lg border border-rule bg-soft md:h-[680px]">
+        <div ref={box} className="h-full w-full" />
+        {chosen && <VenueCard v={chosen} view={view} distance={origin ? miles(origin, chosen) : null} onClose={() => setSelected(null)} />}
       </div>
     </div>
   );
-}
-
-// The list's second line says what the view is about
-function listLine(v: MapVenue, view: View) {
-  if (view === "auditions" && v.audition) return `${v.audition.title} · ${auditionWhen(v.audition.starts_at)}`;
-  if (view === "shows" && v.next) return `${v.next.title} · ${runDates(v.next)}`;
-  return v.companies.map((c) => c.name).join(", ");
 }
 
 function VenueCard({ v, view, distance, onClose }: { v: MapVenue; view: View; distance: number | null; onClose: () => void }) {

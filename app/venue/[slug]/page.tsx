@@ -94,7 +94,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
           />
         </div>
         <aside className="flex min-w-0 flex-[1_1_280px] flex-col gap-2">
-          <h2 className="subheading">Companies that perform here</h2>
+          <h2 className="subheading">Companies That Perform Here</h2>
           {companies.size === 0 ? (
             <p className="m-0 text-[15px] text-muted">Companies will appear here as productions are added.</p>
           ) : (

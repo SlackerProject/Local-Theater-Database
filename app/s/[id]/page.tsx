@@ -32,7 +32,7 @@ async function Destination({ params }: Pick<PageProps<"/s/[id]">, "params">) {
   if (!dest || dest.status === "rejected") {
     return (
       <>
-        <h1 className="display text-[40px] md:text-[56px]">This link isn’t active</h1>
+        <h1 className="display text-[40px] md:text-[56px]">This Link Isn’t Active</h1>
         <p className="m-0 text-muted">
           The production it points to isn’t on the site. Try <Link href="/search">searching</Link> for it instead.
         </p>
@@ -42,7 +42,7 @@ async function Destination({ params }: Pick<PageProps<"/s/[id]">, "params">) {
 
   return (
     <>
-      <h1 className="display text-[40px] md:text-[56px]">{dest.title} is on its way</h1>
+      <h1 className="display text-[40px] md:text-[56px]">{dest.title} Is on Its Way</h1>
       <p className="m-0 text-lg">
         A castmate added this production, and a moderator is checking it now. Once it’s approved, this same link will take
         you straight to the production page.

@@ -10,14 +10,14 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { RemoveButton } from "./RemoveButton";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
-export const metadata: Metadata = { title: "Shows & follows" };
+export const metadata: Metadata = { title: "Shows & Follows" };
 
 export default function FollowingPage() {
   return (
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-10 px-4 pb-16 pt-8 md:px-8 md:pt-12">
-        <h1 className="display text-[40px] md:text-[56px]">Shows &amp; follows</h1>
+        <h1 className="display text-[40px] md:text-[56px]">Shows &amp; Follows</h1>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
           <Following />
         </Suspense>
@@ -70,7 +70,7 @@ async function Following() {
   const seenCount = shows.filter((w) => w.status === "seen").length;
   const groups = [
     { status: "going", heading: "Going", empty: "When you choose “I’m going” on a performance, it will appear here." },
-    { status: "want_to_see", heading: "Want to see", empty: "Press “Want to see” on a production page to save it here." },
+    { status: "want_to_see", heading: "Want to See", empty: "Press “Want to see” on a production page to save it here." },
   ] as const;
   const people = (follows ?? []).flatMap((f) => (f.person ? [f.person] : []));
   const companies = (follows ?? []).flatMap((f) => (f.organization ? [f.organization] : []));
@@ -83,7 +83,7 @@ async function Following() {
 
       <section className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h2 className="heading">Your shows</h2>
+          <h2 className="heading">Your Shows</h2>
           <p className="m-0 text-[15px] text-muted">
             You’ve seen <strong className="text-ink">{seenCount}</strong> {seenCount === 1 ? "production" : "productions"}
             {myPage ? (
@@ -135,7 +135,7 @@ async function Following() {
       </section>
 
       <section className="flex flex-col gap-1">
-        <h2 className="heading mb-2">Auditions you’re watching</h2>
+        <h2 className="heading mb-2">Auditions You’re Watching</h2>
         {!auditions?.length ? (
           <Empty>On a production that’s still casting, press “Remind me about auditions” and it will appear here.</Empty>
         ) : (
@@ -167,7 +167,7 @@ async function Following() {
       </section>
 
       <section className="flex flex-col gap-1">
-        <h2 className="heading mb-2">People you follow</h2>
+        <h2 className="heading mb-2">People You Follow</h2>
         {people.length === 0 ? (
           <Empty>Follow people from their pages to hear when they’re cast in a show.</Empty>
         ) : (
@@ -185,7 +185,7 @@ async function Following() {
       </section>
 
       <section className="flex flex-col gap-1">
-        <h2 className="heading mb-2">Companies you follow</h2>
+        <h2 className="heading mb-2">Companies You Follow</h2>
         {companies.length === 0 ? (
           <Empty>Follow companies from their pages to hear when they announce a show or post auditions.</Empty>
         ) : (

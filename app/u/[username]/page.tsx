@@ -12,7 +12,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { CollectibleIcon, Medal } from "@/components/badges/Medal";
 import { ShowSeenToggle } from "./ShowSeenToggle";
 
-export const metadata: Metadata = { title: "Contributor profile" };
+export const metadata: Metadata = { title: "Contributor Profile" };
 
 export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
   return (
@@ -244,7 +244,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
           {/* Badges collected */}
           <section className="flex flex-col gap-3.5">
             <h2 className="heading">
-              Badges collected{" "}
+              Badges Collected{" "}
               <span className="font-medium text-muted">
                 {collected} of {COLLECTIBLES.length}
               </span>
@@ -271,7 +271,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
           {stats.seen !== null && (
             <section className="flex flex-col gap-3.5">
               <h2 className="heading">
-                Shows seen{" "}
+                Shows Seen{" "}
                 <span className="font-medium text-muted">
                   {stats.seen}
                   {seenThisYear > 0 && ` · ${seenThisYear} in ${thisYear}`}
@@ -315,7 +315,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
 
           {/* Recent contributions */}
           <section className="flex flex-col">
-            <h2 className="heading mb-1">Recent contributions</h2>
+            <h2 className="heading mb-1">Recent Contributions</h2>
             {contributions.length ? (
               <ul className="m-0 list-none p-0">
                 {contributions.map((c, i) => (
@@ -337,7 +337,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
 
         {/* The level ladder */}
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-1.5">
-          <h2 className="subheading mb-1">Contributor levels</h2>
+          <h2 className="subheading mb-1">Contributor Levels</h2>
           {METALS.map((m) => {
             const here = level?.metal === m.metal;
             const reached = LEVELS.some((l) => l.metal === m.metal && points >= l.points);

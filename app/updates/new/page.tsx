@@ -5,14 +5,14 @@ import { getCurrentUser, hasRole } from "@/lib/auth";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { PostEditor } from "../PostEditor";
 
-export const metadata: Metadata = { title: "Write an update" };
+export const metadata: Metadata = { title: "Write an Update" };
 
 export default function NewUpdatePage() {
   return (
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-6 px-4 pb-16 pt-8 md:px-8 md:pt-12">
-        <h1 className="display text-[36px] md:text-[48px]">Write an update</h1>
+        <h1 className="display text-[36px] md:text-[48px]">Write an Update</h1>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
           <Editor />
         </Suspense>

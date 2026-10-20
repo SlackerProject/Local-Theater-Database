@@ -38,7 +38,7 @@ export function PlayingNow({ tiles }: { tiles: Tile[] }) {
   return (
     <section className="flex flex-col gap-3.5">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="heading">Playing now and coming soon</h2>
+        <h2 className="heading">Playing Now and Coming Soon</h2>
         <Link href="/shows" className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold">
           See all shows
         </Link>

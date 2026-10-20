@@ -46,7 +46,7 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 // ---------------------------------------------------------------------
 const BENEFITS = [
   {
-    title: "Never miss a friend’s show",
+    title: "Never Miss a Friend’s Show",
     text: "Follow the people you love to watch. The moment one of them is cast, you’ll know, right here, without a feed to scroll.",
     icon: (
       <>
@@ -56,7 +56,7 @@ const BENEFITS = [
     ),
   },
   {
-    title: "Know who’s who in every cast",
+    title: "Know Who’s Who in Every Cast",
     text: "Every cast list links to everyone’s past roles, the shows they’ve shared, and the awards they’ve won.",
     icon: (
       <>
@@ -67,7 +67,7 @@ const BENEFITS = [
     ),
   },
   {
-    title: "Your theater calendar",
+    title: "Your Theater Calendar",
     text: "Save the shows you want to see, pick your night, and add it to your phone’s calendar in one tap.",
     icon: (
       <>
@@ -78,7 +78,7 @@ const BENEFITS = [
     ),
   },
   {
-    title: "Built by the community",
+    title: "Built by the Community",
     text: "Anyone can add a show or fix a mistake. Every approved contribution earns points and badges.",
     icon: <path d="M12 3.5l2.5 5.3 5.8.6-4.3 3.9 1.2 5.7-5.2-3-5.2 3 1.2-5.7L3.7 9.4l5.8-.6z" />,
   },
@@ -99,8 +99,8 @@ async function VisitorHome() {
         <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-9 md:gap-11">
           <LatestUpdateBar />
           <section className="flex flex-col gap-5 md:pb-2 md:pt-5">
-            <h1 className="m-0 max-w-[760px] text-[40px] font-extrabold leading-none tracking-[-0.035em] md:text-[64px]">Follow local theater.</h1>
-            <p className="m-0 max-w-[640px] text-[17px] leading-[1.45] text-[#3F3F3F] md:text-[20px]">
+            <h1 className="m-0 max-w-[760px] text-[40px] font-extrabold leading-none tracking-[-0.035em] md:text-[64px]">Follow Local Theater.</h1>
+            <p className="m-0 max-w-[640px] text-[17px] italic leading-[1.45] text-[#3F3F3F] md:text-[20px]">
               Every community theater show near you: who’s in it, when it runs, and everything the cast has done before. Follow your
               friends and never miss their next show.
             </p>
@@ -123,7 +123,7 @@ async function VisitorHome() {
           </div>
 
           <section className="flex flex-col gap-5 border-t border-rule pt-7">
-            <h2 className="heading">What’s great about {SITE_NAME}?</h2>
+            <h2 className="heading">What’s Great About {SITE_NAME}?</h2>
             <div className="grid grid-cols-1 gap-x-9 gap-y-7 md:grid-cols-2">
               {BENEFITS.map((b) => (
                 <div key={b.title} className="flex flex-col gap-2">
@@ -140,7 +140,7 @@ async function VisitorHome() {
           <section className="flex flex-wrap items-center gap-x-8 gap-y-5 rounded-[10px] bg-ink px-6 py-7 text-white md:px-9 md:py-8">
             <div className="flex flex-[1_1_360px] flex-col gap-2">
               <h2 className="m-0 text-[24px] font-extrabold leading-[1.15] tracking-[-0.02em] md:text-[28px]">
-                In a show? Your stage history may already be here.
+                In a Show? Your Stage History May Already Be Here.
               </h2>
               <p className="m-0 text-[#D6D6D6]">
                 Find your name and claim your page. Choose your headshot, write your bio, and fill in the shows that are missing.
@@ -156,7 +156,7 @@ async function VisitorHome() {
           </div>
 
           <section className="flex flex-col items-start gap-3 border-t border-rule pt-7">
-            <h2 className="m-0 text-[26px] font-extrabold tracking-[-0.02em]">Your local stage, all in one place.</h2>
+            <h2 className="m-0 text-[26px] font-extrabold tracking-[-0.02em]">Your Local Stage, All in One Place.</h2>
             <p className="m-0 text-muted">Free, with no ads and no feed.</p>
             {join}
           </section>
@@ -189,7 +189,7 @@ async function MemberHome({ user }: { user: CurrentUser }) {
           <FollowingThumbs userId={user.id} />
           <section className="flex flex-col gap-3.5">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="heading">Coming up from people you follow</h2>
+              <h2 className="heading">Coming Up from People You Follow</h2>
               <Link href="/following" className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold">
                 Shows &amp; follows
               </Link>
@@ -237,7 +237,7 @@ async function NextAudition({ userId }: { userId: string }) {
   if (!next) {
     return (
       <section className="flex flex-col gap-3">
-        <h2 className="heading">Your next audition</h2>
+        <h2 className="heading">Your Next Audition</h2>
         <p className="m-0 max-w-[620px] text-muted">
           No auditions saved yet. Find a production that’s casting and press “Remind me about auditions”. The next session will
           show up here and on your calendar.
@@ -257,7 +257,7 @@ async function NextAudition({ userId }: { userId: string }) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="heading">Your next audition</h2>
+        <h2 className="heading">Your Next Audition</h2>
         <Link href="/auditions" className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold">
           Find more auditions
         </Link>

@@ -28,7 +28,7 @@ export function ShareWithCast({ submissionId, title }: { submissionId: string; t
   return (
     <section aria-labelledby="share-title" className="flex flex-col gap-3 border-t border-rule pt-5">
       <h2 id="share-title" className="heading">
-        Share with your cast
+        Share with Your Cast
       </h2>
       <p className="m-0 text-muted">
         Send this to your castmates and crew so they can claim their pages. Until a moderator approves the production, the

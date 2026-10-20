@@ -50,7 +50,7 @@ export function ListPage({ title, intro, children }: { title: string; intro: str
     <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8 md:pt-12">
       <div className="flex flex-col gap-2">
         <h1 className="display text-[40px] md:text-[56px]">{title}</h1>
-        <p className="m-0 text-muted">{intro}</p>
+        <p className="m-0 italic text-muted">{intro}</p>
       </div>
       {children}
     </main>

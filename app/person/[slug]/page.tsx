@@ -347,7 +347,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
         </section>
 
         <section className="flex flex-col gap-4">
-          <h2 className="heading">On stage</h2>
+          <h2 className="heading">On Stage</h2>
           {shelf.size === 0 ? (
             <p className="m-0 text-muted">Productions will appear here as credits are added.</p>
           ) : (
@@ -501,7 +501,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
           <aside className="grid min-w-0 grid-cols-1 gap-8 border-t border-rule pt-8 md:grid-cols-3">
             {editing && (
               <section className="flex flex-col gap-3">
-                <h2 className="subheading">Your headshots</h2>
+                <h2 className="subheading">Your Headshots</h2>
                 <HeadshotChooser
                   slug={person.slug}
                   currentId={headshot?.id ?? null}
@@ -511,7 +511,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
               </section>
             )}
             <section className="flex flex-col gap-2">
-              <h2 className="subheading">Frequent collaborators</h2>
+              <h2 className="subheading">Frequent Collaborators</h2>
               {collaborators?.length ? (
                 collaborators.map((f) => (
                   <Link key={f.person_id} href={`/person/${f.slug}`}>

@@ -19,7 +19,7 @@ export default function AuditionsPage() {
       <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <div className="flex flex-col gap-2">
           <h1 className="display text-[40px] md:text-[56px]">Auditions</h1>
-          <p className="m-0 text-muted">
+          <p className="m-0 italic text-muted">
             Productions with auditions coming up, soonest first. Open one to see every session and press “Remind me about
             auditions”.
           </p>

@@ -379,7 +379,7 @@ export function ReviewCard({
       {/* Cast and crew */}
       {editing && credits.length > 0 && (
         <section className="flex flex-col gap-1">
-          <h3 className="subheading">Cast and crew ({credits.filter((c) => c.include).length} of {credits.length})</h3>
+          <h3 className="subheading">Cast and Crew ({credits.filter((c) => c.include).length} of {credits.length})</h3>
           {credits.map((c, i) => {
             const p = person(c.value.person_key);
             return (
@@ -462,7 +462,7 @@ export function ReviewCard({
 
       {editing && !!submitted.roles?.length && (
         <section className="flex flex-col gap-1">
-          <h3 className="subheading">Roles not cast yet ({submitted.roles.length})</h3>
+          <h3 className="subheading">Roles Not Cast Yet ({submitted.roles.length})</h3>
           <p className="m-0 text-[15px]">{submitted.roles.join(", ")}</p>
           <span className="text-sm text-muted">Added to the show’s role list (roles it already has are skipped).</span>
         </section>

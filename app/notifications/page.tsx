@@ -92,7 +92,7 @@ async function Notifications() {
     <>
       {feedback.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="heading">Replies to your feedback</h2>
+          <h2 className="heading">Replies to Your Feedback</h2>
           <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
             {feedback.map((n) => {
               const f = n.feedback!;
@@ -121,7 +121,7 @@ async function Notifications() {
 
       {updates.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="heading">Site updates</h2>
+          <h2 className="heading">Site Updates</h2>
           <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
             {updates.map((n) => (
               <li key={n.id} className="flex gap-3 border-b border-rule py-4">
@@ -140,7 +140,7 @@ async function Notifications() {
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="heading">From people and companies you follow</h2>
+        <h2 className="heading">From People and Companies You Follow</h2>
         {news?.length ? (
           <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
             {news.map((n) => {
@@ -219,7 +219,7 @@ async function ChangesToYourPage({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="heading">Changes to your page</h2>
+      <h2 className="heading">Changes to Your Page</h2>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="m-0 text-muted">
           Changes other people made to {page ? <Link href={`/person/${page.slug}`}>your page</Link> : "your page"}. Keep

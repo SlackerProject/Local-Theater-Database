@@ -62,7 +62,7 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="display text-[40px] md:text-[56px]">Awards{year ? ` ${year}` : ""}</h1>
-          <p className="m-0 text-muted">Nominations and wins for local productions, by year and category.</p>
+          <p className="m-0 italic text-muted">Nominations and wins for local productions, by year and category.</p>
         </div>
         {canAdd && (
           <Link href="/awards/add" className="btn-primary">
@@ -93,7 +93,7 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
       ) : (
         [...groups].map(([body, byCat]) => (
           <section key={body} className="flex flex-col gap-8">
-            <h2 className="heading">{body} awards</h2>
+            <h2 className="heading">{body} Awards</h2>
             {[...byCat]
               .sort(([a], [b]) => a.localeCompare(b))
               .map(([cat, entries]) => (

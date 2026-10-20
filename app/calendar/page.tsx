@@ -28,7 +28,7 @@ import { AnnouncementActions, AnnouncementText } from "@/components/Announcement
 import { CalendarFilters } from "./CalendarFilters";
 import { PhoneCalendarLinks, SubscribeLink } from "./PhoneCalendar";
 
-export const metadata: Metadata = { title: "Your calendar" };
+export const metadata: Metadata = { title: "Your Calendar" };
 
 export default function CalendarPage({ searchParams }: PageProps<"/calendar">) {
   return (
@@ -311,7 +311,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
           <div className="md:hidden">
             <MiniMonth weeks={weeks} month={month} today={today} runs={runs} going={going} auditions={auditionsInGrid} />
             <section className="mt-6 flex flex-col gap-3">
-              <h2 className="subheading">You’re going</h2>
+              <h2 className="subheading">You’re Going</h2>
               {monthGoing.length ? (
                 monthGoing.map((g) => <GoingCard key={g.performanceId} g={g} />)
               ) : (
@@ -321,7 +321,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
               )}
             </section>
             <section className="mt-7 flex flex-col">
-              <h2 className="subheading mb-1">Running this month</h2>
+              <h2 className="subheading mb-1">Running This Month</h2>
               {monthRuns.length ? (
                 monthRuns.map((r) => <RunRow key={r.id} r={r} />)
               ) : (
@@ -330,7 +330,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
             </section>
             {monthAuditions.length > 0 && (
               <section className="mt-7 flex flex-col">
-                <h2 className="subheading mb-1">Auditions this month</h2>
+                <h2 className="subheading mb-1">Auditions This Month</h2>
                 {monthAuditions.map((a) => (
                   <AuditionRowItem key={a.id} a={a} />
                 ))}
@@ -349,7 +349,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
         {/* Sidebar */}
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-8">
           <section className="flex flex-col gap-3">
-            <h2 className="subheading">Your next show</h2>
+            <h2 className="subheading">Your Next Show</h2>
             {next && nextLinks ? (
               <>
                 <Link href={`/production/${next.run.slug}`} className="link-quiet flex items-start gap-3.5">
@@ -378,7 +378,7 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
           </section>
 
           <section className="flex flex-col gap-3">
-            <h2 className="subheading">New from people you follow</h2>
+            <h2 className="subheading">New from People You Follow</h2>
             {news?.length ? (
               <div className="flex flex-col border-y border-rule">
                 {news.map((n) => {
@@ -408,12 +408,12 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
           </section>
 
           <section className="flex flex-col gap-1">
-            <h2 className="subheading mb-1">Show on calendar</h2>
+            <h2 className="subheading mb-1">Show on Calendar</h2>
             <CalendarFilters people={showPeople} companies={showCompanies} month={query.month ? month : null} />
           </section>
 
           <section className="flex flex-col gap-2">
-            <h2 className="subheading">Subscribe in your calendar app</h2>
+            <h2 className="subheading">Subscribe in Your Calendar App</h2>
             <p className="m-0 text-[15px] text-muted">
               A private link that keeps every performance you’re going to in your phone’s calendar, updated automatically.
             </p>

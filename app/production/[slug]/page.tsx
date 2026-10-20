@@ -452,7 +452,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
 
           <section className="flex flex-col">
             <div className="pb-1.5" style={sectionRule}>
-              <h2 className="heading">Creative team</h2>
+              <h2 className="heading">Creative Team</h2>
             </div>
             {crew.length === 0 ? (
               <p className="m-0 pt-3 text-muted">
@@ -481,7 +481,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
         <aside className="flex min-w-0 flex-[1_1_280px] flex-col gap-8">
           <section className="flex flex-col gap-3">
             <h2 className="subheading">
-              Other productions of <Link href={`/show/${p.show.slug}`}>{p.show.title}</Link>
+              Other Productions of <Link href={`/show/${p.show.slug}`}>{p.show.title}</Link>
             </h2>
             {others?.length ? (
               <div className="grid grid-cols-2 gap-3.5">

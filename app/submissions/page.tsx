@@ -8,14 +8,14 @@ import { isEmptyLeftOut, type Bundle, type BundlePerson, type LeftOut } from "@/
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { reopenSubmission } from "./actions";
 
-export const metadata: Metadata = { title: "Your submissions" };
+export const metadata: Metadata = { title: "Your Submissions" };
 
 export default function SubmissionsPage() {
   return (
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-6 px-4 pb-16 pt-8 md:px-8 md:pt-12">
-        <h1 className="display text-[40px] md:text-[56px]">Your submissions</h1>
+        <h1 className="display text-[40px] md:text-[56px]">Your Submissions</h1>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
           <Submissions />
         </Suspense>
@@ -126,7 +126,7 @@ async function Submissions() {
 
             {partly && leftOut && (
               <div className="flex flex-col gap-1">
-                <h3 className="subheading">Not approved yet</h3>
+                <h3 className="subheading">Not Approved Yet</h3>
                 <ul className="m-0 flex list-none flex-col p-0 text-[15px]">
                   {leftOut.poster && <li className="border-b border-rule py-1.5">The poster</li>}
                   {leftOut.location && (

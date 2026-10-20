@@ -88,7 +88,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
     if (pe?.verified_owner_id === user.id) {
       return (
         <section className="flex flex-col gap-3">
-          <h1 className="heading">This is your page</h1>
+          <h1 className="heading">This Is Your Page</h1>
           <p className="m-0">
             Edit your bio, links and credits with the controls on <Link href={pagePath}>your page</Link>. Name changes go
             through “Suggest a name change” there.

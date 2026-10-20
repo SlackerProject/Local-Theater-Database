@@ -11,7 +11,7 @@ export function HomeCountsSwitch({ initial, preview }: { initial: boolean; previ
 
   return (
     <section className="flex flex-col gap-2 rounded-lg border border-[#CFCFCF] p-4">
-      <h2 className="subheading">Home page numbers</h2>
+      <h2 className="subheading">Home Page Numbers</h2>
       <label className="flex cursor-pointer items-start gap-3">
         <input
           type="checkbox"

@@ -57,7 +57,7 @@ async function Settings() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="heading">Your account</h2>
+        <h2 className="heading">Your Account</h2>
         <p className="m-0">
           Signed in as <strong>{user.displayName}</strong> (@{user.username}).{" "}
           <Link href={`/u/${user.username}`}>See your profile</Link>

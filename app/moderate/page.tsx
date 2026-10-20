@@ -18,7 +18,7 @@ import { ModerationNav } from "./ModerationNav";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 import { mediaUrl, type MediaPalette } from "@/lib/media";
 
-export const metadata: Metadata = { title: "Moderation queue" };
+export const metadata: Metadata = { title: "Moderation Queue" };
 
 export default function ModeratePage({ searchParams }: PageProps<"/moderate">) {
   return (
@@ -167,7 +167,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       <AwardsSection />
       {(!!proposals?.length || error) && (
         <section className="flex flex-col">
-          <QueueHeading id="submissions" title="Production submissions" count={proposals?.length ?? 0} />
+          <QueueHeading id="submissions" title="Production Submissions" count={proposals?.length ?? 0} />
           {error && <p className="callout m-0">Couldn’t load the queue: {error.message}</p>}
 
           {proposals?.map((p) => (
@@ -191,7 +191,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
 
       {groups.size > 0 && (
         <section className="flex flex-col gap-2">
-          <QueueHeading id="uploads" title="Photos, posters, headshots and logos" count={uploads?.length ?? 0} />
+          <QueueHeading id="uploads" title="Photos, Posters, Headshots and Logos" count={uploads?.length ?? 0} />
           <UploadQueue groups={[...groups.values()]} />
         </section>
       )}

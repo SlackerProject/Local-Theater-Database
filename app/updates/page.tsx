@@ -36,7 +36,7 @@ async function Updates() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="display text-[40px] md:text-[56px]">Updates</h1>
-          <p className="m-0 text-muted">News about the site: new features and changes.</p>
+          <p className="m-0 italic text-muted">News about the site: new features and changes.</p>
         </div>
       </div>
       {!posts?.length ? (

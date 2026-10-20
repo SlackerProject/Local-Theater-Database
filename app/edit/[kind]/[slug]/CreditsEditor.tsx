@@ -504,7 +504,7 @@ export function CastEditor({
 
       {(uncast.length > 0 || uncastAdded.length > 0 || rolesOnly) && (
         <div className="flex flex-col gap-1">
-          {!rolesOnly && <h3 className="subheading mt-2">Roles not cast yet</h3>}
+          {!rolesOnly && <h3 className="subheading mt-2">Roles Not Cast Yet</h3>}
           <ul className="m-0 flex list-none flex-col p-0">
             {uncast.map((r) => {
               const gone = edits.removedRoles.has(r.id);
@@ -592,7 +592,7 @@ export function CrewEditor({
 }) {
   const changed = !fresh && (edits.added.some((a) => a.kind === "crew") || credits.some((c) => c.kind === "crew" && edits.removed.has(c.id)));
   return (
-    <EditorShell id="crew" title="Creative team & crew" hint="One line per person, with every position they hold." changed={changed}>
+    <EditorShell id="crew" title="Creative Team & Crew" hint="One line per person, with every position they hold." changed={changed}>
       <ColumnLabels labels={["Person", "Positions"]} wide />
       <PeopleList kind="crew" credits={credits} edits={edits} ops={ops} fresh={fresh} />
       <AddLines kind="crew" pendingNew={pendingNewOf(edits.added)} ops={ops} />

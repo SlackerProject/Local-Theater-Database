@@ -13,7 +13,7 @@ export default function HotlistPage() {
       <main className="mx-auto flex w-full max-w-[880px] flex-1 flex-col gap-8 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <div className="flex flex-col gap-2">
           <h1 className="display text-[40px] md:text-[56px]">Hotlist</h1>
-          <p className="m-0 text-muted">The 20 most-visited productions over the last 7 days, counted once per visitor per day.</p>
+          <p className="m-0 italic text-muted">The 20 most-visited productions over the last 7 days, counted once per visitor per day.</p>
         </div>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
           <List />

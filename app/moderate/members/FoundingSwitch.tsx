@@ -23,7 +23,7 @@ export function FoundingSwitch({ open, closedAt }: { open: boolean; closedAt: st
 
   return (
     <section className="flex flex-col gap-2 rounded-lg border border-[#CFCFCF] p-4">
-      <h2 className="subheading">Founding members</h2>
+      <h2 className="subheading">Founding Members</h2>
       {open ? (
         <>
           <p className="m-0 text-[15px]">

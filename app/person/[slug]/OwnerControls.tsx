@@ -80,7 +80,7 @@ export function ClaimPanel({ personId, slug, name }: { personId: string; slug: s
           to choose your headshot, write a bio and keep your credits up to date.
         </p>
       ) : (
-        <h2 className="subheading">Claim this page</h2>
+        <h2 className="subheading">Claim This Page</h2>
       )}
       {open && (
         <div className={panel}>

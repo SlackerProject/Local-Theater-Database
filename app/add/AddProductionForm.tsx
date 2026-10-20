@@ -374,7 +374,7 @@ export function AddProductionForm({
             className="callout flex flex-col gap-3"
             aria-labelledby="s-live"
           >
-            <h2 id="s-live" className="heading">Adding to a live production</h2>
+            <h2 id="s-live" className="heading">Adding to a Live Production</h2>
             <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{live.label}</p>
             <p className="m-0 text-[15px] text-muted">
               {state.resubmissionOf
@@ -387,7 +387,7 @@ export function AddProductionForm({
         {/* 1 · The show */}
         {!live && (
         <section className={card} aria-labelledby="s-show">
-          <h2 id="s-show" className="heading">1 · The show</h2>
+          <h2 id="s-show" className="heading">1 · The Show</h2>
           <div className="flex flex-col gap-1.5">
             <TypeAhead
               kind="shows"
@@ -746,7 +746,7 @@ export function AddProductionForm({
           <section className={card} aria-labelledby="s-poster">
             <div className="flex flex-col gap-1">
               <h2 id="s-poster" className="heading">
-                {live ? "Poster" : "5 · Poster"} <span className="text-base font-normal text-muted">(optional)</span>
+                {live ? "Poster" : "5 · Poster"} <span className="text-base font-normal text-muted">(Optional)</span>
               </h2>
               <p className="m-0 text-[15px] text-muted">
                 The poster’s colors become the production page’s colors. Photos can be added on the production page once
@@ -763,7 +763,7 @@ export function AddProductionForm({
         aria-labelledby="s-summary"
         className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 border-t-2 border-ink pt-4 lg:sticky lg:top-6"
       >
-        <h2 id="s-summary" className="subheading">Your submission</h2>
+        <h2 id="s-summary" className="subheading">Your Submission</h2>
         <p className="m-0 text-[28px] font-extrabold leading-[1.1] tracking-[-0.02em]">{title}</p>
         <dl className="m-0 flex flex-col">
           <SummaryRow term="Show" value={summary.show} />

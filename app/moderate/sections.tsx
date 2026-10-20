@@ -47,7 +47,7 @@ export async function ClaimsSection({ user }: { user: CurrentUser }) {
 
   return (
     <section className="flex flex-col">
-      <QueueHeading id="claims" title="Page claims" count={claims.length} />
+      <QueueHeading id="claims" title="Page Claims" count={claims.length} />
       {claims.map((c) => (
         <article key={c.id} className={item}>
           <div className={body}>
@@ -121,7 +121,7 @@ export async function DisputesSection() {
   if (!disputes?.length) return null;
   return (
     <section className="flex flex-col">
-      <QueueHeading id="disputes" title="Disputed changes" count={disputes.length} />
+      <QueueHeading id="disputes" title="Disputed Changes" count={disputes.length} />
       {disputes.map((d) => {
         const change = d.revision ? described.get(d.revision.id) : null;
         const slug = d.owner?.person_id ? pageFor.get(d.owner.person_id) : undefined;
@@ -192,7 +192,7 @@ export async function AuditionsSection() {
   if (!proposals?.length) return null;
   return (
     <section className="flex flex-col">
-      <QueueHeading id="auditions" title="Audition dates" count={proposals.length} />
+      <QueueHeading id="auditions" title="Audition Dates" count={proposals.length} />
       {proposals.map((p) => {
         const prod = p.entity_id ? prodFor.get(p.entity_id) : undefined;
         const c = (p.changes ?? {}) as AuditionChanges;

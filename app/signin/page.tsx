@@ -5,14 +5,14 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { AuthCard } from "@/components/AuthCard";
 import { SignInForm } from "./SignInForm";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = { title: "Sign In" };
 
 export default function SignInPage({ searchParams }: PageProps<"/signin">) {
   return (
     <>
       <SiteHeader />
       <AuthCard
-        title="Sign in"
+        title="Sign In"
         footer={
           <>
             New here?{" "}

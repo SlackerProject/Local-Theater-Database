@@ -1928,6 +1928,7 @@ export type Database = {
       }
       ma_town: { Args: { p_town: string }; Returns: string }
       mark_badges_seen: { Args: never; Returns: undefined }
+      mark_past_going_seen: { Args: never; Returns: number }
       mark_update_read: { Args: { p_post_id: string }; Returns: undefined }
       member_overview: {
         Args: { p_query?: string }
@@ -1947,6 +1948,7 @@ export type Database = {
         }[]
       }
       moderation_pending_count: { Args: never; Returns: number }
+      moderation_stats: { Args: never; Returns: Json }
       moderator_delete: {
         Args: { p_id: string; p_table: string; p_with_orphans?: boolean }
         Returns: number

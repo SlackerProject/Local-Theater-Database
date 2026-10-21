@@ -86,6 +86,13 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
     (proposals ?? []).flatMap((p) => ((p.changes as unknown as Bundle).people ?? []).flatMap((x) => ("new" in x ? [x.new.display_name] : []))),
   );
 
+  // Venues that performances are at (when not the production's)
+  const perfVenueIds = [
+    ...new Set((proposals ?? []).flatMap((p) => ((p.changes as unknown as Bundle).performances ?? []).flatMap((pf) => (pf.location_id ? [pf.location_id] : [])))),
+  ];
+  const { data: perfVenues } = perfVenueIds.length ? await supabase.from("locations").select("id, name").in("id", perfVenueIds) : { data: [] };
+  const venueNames = Object.fromEntries((perfVenues ?? []).map((v) => [v.id, v.name]));
+
   // Contributors' medals (moderation is a contribution context)
   const points = await pointsFor([...(proposals ?? []).map((p) => p.proposed_by), ...(uploads ?? []).map((m) => m.uploaded_by)]);
 
@@ -179,6 +186,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
               medal={<ContributorTag points={points.get(p.proposed_by)} />}
               knownPositions={knownPositions}
               sameName={sameName}
+              venueNames={venueNames}
               submittedAt={new Date(p.created_at).toLocaleString("en-US", {
                 timeZone: "America/New_York",
                 dateStyle: "medium",

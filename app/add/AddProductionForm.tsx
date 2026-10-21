@@ -1,5 +1,6 @@
 "use client";
 
+import { VenueSelect, type VenueOption } from "@/components/VenueSelect";
 import Link from "next/link";
 import { useId, useState, useTransition } from "react";
 import {
@@ -166,10 +167,12 @@ const byDateTime = (a: Performance, b: Performance) => `${a.date} ${a.time}`.loc
 export function AddProductionForm({
   initial,
   defaultYear,
+  venues = [],
   addingTo = false,
 }: {
   initial: FormState | null;
   defaultYear: string;
+  venues?: VenueOption[]; // listed venues, for performances somewhere else
   addingTo?: boolean; // opened from a production page's "Add cast, crew, dates or a poster"
 }) {
   // One row per role (older drafts held several in one Role box)
@@ -290,7 +293,13 @@ export function AddProductionForm({
       for (const p of batch) {
         if (existing.has(`${p.date} ${p.time}`)) continue;
         existing.add(`${p.date} ${p.time}`);
-        added.push({ id: newId(), date: p.date, time: p.time, label: p.label === "Matinee" ? "Matinee" : "" });
+        added.push({
+          id: newId(),
+          date: p.date,
+          time: p.time,
+          label: p.label === "Matinee" ? "Matinee" : "",
+          ...(p.locationId && { locationId: p.locationId }),
+        });
       }
     }
     if (!added.length) {
@@ -677,6 +686,19 @@ export function AddProductionForm({
                     <SmallInput label="Time" type="time" value={p.time} onChange={(time) => setPerformance(p.id, { time })} />
                     <SmallInput label="Label" optional list="performance-labels" placeholder="Matinee" value={p.label} onChange={(label) => setPerformance(p.id, { label })} />
                   </div>
+                  {state.multiVenue && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[15px] font-semibold">Venue</span>
+                      <VenueSelect
+                        value={p.locationId ?? ""}
+                        venues={venues}
+                        label="Venue for this performance"
+                        emptyLabel="Same as the main venue"
+                        onChange={(locationId) => setPerformance(p.id, { locationId: locationId || undefined })}
+                        className={smallField}
+                      />
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2.5">
                     <button
                       type="button"
@@ -712,6 +734,9 @@ export function AddProductionForm({
                   {p.label && (
                     <span className="text-sm font-semibold text-muted">{p.label}</span>
                   )}
+                  {state.multiVenue && p.locationId && (
+                    <span className="text-sm text-muted">at {venues.find((v) => v.id === p.locationId)?.name ?? "another venue"}</span>
+                  )}
                   <button
                     type="button"
                     aria-label="Remove this performance"
@@ -724,6 +749,27 @@ export function AddProductionForm({
                   </button>
                 </div>
               ),
+            )}
+            {state.performances.length > 0 && (
+              <label className="flex min-h-11 cursor-pointer items-start gap-2.5 pt-1 text-[15px]">
+                <input
+                  type="checkbox"
+                  checked={!!state.multiVenue}
+                  onChange={(e) =>
+                    update((s) => ({
+                      ...s,
+                      multiVenue: e.target.checked,
+                      // Opening the venue choice on every row makes it easy to set
+                      performances: s.performances.map((p) => ({ ...p, editing: e.target.checked ? true : p.editing })),
+                    }))
+                  }
+                  className="mt-0.5 h-5 w-5 flex-none accent-ink"
+                />
+                <span>
+                  Some performances are at a different venue{" "}
+                  <span className="text-muted">(for example, a touring show)</span>
+                </span>
+              </label>
             )}
             <div className="flex flex-wrap gap-x-5 gap-y-1">
               <button type="button" className={linkButton} onClick={addPerformance}>

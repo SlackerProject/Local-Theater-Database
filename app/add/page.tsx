@@ -42,6 +42,9 @@ async function FormForSignedInMember({ searchParams }: Pick<PageProps<"/add">, "
   if (!user) redirect(`/signin?next=${encodeURIComponent(addTo ? `/add?to=${addTo}` : "/add")}`);
 
   const supabase = await createClient();
+  // For performances at a different venue (touring shows)
+  const { data: venueRows } = await supabase.from("locations").select("id, name, town").order("name");
+  const venues = venueRows ?? [];
   const defaultYear = new Date().toLocaleDateString("en-US", { year: "numeric", timeZone: "America/New_York" });
 
   // "Add cast, crew, dates or a poster" from a production page: start a
@@ -60,7 +63,7 @@ async function FormForSignedInMember({ searchParams }: Pick<PageProps<"/add">, "
         hasLocation: !!p.location_id,
       };
       initial.credits = [emptyCredit("crew", "c0"), emptyCredit("cast", "c1")];
-      return <AddProductionForm initial={initial} defaultYear={defaultYear} addingTo />;
+      return <AddProductionForm initial={initial} defaultYear={defaultYear} venues={venues} addingTo />;
     }
   }
 
@@ -71,5 +74,5 @@ async function FormForSignedInMember({ searchParams }: Pick<PageProps<"/add">, "
     .maybeSingle();
 
   const initial = draft && looksLikeFormState(draft.data) ? draft.data : null;
-  return <AddProductionForm initial={initial} defaultYear={defaultYear} />;
+  return <AddProductionForm initial={initial} defaultYear={defaultYear} venues={venues} />;
 }

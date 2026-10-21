@@ -45,13 +45,15 @@ function Tag({ isNew }: { isNew: boolean }) {
   );
 }
 
-// "Fri, Oct 3 7:30 PM", short enough to list a whole run on one line
-function perfShort(p: BundlePerformance) {
+// "Fri, Oct 3 7:30 PM", short enough to list a whole run on one line (with
+// the venue when it isn't the production's)
+function perfShort(p: BundlePerformance, venueNames: Record<string, string> = {}) {
   const day = p.date
     ? new Date(`${p.date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
     : "?";
   const t = p.time ? new Date(`2000-01-01T${p.time}:00Z`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }) : "";
-  return `${day}${t ? ` ${t}` : ""}${p.label ? ` (${p.label})` : ""}`;
+  const at = p.location_id ? ` at ${venueNames[p.location_id] ?? "another venue"}` : "";
+  return `${day}${t ? ` ${t}` : ""}${p.label ? ` (${p.label})` : ""}${at}`;
 }
 
 const dateText = (d: string) =>
@@ -92,6 +94,7 @@ export function ReviewCard({
   medal,
   knownPositions,
   sameName = {},
+  venueNames = {},
 }: {
   id: string;
   submitted: Bundle;
@@ -100,6 +103,7 @@ export function ReviewCard({
   medal?: React.ReactNode; // the contributor's small medal
   knownPositions: string[]; // the crew positions list
   sameName?: Record<string, SameNameMatch[]>; // people already on the site, by name key
+  venueNames?: Record<string, string>; // names of venues performances are at, by id
 }) {
   const addTo = isAddTo(submitted);
   const [show, setShow] = useState(addTo ? null : submitted.show);
@@ -242,6 +246,7 @@ export function ReviewCard({
           person={person}
           isNew={(p) => !!p && "new" in p && !(sameAs[p.key] && sameAs[p.key] !== "distinct")}
           roles={submitted.roles ?? []}
+          venueNames={venueNames}
         />
       )}
 
@@ -370,6 +375,7 @@ export function ReviewCard({
                 <input className={`${inputBase} w-[160px] flex-none`} type="date" aria-label="Date" value={p.value.date} onChange={(e) => set({ date: e.target.value })} />
                 <input className={`${inputBase} w-[140px] flex-none`} type="time" aria-label="Time" value={p.value.time} onChange={(e) => set({ time: e.target.value })} />
                 <input className={`${inputBase} flex-[1_1_120px]`} aria-label="Label" placeholder="Label" value={p.value.label ?? ""} onChange={(e) => set({ label: e.target.value })} />
+                {p.value.location_id && <span className="text-[15px] font-semibold">at {venueNames[p.value.location_id] ?? "another venue"}</span>}
               </div>
             );
           })}
@@ -536,6 +542,7 @@ function Summary({
   person,
   isNew,
   roles,
+  venueNames,
 }: {
   addTo: boolean;
   show: Extract<Bundle, { show: unknown }>["show"] | null;
@@ -550,6 +557,7 @@ function Summary({
   person: (key: string) => BundlePerson | undefined;
   isNew: (p: BundlePerson | undefined) => boolean;
   roles: string[];
+  venueNames: Record<string, string>;
 }) {
   const out = (include: boolean) => (include ? "" : "text-muted line-through");
   const dt = "font-semibold text-muted";
@@ -634,7 +642,7 @@ function Summary({
                 {performances.map((p, i) => (
                   <span key={i}>
                     {i > 0 && ", "}
-                    <span className={out(p.include)}>{perfShort(p.value)}</span>
+                    <span className={out(p.include)}>{perfShort(p.value, venueNames)}</span>
                   </span>
                 ))}
               </dd>

@@ -19,9 +19,11 @@ import { TownPicker } from "@/components/TownPicker";
 import { maTown } from "@/lib/ma-towns";
 import { CastEditor, CrewEditor, type CreditEdits, type CreditLine, type CreditOps, type RoleLine } from "./CreditsEditor";
 import { CROSS, Icon, PENCIL, PLUS, UNDO, changedRow, input, small } from "./ui";
+import { VenueSelect, type VenueOption } from "@/components/VenueSelect";
 
 export type { CreditLine, RoleLine };
-export type PerformanceLine = { id: string; date: string; time: string; label: string; cancelled: boolean };
+// locationId: "" = the production's own venue
+export type PerformanceLine = { id: string; date: string; time: string; label: string; cancelled: boolean; locationId: string };
 
 // Plain and clear over stylish: bordered tables with a label column for
 // the details, role | person lists for the cast and crew, and buttons
@@ -49,6 +51,7 @@ export function CorrectionForm({
   locked,
   credits,
   performances,
+  venues = [],
   roles,
   showTitle,
   isModerator,
@@ -62,6 +65,7 @@ export function CorrectionForm({
   locked: Record<string, string>;
   credits?: CreditLine[];
   performances?: PerformanceLine[];
+  venues?: VenueOption[];
   roles?: RoleLine[];
   showTitle?: string;
   isModerator: boolean;
@@ -74,6 +78,30 @@ export function CorrectionForm({
   const [removedPerfs, setRemovedPerfs] = useState<Set<string>>(new Set());
   const [perfChanges, setPerfChanges] = useState<Record<string, PerformanceEdit & { id: string }>>({});
   const [addedPerfs, setAddedPerfs] = useState<PerformanceEdit[]>([]);
+  // "Some performances are at a different venue" (on when any already are)
+  const [multiVenue, setMultiVenue] = useState(() => !!performances?.some((l) => l.locationId));
+
+  // Turning it off puts every performance back at the main venue
+  function setVenues(on: boolean) {
+    setMultiVenue(on);
+    if (on || !performances) return;
+    setAddedPerfs((list) => list.map((p) => ({ ...p, location_id: undefined })));
+    setPerfChanges((c) => {
+      const next = { ...c };
+      for (const l of performances) {
+        const now = next[l.id];
+        if (now) {
+          const { location_id: _drop, ...rest } = now;
+          void _drop;
+          if (l.locationId) next[l.id] = { ...rest, location_id: "" };
+          else next[l.id] = rest;
+        } else if (l.locationId) {
+          next[l.id] = { id: l.id, date: l.date, time: l.time, label: l.label, cancelled: l.cancelled, location_id: "" };
+        }
+      }
+      return next;
+    });
+  }
   const [addedRoles, setAddedRoles] = useState<string[]>([]);
   const [renamedRoles, setRenamedRoles] = useState<Record<string, string>>({});
   const [removedRoles, setRemovedRoles] = useState<Set<string>>(new Set());
@@ -261,6 +289,12 @@ export function CorrectionForm({
       {performances && (
         <section aria-labelledby="performances-h" className="flex flex-col gap-3">
           <SectionHeading id="performances-h">Performances</SectionHeading>
+          <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-[15px]">
+            <input type="checkbox" checked={multiVenue} onChange={(e) => setVenues(e.target.checked)} className="mt-0.5 h-5 w-5 flex-none accent-ink" />
+            <span>
+              Some performances are at a different venue <span className="text-muted">(for example, a touring show)</span>
+            </span>
+          </label>
           <table className="w-full border-collapse border border-[#CFCFCF] text-[15px]">
             <tbody>
               <PerformancesRow
@@ -268,11 +302,17 @@ export function CorrectionForm({
                 removed={removedPerfs}
                 changes={perfChanges}
                 added={addedPerfs}
+                venues={multiVenue ? venues : null}
                 onToggleRemove={(pid) => toggle(setRemovedPerfs, pid)}
                 onChange={(p, original) =>
                   setPerfChanges((c) => {
                     const next = { ...c };
-                    const same = p.date === original.date && p.time === original.time && p.label === original.label && !!p.cancelled === original.cancelled;
+                    const same =
+                      p.date === original.date &&
+                      p.time === original.time &&
+                      p.label === original.label &&
+                      !!p.cancelled === original.cancelled &&
+                      (p.location_id ?? original.locationId) === original.locationId;
                     if (same) delete next[p.id];
                     else next[p.id] = p;
                     return next;
@@ -591,6 +631,7 @@ function PerformancesRow({
   removed,
   changes,
   added,
+  venues,
   onToggleRemove,
   onChange,
   onAdd,
@@ -600,6 +641,7 @@ function PerformancesRow({
   removed: Set<string>;
   changes: Record<string, PerformanceEdit & { id: string }>;
   added: PerformanceEdit[];
+  venues: VenueOption[] | null; // set when performances can be at different venues
   onToggleRemove: (id: string) => void;
   onChange: (p: PerformanceEdit & { id: string }, original: PerformanceLine) => void;
   onAdd: (p: PerformanceEdit) => void;
@@ -608,6 +650,7 @@ function PerformancesRow({
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const any = added.length > 0 || removed.size > 0 || Object.keys(changes).length > 0;
+  const venueName = (id: string | undefined) => (id ? ` · at ${venues?.find((v) => v.id === id)?.name ?? "another venue"}` : "");
 
   return (
     <tr id="performances" className={any ? changedRow : ""}>
@@ -619,12 +662,14 @@ function PerformancesRow({
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           {lines.map((l) => {
             const gone = removed.has(l.id);
-            const now = changes[l.id] ?? { ...l };
+            const now: PerformanceEdit = changes[l.id] ?? { ...l, location_id: l.locationId };
+            const nowVenue = now.location_id ?? l.locationId;
             if (editing === l.id) {
               return (
                 <li key={l.id}>
                   <PerformanceEditor
-                    initial={now}
+                    initial={{ ...now, location_id: nowVenue }}
+                    venues={venues}
                     onDone={(p) => {
                       onChange({ ...p, id: l.id }, l);
                       setEditing(null);
@@ -644,8 +689,15 @@ function PerformancesRow({
                   {performanceText(now.date, now.time)}
                   {now.label && ` · ${now.label}`}
                   {now.cancelled && " · Cancelled"}
+                  {venueName(nowVenue)}
                 </span>
-                {l.id in changes && <span className="text-sm text-muted">was {performanceText(l.date, l.time)}{l.label && ` · ${l.label}`}</span>}
+                {l.id in changes && (
+                  <span className="text-sm text-muted">
+                    was {performanceText(l.date, l.time)}
+                    {l.label && ` · ${l.label}`}
+                    {venueName(l.locationId)}
+                  </span>
+                )}
                 {gone ? (
                   <span className="text-sm font-semibold">Will be removed</span>
                 ) : (
@@ -665,6 +717,7 @@ function PerformancesRow({
               <span className="font-bold">
                 {performanceText(p.date, p.time)}
                 {p.label && ` · ${p.label}`}
+                {venueName(p.location_id)}
               </span>
             </li>
           ))}
@@ -673,7 +726,8 @@ function PerformancesRow({
         <div className="mt-3">
           {adding ? (
             <PerformanceEditor
-              initial={{ date: "", time: "19:30", label: "" }}
+              initial={{ date: "", time: "19:30", label: "", ...(venues && { location_id: "" }) }}
+              venues={venues}
               onDone={(p) => {
                 onAdd(p);
                 setAdding(false);
@@ -695,8 +749,10 @@ function PerformanceEditor({
   initial,
   onDone,
   onCancel,
+  venues,
   allowCancelled = false,
 }: {
+  venues: VenueOption[] | null;
   initial: PerformanceEdit;
   onDone: (p: PerformanceEdit) => void;
   onCancel: () => void;
@@ -720,6 +776,19 @@ function PerformanceEditor({
           <input value={p.label} placeholder="e.g. Opening night" onChange={(e) => setP({ ...p, label: e.target.value })} className={input} />
         </label>
       </div>
+      {venues && (
+        <div className="flex max-w-[420px] flex-col gap-1 text-sm font-bold">
+          Venue
+          <VenueSelect
+            value={p.location_id ?? ""}
+            venues={venues}
+            label="Venue for this performance"
+            emptyLabel="Same as the main venue"
+            onChange={(location_id) => setP({ ...p, location_id })}
+            className={`${input} font-normal`}
+          />
+        </div>
+      )}
       {allowCancelled && (
         <label className="flex cursor-pointer items-center gap-2.5 text-[15px]">
           <input type="checkbox" checked={!!p.cancelled} onChange={(e) => setP({ ...p, cancelled: e.target.checked })} className="h-5 w-5 accent-ink" />

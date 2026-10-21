@@ -116,7 +116,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
        show:shows(id, slug, title, subtitle, type, authors),
        organization:organizations(slug, name, logo:media!organizations_logo_fk(thumb_key)),
        location:locations(id, slug, name, street_address, town, state),
-       performances(id, starts_at, label, is_cancelled),
+       performances(id, starts_at, label, is_cancelled, location_id, venue:locations(name, street_address, town, state)),
        credits(id, kind, role_name, billing_order, is_understudy, is_young_performer,
                person:people(slug, display_name, headshot:media!people_headshot_fk(thumb_key)),
                character:show_characters(name))`,
@@ -200,7 +200,12 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const venueAddress = p.location ? [p.location.street_address, p.location.town, p.location.state].filter(Boolean).join(", ") : null;
   const performances: PerformanceRow[] = [...(p.performances ?? [])]
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-    .map((pf) => ({
+    .map((pf) => {
+      // A performance somewhere other than the production's venue
+      const elsewhere = pf.venue && pf.location_id !== p.location?.id ? pf.venue : null;
+      const venueName = elsewhere?.name ?? p.location?.name;
+      const address = elsewhere ? [elsewhere.street_address, elsewhere.town, elsewhere.state].filter(Boolean).join(", ") : venueAddress;
+      return {
       id: pf.id,
       when: new Date(pf.starts_at).toLocaleString("en-US", {
         timeZone: TIME_ZONE,
@@ -214,6 +219,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
       day: localDay(pf.starts_at),
       time: localTime(pf.starts_at),
       label: pf.label,
+      venue: elsewhere ? [elsewhere.name, elsewhere.town].filter(Boolean).join(", ") : null,
       cancelled: pf.is_cancelled,
       past: new Date(pf.starts_at).getTime() < now,
       google: googleCalendarUrl({
@@ -222,12 +228,13 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
         title: `${title} (${p.year})`,
         company: p.organization?.name,
         label: pf.label,
-        venue: p.location?.name,
-        address: venueAddress,
+        venue: venueName,
+        address,
         url: origin + path,
       }),
       ics: `/calendar/performance/${pf.id}`,
-    }));
+      };
+    });
   // The run has closed once its closing date (or, without one, its last
   // performance) is behind us
   const today = localDate(new Date(now));

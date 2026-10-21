@@ -8,6 +8,7 @@ import { FIELDS, KINDS, type FieldValue, type PageKind } from "@/lib/corrections
 import { localDate, localHHMM } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { CorrectionForm, type CreditLine, type PerformanceLine, type RoleLine } from "./CorrectionForm";
+import type { VenueOption } from "@/components/VenueSelect";
 
 export const metadata: Metadata = { title: "Correction" };
 
@@ -49,6 +50,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   let name = String(record.display_name ?? record.name ?? record.title ?? slug);
   let credits: CreditLine[] | undefined;
   let performances: PerformanceLine[] | undefined;
+  let venues: VenueOption[] = [];
   // Productions and shows edit the show's roles
   let roleShow: { id: string; title: string } | null = table === "shows" ? { id: record.id, title: name } : null;
 
@@ -58,7 +60,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
       .select(
         `year, title_override, show:shows(id, title), organization:organizations(name), location:locations(name),
          credits(id, kind, role_name, billing_order, is_understudy, is_young_performer, person:people(id, display_name), character:show_characters(id, name)),
-         performances(id, starts_at, label, is_cancelled)`,
+         performances(id, starts_at, label, is_cancelled, location_id)`,
       )
       .eq("id", record.id)
       .single();
@@ -80,7 +82,17 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
       }));
     performances = (p?.performances ?? [])
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-      .map((pf) => ({ id: pf.id, date: localDate(pf.starts_at), time: localHHMM(pf.starts_at), label: pf.label ?? "", cancelled: pf.is_cancelled }));
+      .map((pf) => ({
+        id: pf.id,
+        date: localDate(pf.starts_at),
+        time: localHHMM(pf.starts_at),
+        label: pf.label ?? "",
+        cancelled: pf.is_cancelled,
+        locationId: pf.location_id ?? "",
+      }));
+    // For performances at a different venue (touring shows)
+    const { data: venueRows } = await supabase.from("locations").select("id, name, town").order("name");
+    venues = venueRows ?? [];
   }
 
   if (table === "people") {
@@ -145,6 +157,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         locked={locked}
         credits={credits}
         performances={performances}
+        venues={venues}
         roles={roles}
         showTitle={roleShow?.title}
         isModerator={isModerator}

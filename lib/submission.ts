@@ -25,7 +25,9 @@ export type Choice =
   | { kind: "new" }
   | { kind: "suggest"; match: Match }; // people only: "Did you mean…?"
 
-export type Performance = { id: string; date: string; time: string; label: string; editing?: boolean };
+// locationId: a listed venue other than the production's (only used when
+// the form's "different venues" box is ticked)
+export type Performance = { id: string; date: string; time: string; label: string; locationId?: string; editing?: boolean };
 
 export type CreditRow = {
   id: string;
@@ -61,6 +63,8 @@ export type FormState = {
   openingDate: string;
   closingDate: string;
   performances: Performance[];
+  // "Some performances are at a different venue" (touring shows)
+  multiVenue?: boolean;
   credits: CreditRow[];
 };
 
@@ -96,7 +100,8 @@ export type Ref<New> = { id: string; label: string } | { new: New };
 export type NewShow = { title: string; type: ShowType; subtitle?: string; authors?: string };
 export type NewOrganization = { name: string; town?: string; website_url?: string };
 export type NewLocation = { name: string; street_address?: string; town?: string };
-export type BundlePerformance = { date: string; time: string; label?: string };
+// location_id: a listed venue other than the production's
+export type BundlePerformance = { date: string; time: string; label?: string; location_id?: string };
 // distinct: a moderator confirmed a new person isn't the someone of the
 // same name already on the site (otherwise approval refuses a duplicate)
 export type BundlePerson =
@@ -275,7 +280,12 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
       problems.push("Every performance needs a date and a time.");
       break;
     }
-    performances.push({ date: p.date, time: p.time, ...(clean(p.label) && { label: clean(p.label) }) });
+    performances.push({
+      date: p.date,
+      time: p.time,
+      ...(clean(p.label) && { label: clean(p.label) }),
+      ...(s.multiVenue && p.locationId && { location_id: p.locationId }),
+    });
   }
 
   // People and credits. The same new name used twice is one new person.
@@ -512,7 +522,14 @@ function itemsToForm(
           }
         : { query: loc.label, choice: { kind: "existing", match: matchFrom(loc) }, address: "", town: "", editing: false };
   }
-  form.performances = items.performances.map((p) => ({ id: newId(), date: p.date, time: p.time, label: p.label ?? "" }));
+  form.performances = items.performances.map((p) => ({
+    id: newId(),
+    date: p.date,
+    time: p.time,
+    label: p.label ?? "",
+    ...(p.location_id && { locationId: p.location_id }),
+  }));
+  if (items.performances.some((p) => p.location_id)) form.multiVenue = true;
   const byKey = new Map(items.people.map((p) => [p.key, p]));
   form.credits = items.credits.map((c) => {
     const person = byKey.get(c.person_key);

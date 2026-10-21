@@ -194,10 +194,23 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
     });
 
     const perfIds = [...(c.performances?.remove ?? []), ...(c.performances?.update ?? []).map((u) => u.id)];
-    const { data: perfs } = perfIds.length ? await supabase.from("performances").select("id, starts_at, label, is_cancelled").in("id", perfIds) : { data: [] };
+    const { data: perfs } = perfIds.length
+      ? await supabase.from("performances").select("id, starts_at, label, is_cancelled, location_id").in("id", perfIds)
+      : { data: [] };
     const perf = new Map((perfs ?? []).map((x) => [x.id, x]));
-    const perfLabel = (x: { starts_at: string; label: string | null; is_cancelled: boolean } | undefined) =>
-      x ? `${performanceText(localDate(x.starts_at), localHHMM(x.starts_at))}${x.label ? ` · ${x.label}` : ""}${x.is_cancelled ? " · Cancelled" : ""}` : "(already gone)";
+    // Performances at a venue other than the production's say where
+    const perfVenues = await names(
+      supabase,
+      "locations",
+      [...(perfs ?? []).map((x) => x.location_id), ...(c.performances?.add ?? []).map((a) => a.location_id), ...(c.performances?.update ?? []).map((u) => u.location_id)].filter(
+        (x): x is string => !!x,
+      ),
+    );
+    const at = (id: string | null | undefined) => (id ? ` · at ${perfVenues.get(id) ?? "another venue"}` : "");
+    const perfLabel = (x: { starts_at: string; label: string | null; is_cancelled: boolean; location_id: string | null } | undefined) =>
+      x
+        ? `${performanceText(localDate(x.starts_at), localHHMM(x.starts_at))}${x.label ? ` · ${x.label}` : ""}${x.is_cancelled ? " · Cancelled" : ""}${at(x.location_id)}`
+        : "(already gone)";
 
     for (const id of c.performances?.remove ?? []) {
       rows.push({ key: `perf:remove:${id}`, what: "Remove performance", current: perfLabel(perf.get(id)), proposed: "Removed" });
@@ -207,11 +220,11 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
         key: `perf:update:${u.id}`,
         what: "Change performance",
         current: perfLabel(perf.get(u.id)),
-        proposed: `${performanceText(u.date, u.time)}${u.label ? ` · ${u.label}` : ""}${u.cancelled ? " · Cancelled" : ""}`,
+        proposed: `${performanceText(u.date, u.time)}${u.label ? ` · ${u.label}` : ""}${u.cancelled ? " · Cancelled" : ""}${at(u.location_id === undefined ? perf.get(u.id)?.location_id : u.location_id)}`,
       });
     }
     (c.performances?.add ?? []).forEach((a, i) => {
-      rows.push({ key: `perf:add:${i}`, what: "Add performance", current: "", proposed: `${performanceText(a.date, a.time)}${a.label ? ` · ${a.label}` : ""}` });
+      rows.push({ key: `perf:add:${i}`, what: "Add performance", current: "", proposed: `${performanceText(a.date, a.time)}${a.label ? ` · ${a.label}` : ""}${at(a.location_id)}` });
     });
   }
 

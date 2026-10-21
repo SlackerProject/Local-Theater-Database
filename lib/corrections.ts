@@ -86,7 +86,9 @@ export type CreditAdd = {
   // Cast: a young performer (under 18), listed by role only: no person or name
   young?: boolean;
 };
-export type PerformanceEdit = { id?: string; date: string; time: string; label: string; cancelled?: boolean };
+// location_id: a listed venue other than the production's ("" = the
+// production's own venue; left out = unchanged)
+export type PerformanceEdit = { id?: string; date: string; time: string; label: string; cancelled?: boolean; location_id?: string };
 
 // A show's roles (show_characters), cast or not; shared by its productions
 export type RoleChanges = { add?: string[]; rename?: { id: string; name: string }[]; remove?: string[] };

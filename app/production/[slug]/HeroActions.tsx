@@ -10,6 +10,7 @@ export type PerformanceRow = {
   day: string; //     "Sat, Oct 17"
   time: string; //    "7:30 PM"
   label: string | null;
+  venue: string | null; // only when not at the production's venue
   cancelled: boolean;
   past: boolean;
   google: string; //  Add to Google Calendar link
@@ -191,7 +192,8 @@ export function HeroActions({
       {status === "going" && going && !going.past && (
         <div className="flex max-w-[620px] flex-col gap-1">
           <span>
-            You’re going <strong>{going.day}</strong> at {going.time}.
+            You’re going <strong>{going.day}</strong> at {going.time}
+            {going.venue && <> at <strong>{going.venue}</strong></>}.
           </span>
           {calendarLinks(going)}
         </div>
@@ -217,6 +219,7 @@ export function HeroActions({
                   <span className={p.cancelled ? "line-through opacity-70" : p.past ? "opacity-70" : ""}>
                     {p.when}
                     {p.label && <span className="font-semibold"> · {p.label}</span>}
+                    {p.venue && <span className="font-semibold"> · at {p.venue}</span>}
                     {p.cancelled && " (cancelled)"}
                   </span>
                   {canGo &&

@@ -41,7 +41,7 @@ export type StatsData = {
   };
   visitors: { day: string; visitors: number; views: number }[];
   weekly: { week: string; members: number; productions: number; people: number; edits: number }[];
-  top_contributors: { name: string; username: string; edits: number }[];
+  top_contributors: { name: string; username: string; points: number; approved: number }[];
   top_companies: { name: string; slug: string; productions: number }[];
   by_year: { year: number; productions: number }[];
 };
@@ -156,9 +156,9 @@ export function StatsView({ s }: { s: StatsData }) {
 
       <div className="grid gap-10 md:grid-cols-3">
         <Ranked
-          title="Top Contributors, 30 Days"
+          title="Top Contributors, Points in 30 Days"
           empty="No edits yet."
-          rows={s.top_contributors.map((t) => ({ key: t.username, label: <Link href={`/moderate/members?q=${encodeURIComponent(t.username)}`}>{t.name}</Link>, value: `${n(t.edits)} edits` }))}
+          rows={s.top_contributors.map((t) => ({ key: t.username, label: <Link href={`/moderate/members?q=${encodeURIComponent(t.username)}`}>{t.name}</Link>, value: `${n(Number(t.points))} pts · ${n(t.approved)} approved` }))}
         />
         <Ranked
           title="Companies with the Most Productions"

@@ -1526,6 +1526,7 @@ export type Database = {
         Row: {
           action: string
           after: Json | null
+          approved_by: string | null
           before: Json | null
           changed_at: string
           changed_by: string | null
@@ -1536,6 +1537,7 @@ export type Database = {
         Insert: {
           action: string
           after?: Json | null
+          approved_by?: string | null
           before?: Json | null
           changed_at?: string
           changed_by?: string | null
@@ -1546,6 +1548,7 @@ export type Database = {
         Update: {
           action?: string
           after?: Json | null
+          approved_by?: string | null
           before?: Json | null
           changed_at?: string
           changed_by?: string | null
@@ -1553,7 +1556,15 @@ export type Database = {
           entity_table?: string
           id?: never
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "revisions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       show_characters: {
         Row: {
@@ -1855,6 +1866,10 @@ export type Database = {
       }
       correction_changes: { Args: { p_changes: Json }; Returns: Json }
       correction_fields: { Args: { p_table: string }; Returns: string[] }
+      credit_contributor: {
+        Args: { p_contributor: string }
+        Returns: undefined
+      }
       deletion_blockers: {
         Args: { p_id: string; p_table: string }
         Returns: {

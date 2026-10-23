@@ -43,7 +43,7 @@ export function SiteHeader({ query, hideSearch = false }: { query?: string; hide
         <div className="flex items-center gap-7">
           {/* The region sits beside the name on desktop; phones have no room, so it starts the second row */}
           <span className="flex min-w-0 items-center gap-2.5">
-            <Link href="/" className="link-quiet whitespace-nowrap text-xl font-extrabold tracking-[-0.02em] md:text-[22px]">
+            <Link href="/" className="link-quiet text-xl font-extrabold leading-[1.1] tracking-[-0.02em] md:whitespace-nowrap md:text-[22px] md:leading-normal">
               {SITE_NAME}
             </Link>
             <span className="hidden md:block">
@@ -123,6 +123,9 @@ export function SiteFooter() {
           </Link>
           <Link href="/updates" className="link-quiet">
             Updates
+          </Link>
+          <Link href="/map" className="link-quiet">
+            Theater Map
           </Link>
           <Link href="/auditions" className="link-quiet">
             Auditions

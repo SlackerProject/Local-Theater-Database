@@ -28,7 +28,7 @@ async function Settings() {
   const user = await getCurrentUser();
   if (!user) redirect("/signin?next=/settings");
   const supabase = await createClient();
-  const { data: profile } = await supabase.from("profiles").select("notify_updates, show_seen").eq("id", user.id).single();
+  const { data: profile } = await supabase.from("profiles").select("notify_updates, show_seen, profile_public").eq("id", user.id).single();
 
   return (
     <>
@@ -48,6 +48,12 @@ async function Settings() {
 
       <section className="flex flex-col">
         <h2 className="heading mb-1">Privacy</h2>
+        <SettingToggle
+          setting="profile_public"
+          initial={profile?.profile_public ?? true}
+          label="Show my contributor profile"
+          hint="Your points, badges and contributions. Turn this off to keep them private; your page on stage stays visible either way."
+        />
         <SettingToggle
           setting="show_seen"
           initial={profile?.show_seen ?? false}

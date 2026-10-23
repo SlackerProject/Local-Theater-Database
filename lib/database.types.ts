@@ -1470,6 +1470,7 @@ export type Database = {
           id: string
           notify_updates: boolean
           person_id: string | null
+          profile_public: boolean
           role: Database["public"]["Enums"]["user_role"]
           show_seen: boolean
           updated_at: string
@@ -1485,6 +1486,7 @@ export type Database = {
           id: string
           notify_updates?: boolean
           person_id?: string | null
+          profile_public?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           show_seen?: boolean
           updated_at?: string
@@ -1500,6 +1502,7 @@ export type Database = {
           id?: string
           notify_updates?: boolean
           person_id?: string | null
+          profile_public?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           show_seen?: boolean
           updated_at?: string
@@ -2053,6 +2056,13 @@ export type Database = {
           seen_on: string
         }[]
       }
+      profile_seen_all: {
+        Args: { p_user: string }
+        Returns: {
+          production_id: string
+          seen_on: string
+        }[]
+      }
       profile_stats: {
         Args: { p_user: string }
         Returns: {
@@ -2062,8 +2072,34 @@ export type Database = {
           seen: number
         }[]
       }
+      profile_stats_all: {
+        Args: { p_user: string }
+        Returns: {
+          contributions: number
+          photos: number
+          points: number
+          seen: number
+        }[]
+      }
+      profile_visible: { Args: { p_user: string }; Returns: boolean }
       publish_post: { Args: { p_id: string }; Returns: number }
       recent_contributions: {
+        Args: { p_limit?: number; p_user: string }
+        Returns: {
+          amount: number
+          credits: number
+          draft_title: string
+          earned_at: string
+          entity_id: string
+          entity_table: string
+          kind: string
+          media_kind: string
+          person_id: string
+          production_id: string
+          reason: string
+        }[]
+      }
+      recent_contributions_all: {
         Args: { p_limit?: number; p_user: string }
         Returns: {
           amount: number

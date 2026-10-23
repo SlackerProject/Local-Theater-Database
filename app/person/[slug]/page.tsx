@@ -100,7 +100,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
   ] = await Promise.all([
       supabase.rpc("frequent_collaborators", { p_person_id: person.id }),
       person.verified_owner_id
-        ? supabase.from("profiles").select("display_name, username").eq("id", person.verified_owner_id).maybeSingle()
+        ? supabase.from("profiles").select("display_name, username, profile_public").eq("id", person.verified_owner_id).maybeSingle()
         : Promise.resolve({ data: null }),
       supabase.rpc("claim_state", { p_person_id: person.id }),
       user
@@ -273,7 +273,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                 <>
                   {" · "}
                   <VerifiedMark />
-                  {owner?.username && (
+                  {owner?.username && owner.profile_public && (
                     <>
                       {" · "}
                       <Link href={`/u/${owner.username}`} className="font-semibold text-ink">
@@ -439,10 +439,12 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
                                       {c.added_by_owner && (
                                         <span className="inline-flex items-center gap-1 text-[13px] text-muted">
                                           Added by{" "}
-                                          {owner?.username ? (
+                                          {owner?.username && owner.profile_public ? (
                                             <Link href={`/u/${owner.username}`} className="font-semibold text-ink">
                                               {owner.display_name}
                                             </Link>
+                                          ) : owner?.display_name ? (
+                                            owner.display_name
                                           ) : (
                                             "the performer"
                                           )}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { COLLECTIBLES, LEVELS, METALS, levelFor, nextLevel, nextMetal, progressHint } from "@/lib/badges";
 import { showColors, swatch } from "@/lib/palette";
@@ -47,13 +47,23 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, created_at, show_seen")
+    .select("id, username, display_name, created_at, show_seen, profile_public")
     .ilike("username", decodeURIComponent(username))
     .maybeSingle();
   if (!profile) notFound();
 
   const viewer = await getCurrentUser();
   const isOwner = viewer?.id === profile.id;
+
+  // A hidden profile: only its owner and moderators see more than this
+  if (!profile.profile_public && !isOwner && !(viewer && hasRole(viewer, "moderator"))) {
+    return (
+      <section className="flex flex-col gap-2">
+        <h1 className="m-0 text-[36px] font-extrabold leading-none tracking-[-0.03em] md:text-[44px]">{profile.display_name}</h1>
+        <p className="m-0 text-muted">This contributor profile is private.</p>
+      </section>
+    );
+  }
   const [{ data: page }, { data: statsRows }, { data: earned }, { data: recent }, { data: seenRows }] = await Promise.all([
     supabase.from("people").select("slug, display_name").eq("verified_owner_id", profile.id).maybeSingle(),
     supabase.rpc("profile_stats", { p_user: profile.id }),
@@ -161,6 +171,18 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
 
   return (
     <>
+      {!profile.profile_public && (
+        <p role="status" className="callout m-0 text-[15px]">
+          {isOwner ? (
+            <>
+              Your contributor profile is private: only you and moderators can see it.{" "}
+              <Link href="/settings">Change this in Settings</Link>.
+            </>
+          ) : (
+            "This member has made their contributor profile private. You can see it because you’re a moderator."
+          )}
+        </p>
+      )}
       {/* Who, and their medal */}
       <section className="flex flex-wrap items-center gap-6">
         <div aria-hidden="true" className="flex h-24 w-24 flex-none items-center justify-center rounded-full bg-[#2B2B2B] text-[38px] font-extrabold text-white">

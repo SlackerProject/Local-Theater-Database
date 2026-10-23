@@ -307,18 +307,25 @@ export function VenueMap({ venues, now }: { venues: MapVenue[]; now: string }) {
   );
 }
 
+// Links in the card look like links: underlined, darker on hover
+const cardLink = "underline decoration-[1.5px] underline-offset-[3px] hover:decoration-[2.5px]";
+
 function VenueCard({ v, view, distance, onClose }: { v: MapVenue; view: View; distance: number | null; onClose: () => void }) {
   const show = v.next && (
     <p key="show" className="m-0">
       <span className="font-semibold">Next show: </span>
-      <Link href={`/production/${v.next.slug}`}>{v.next.title}</Link>
+      <Link href={`/production/${v.next.slug}`} className={cardLink}>
+        {v.next.title}
+      </Link>
       <span className="text-muted"> · {runDates(v.next)}</span>
     </p>
   );
   const audition = v.audition && (
     <p key="audition" className="m-0">
       <span className="font-semibold">{v.audition.label || "Auditions"}: </span>
-      <Link href={`/production/${v.audition.slug}`}>{v.audition.title}</Link>
+      <Link href={`/production/${v.audition.slug}`} className={cardLink}>
+        {v.audition.title}
+      </Link>
       <span className="text-muted"> · {auditionWhen(v.audition.starts_at)}</span>
     </p>
   );
@@ -327,7 +334,7 @@ function VenueCard({ v, view, distance, onClose }: { v: MapVenue; view: View; di
     <div className="absolute inset-x-3 bottom-3 z-10 flex max-w-[420px] flex-col gap-2 rounded-lg border border-rule bg-page p-4 text-[15px] shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col">
-          <Link href={`/venue/${v.slug}`} className="text-lg font-extrabold leading-tight">
+          <Link href={`/venue/${v.slug}`} className={`${cardLink} text-lg font-extrabold leading-tight`}>
             {v.name}
           </Link>
           <span className="text-sm text-muted">
@@ -349,7 +356,7 @@ function VenueCard({ v, view, distance, onClose }: { v: MapVenue; view: View; di
           {v.companies.map((c, i) => (
             <span key={c.slug}>
               {i > 0 && ", "}
-              <Link href={`/company/${c.slug}`} className="font-semibold">
+              <Link href={`/company/${c.slug}`} className={`${cardLink} font-semibold`}>
                 {c.name}
               </Link>
             </span>
@@ -360,9 +367,13 @@ function VenueCard({ v, view, distance, onClose }: { v: MapVenue; view: View; di
         href={`https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="self-start text-sm font-semibold"
+        className="btn-secondary min-h-10 gap-1.5 self-start px-3.5 text-sm no-underline"
       >
-        Directions
+        Get directions
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 17L17 7M9 7h8v8" />
+        </svg>
+        <span className="sr-only"> (opens Google Maps)</span>
       </a>
     </div>
   );

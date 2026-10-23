@@ -38,6 +38,7 @@ const BROWSE = [
 // In the account menu and the phone menu, to keep the top of the page
 // clean; the footer links them for everyone
 const EXPLORE = [
+  { href: "/map", label: "Theater Map" },
   { href: "/auditions", label: "Auditions" },
   { href: "/hotlist", label: "Hotlist" },
 ];

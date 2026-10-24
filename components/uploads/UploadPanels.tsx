@@ -397,14 +397,20 @@ function SingleImageUploader({
   );
 }
 
-export function PosterUploader({ productionId, hasPoster, ink }: { productionId: string; hasPoster: boolean; ink: string }) {
+// Adds a poster, or replaces the current one (a moderator approves it
+// first; the approved poster takes over and recolors the page)
+export function PosterUploader({ productionId, hasPoster, ink }: { productionId: string; hasPoster: boolean; ink?: string }) {
   return (
     <SingleImageUploader
       kind="poster"
       targetId={productionId}
-      openLabel={hasPoster ? "Suggest a different poster" : "Add a poster"}
-      openVariant={hasPoster ? "text" : "secondary"}
-      intro="The poster's colors become this production's colors once a moderator approves it."
+      openLabel={hasPoster ? "Change the poster" : "Add a poster"}
+      openVariant="secondary"
+      intro={
+        hasPoster
+          ? "Upload the new poster. Once a moderator approves it, it replaces the current one and its colors become this production’s colors."
+          : "The poster's colors become this production's colors once a moderator approves it."
+      }
       done="Thanks! The poster is waiting for a moderator and will appear here once approved."
       inkOverride={ink}
     />

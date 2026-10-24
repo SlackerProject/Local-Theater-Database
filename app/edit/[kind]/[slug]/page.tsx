@@ -9,6 +9,8 @@ import { localDate, localHHMM } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { CorrectionForm, type CreditLine, type PerformanceLine, type RoleLine } from "./CorrectionForm";
 import type { VenueOption } from "@/components/VenueSelect";
+import { mediaUrl } from "@/lib/media";
+import { PosterUploader } from "@/components/uploads/UploadPanels";
 
 export const metadata: Metadata = { title: "Correction" };
 
@@ -51,6 +53,8 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   let credits: CreditLine[] | undefined;
   let performances: PerformanceLine[] | undefined;
   let venues: VenueOption[] = [];
+  // The poster, changed through the uploader (reviewed separately)
+  let poster: { thumb: string | null; ground: string | null } | undefined;
   // Productions and shows edit the show's roles
   let roleShow: { id: string; title: string } | null = table === "shows" ? { id: record.id, title: name } : null;
 
@@ -59,12 +63,17 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
       .from("productions")
       .select(
         `year, title_override, show:shows(id, title), organization:organizations(name), location:locations(name),
+         poster:media!productions_poster_fk(thumb_key, palette),
          credits(id, kind, role_name, billing_order, is_understudy, is_young_performer, person:people(id, display_name), character:show_characters(id, name)),
          performances(id, starts_at, label, is_cancelled, location_id)`,
       )
       .eq("id", record.id)
       .single();
     name = `${p?.title_override ?? p?.show?.title} (${p?.year})`;
+    poster = {
+      thumb: mediaUrl(p?.poster?.thumb_key),
+      ground: (p?.poster?.palette as { ground?: string } | null)?.ground ?? null,
+    };
     if (p?.show) roleShow = { id: p.show.id, title: p.show.title };
     if (p?.organization) labels.organization_id = p.organization.name;
     if (p?.location) labels.location_id = p.location.name;
@@ -147,6 +156,35 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
           )}
         </p>
       </div>
+      {poster && (
+        <section aria-labelledby="poster-h" className="flex flex-col gap-3">
+          <div className="border-b-2 border-ink pb-2">
+            <h2 id="poster-h" className="heading">
+              Poster
+            </h2>
+          </div>
+          <div className="flex flex-wrap items-start gap-5">
+            {poster.thumb ? (
+              <div className="flex aspect-[2/3] w-[120px] flex-none items-center overflow-hidden rounded-[4px] border border-rule" style={{ background: poster.ground ?? "#F5F5F4" }}>
+                <img src={poster.thumb} alt={`Current poster for ${name}`} className="h-full w-full object-contain" />
+              </div>
+            ) : (
+              <div className="flex aspect-[2/3] w-[120px] flex-none items-center justify-center rounded-[4px] border border-dashed border-[#CFCFCF] text-center text-sm text-muted">
+                No poster yet
+              </div>
+            )}
+            <div className="flex min-w-[220px] flex-1 flex-col gap-2">
+              <p className="m-0 text-[15px] text-muted">
+                {poster.thumb
+                  ? "Wrong or out-of-date poster? Upload the right one. A moderator approves it, then it replaces this one."
+                  : "Add the production’s poster. A moderator approves it, then it appears on the page."}{" "}
+                This is separate from <strong className="text-ink">Submit correction</strong> below.
+              </p>
+              <PosterUploader productionId={record.id} hasPoster={!!poster.thumb} />
+            </div>
+          </div>
+        </section>
+      )}
       <CorrectionForm
         table={table}
         id={record.id}

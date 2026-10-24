@@ -15,6 +15,7 @@ export type QueueItem = {
   palette: MediaPalette | null;
   uploader: string;
   uploaderMedal?: React.ReactNode;
+  replaces?: string | null; // the current poster this one would replace
   uploadedAt: string;
 };
 
@@ -108,6 +109,14 @@ function UploadCard({
           <img src={item.thumb} alt={`${KIND[item.kind]} uploaded by ${item.uploader}`} className="h-full w-full object-contain" />
         </div>
       </a>
+      {item.replaces && (
+        <div className="flex items-center gap-2 text-[13px] text-muted">
+          <img src={item.replaces} alt="The current poster" className="h-12 w-auto rounded-[2px] border border-rule" />
+          <span>
+            <strong className="text-ink">Replaces</strong> the current poster
+          </span>
+        </div>
+      )}
       <div className="flex flex-col text-[13px] leading-snug" title={`${item.uploadedAt}. Rights and 18+ confirmed by the uploader.`}>
         <span>
           <strong>{KIND[item.kind]}</strong> by {item.uploader.split(" (")[0]} {item.uploaderMedal}

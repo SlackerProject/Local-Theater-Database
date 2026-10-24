@@ -60,7 +60,7 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       .select(
         `id, kind, storage_key, thumb_key, photographer_credit, palette, created_at, uploaded_by,
          uploader:profiles!media_uploaded_by_fkey(username, display_name),
-         production:productions!media_production_id_fkey(id, slug, year, title_override, show:shows(title)),
+         production:productions!media_production_id_fkey(id, slug, year, title_override, show:shows(title), poster:media!productions_poster_fk(id, thumb_key, storage_key)),
          person:people!media_person_id_fkey(id, slug, display_name),
          organization:organizations!media_organization_id_fkey(id, slug, name)`,
       )
@@ -121,6 +121,11 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
       palette: (m.palette as MediaPalette | null) ?? null,
       uploader: `${m.uploader?.display_name} (@${m.uploader?.username})`,
       uploaderMedal: <ContributorTag points={points.get(m.uploaded_by)} />,
+      // A new poster for a production that has one: show what it replaces
+      replaces:
+        m.kind === "poster" && m.production?.poster && m.production.poster.id !== m.id
+          ? mediaUrl(m.production.poster.thumb_key ?? m.production.poster.storage_key)
+          : null,
       uploadedAt: new Date(m.created_at).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }),
     });
     groups.set(target.key, group);

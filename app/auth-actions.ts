@@ -3,6 +3,7 @@
 import { siteOrigin } from "@/lib/site";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { allowAuthAttempt } from "@/lib/rate-limit";
 
 const TOO_MANY = "Too many attempts right now. Please wait a minute and try again.";
@@ -10,6 +11,7 @@ const TOO_MANY = "Too many attempts right now. Please wait a minute and try agai
 export type AuthFormState = {
   error?: string;
   checkEmail?: string;
+  done?: boolean; // the new password was saved
   values?: Record<string, string>;
 };
 
@@ -94,6 +96,43 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
     return { error: friendlyAuthError(error.message), values: { email } };
   }
   redirect(next);
+}
+
+// "Forgot your password?": always the same answer, so nobody can use it to
+// learn who has an account. The email's link carries a short sign-in
+// (implicit flow), so it works on any device, not only the browser that
+// asked, and opens /reset-password.
+export async function requestPasswordReset(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "Please enter the email address you signed up with.", values: { email } };
+  if (!(await allowAuthAttempt())) return { error: TOO_MANY, values: { email } };
+
+  const supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+    auth: { flowType: "implicit", persistSession: false, autoRefreshToken: false },
+  });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${await siteOrigin()}/reset-password` });
+  if (error && /rate limit/i.test(error.message)) {
+    return { error: "We can’t send another email right now. Please try again in an hour.", values: { email } };
+  }
+  return { checkEmail: email };
+}
+
+// The new password, from /reset-password (the email's link signed them in)
+export async function setNewPassword(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) return { error: "Use at least 8 characters." };
+  if (password !== confirm) return { error: "The two passwords don’t match." };
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { error: "This reset link has expired. Please ask for a new one." };
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    if (/different from the old/i.test(error.message)) return { error: "That’s already your password. Choose a new one, or just sign in." };
+    return { error: friendlyAuthError(error.message) };
+  }
+  return { done: true };
 }
 
 export async function signOut() {

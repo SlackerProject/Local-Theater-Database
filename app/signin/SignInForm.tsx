@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { signIn, type AuthFormState } from "@/app/auth-actions";
 import { FormError, PrimaryButton, TextField } from "@/components/AuthCard";
@@ -12,6 +13,9 @@ export function SignInForm({ next }: { next: string }) {
       <FormError message={state.error} />
       <TextField label="Email" name="email" type="email" autoComplete="email" defaultValue={state.values?.email} />
       <TextField label="Password" name="password" type="password" autoComplete="current-password" />
+      <Link href="/forgot-password" className="-mt-2 self-start text-[15px] font-semibold">
+        Forgot your password?
+      </Link>
       <PrimaryButton pending={pending}>{pending ? "Signing in…" : "Sign in"}</PrimaryButton>
     </form>
   );

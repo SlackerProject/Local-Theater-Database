@@ -16,6 +16,7 @@ const EDGE_TTL = 60;
 const NEVER_CACHE = [
   "/_next", "/cdn-cgi", "/api", "/auth", "/add", "/edit", "/moderate", "/settings",
   "/notifications", "/calendar", "/following", "/submissions", "/updates/new",
+  "/forgot-password", "/reset-password",
 ];
 
 // Headers Next.js uses for in-app navigation; the response depends on them

@@ -20,5 +20,7 @@ export async function GET(request: NextRequest) {
     ok = !(await supabase.auth.verifyOtp({ token_hash: tokenHash, type })).error;
   }
 
-  return NextResponse.redirect(new URL(ok ? next : "/signin?confirm=failed", origin));
+  // A failed password reset link offers a new one
+  const failed = type === "recovery" || next.startsWith("/reset-password") ? "/forgot-password?expired=1" : "/signin?confirm=failed";
+  return NextResponse.redirect(new URL(ok ? next : failed, origin));
 }

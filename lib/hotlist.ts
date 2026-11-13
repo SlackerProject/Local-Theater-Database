@@ -17,6 +17,7 @@ export type HotProduction = {
   href: string;
   name: string;
   company: string;
+  town: string; // where it's performed
   dates: string;
   poster: string | null;
   showTitle: string;
@@ -53,7 +54,7 @@ export async function getHotProductions(limit: number): Promise<HotProduction[]>
     .select(
       `id, slug, year, title_override, opening_date, closing_date,
        color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
-       show:shows(title), organization:organizations(name), poster:media!productions_poster_fk(thumb_key)`,
+       show:shows(title), organization:organizations(name), location:locations(town), poster:media!productions_poster_fk(thumb_key)`,
     )
     .in("id", ids);
 
@@ -75,6 +76,7 @@ export async function getHotProductions(limit: number): Promise<HotProduction[]>
         href: `/production/${p.slug}`,
         name: `${showTitle} (${p.year})`,
         company: p.organization?.name ?? "",
+        town: p.location?.town ?? "",
         dates,
         poster: mediaUrl(p.poster?.thumb_key),
         showTitle,

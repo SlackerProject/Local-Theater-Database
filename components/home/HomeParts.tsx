@@ -72,7 +72,7 @@ export async function HotlistBox() {
               </span>
               <span className="flex min-w-0 flex-col leading-[1.3]">
                 <span className="truncate font-bold">{p.name}</span>
-                <span className="truncate text-[13px] text-muted">{p.company}</span>
+                <span className="truncate text-[13px] text-muted">{[p.company, p.town].filter(Boolean).join(" · ")}</span>
               </span>
             </Link>
           ))

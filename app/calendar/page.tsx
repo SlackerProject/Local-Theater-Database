@@ -89,7 +89,7 @@ function toRun(p: ProdRow, followed: boolean, because: string | null): Run | nul
     slug: p.slug,
     title: `${showTitle} (${p.year})`,
     showTitle,
-    company: p.organization?.name ?? "",
+    company: [p.organization?.name, p.location?.town].filter(Boolean).join(" · "),
     start,
     end: end < start ? start : end,
     colors: showColors(p),

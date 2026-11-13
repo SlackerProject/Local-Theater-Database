@@ -42,6 +42,7 @@ export const PRODUCTION_COLUMNS: ColumnSpec[] = [
     help: "Optional. Each performance as YYYY-MM-DD HH:MM (24-hour), separated by semicolons.",
     example: "2019-03-08 20:00; 2019-03-09 14:00; 2019-03-09 20:00",
   },
+  { key: "tickets", header: "Tickets link", required: false, help: "Where to buy tickets (a web address), if known.", example: "https://footlight.org/tickets", aliases: ["tickets", "ticket url", "ticket link"] },
   { key: "source", header: "Source", required: false, help: "Where this came from: a web page or program. Kept with the record for moderators.", example: "https://footlight.org/history" },
 ];
 
@@ -68,6 +69,7 @@ PRODUCTIONS: one row per production.
 - Company town, Venue, Venue address, Venue town: towns must be Massachusetts cities or towns.
 - Opening date / Closing date: YYYY-MM-DD.
 - Performances: optional; "YYYY-MM-DD HH:MM" (24-hour) separated by semicolons.
+- Tickets link: optional; the web address where tickets are sold.
 - Source: the web page or program the facts came from.
 
 CREDITS: one row per person per role.
@@ -98,6 +100,7 @@ export type BulkProduction = {
   opening: string | null;
   closing: string | null;
   performances: BundlePerformance[];
+  tickets: string;
   source: string;
 };
 
@@ -267,6 +270,7 @@ export function parseBulk(productionRows: Cell[][] | null, creditRows: Cell[][] 
         opening: opening ?? null,
         closing: closing ?? null,
         performances: perf.list,
+        tickets: /^https?:\/\/\S+$/i.test(text(get("tickets"))) ? text(get("tickets")) : "",
         source: text(get("source")),
       });
     });
@@ -375,7 +379,13 @@ export function buildBulkBundle(
     organization: company
       ? { id: company.id, label: company.label }
       : { new: { name: p.company, ...(townFor(p.companyTown) && { town: townFor(p.companyTown)! }) } },
-    production: { year: p.year!, opening_date: p.opening, closing_date: p.closing, display_title: `${title} (${p.year})` },
+    production: {
+      year: p.year!,
+      opening_date: p.opening,
+      closing_date: p.closing,
+      display_title: `${title} (${p.year})`,
+      ...(p.tickets && { ticket_url: p.tickets }),
+    },
     location: !p.venue
       ? null
       : venue

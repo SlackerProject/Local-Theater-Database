@@ -11,7 +11,7 @@ export type Tile = {
   href: string;
   title: string; // "Little Women (2026)"
   showTitle: string;
-  line: string; //  "Walpole Footlighters · Oct 30 – Nov 15"
+  line: string; //  "Walpole Footlighters · Walpole · Oct 30 – Nov 15"
   poster: string | null;
   background: string;
   borderColor: string;
@@ -19,7 +19,7 @@ export type Tile = {
 
 export const TILE_SELECT = `id, slug, year, title_override, opening_date, closing_date, is_hidden, created_at,
   color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
-  show:shows(title), organization:organizations(name), poster:media!productions_poster_fk(thumb_key)`;
+  show:shows(title), organization:organizations(name), location:locations(town), poster:media!productions_poster_fk(thumb_key)`;
 
 type ProdRow = {
   id: string;
@@ -36,6 +36,7 @@ type ProdRow = {
   color_edge: string | null;
   show: { title: string } | null;
   organization: { name: string } | null;
+  location?: { town: string | null } | null;
   poster: { thumb_key: string | null } | null;
 };
 
@@ -55,7 +56,7 @@ export function toTile(p: ProdRow): Tile {
     href: `/production/${p.slug}`,
     title: `${showTitle} (${p.year})`,
     showTitle,
-    line: [p.organization?.name, dates].filter(Boolean).join(" · "),
+    line: [p.organization?.name, p.location?.town, dates].filter(Boolean).join(" · "),
     poster: mediaUrl(p.poster?.thumb_key),
     background: sw.background,
     borderColor: sw.borderColor,

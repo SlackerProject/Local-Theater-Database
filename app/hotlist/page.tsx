@@ -45,7 +45,7 @@ async function List() {
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="truncate font-bold">{r.name}</span>
-              <span className="truncate text-sm text-muted">{[r.company, r.dates].filter(Boolean).join(" · ")}</span>
+              <span className="truncate text-sm text-muted">{[r.company, r.town, r.dates].filter(Boolean).join(" · ")}</span>
             </span>
             <MoveMarker move={r.move} />
           </Link>

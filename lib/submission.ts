@@ -62,6 +62,7 @@ export type FormState = {
   year: string;
   openingDate: string;
   closingDate: string;
+  ticketUrl?: string; // a link to buy tickets (optional)
   performances: Performance[];
   // "Some performances are at a different venue" (touring shows)
   multiVenue?: boolean;
@@ -148,7 +149,8 @@ type BundleItems = {
 export type NewProductionBundle = BundleItems & {
   show: Ref<NewShow>;
   organization: Ref<NewOrganization>;
-  production: { year: number; opening_date: string | null; closing_date: string | null; display_title: string };
+  // ticket_url: a link to buy tickets (optional; saved on approval)
+  production: { year: number; opening_date: string | null; closing_date: string | null; display_title: string; ticket_url?: string };
 };
 
 // More cast, crew, performances (or its location) for a live production
@@ -271,6 +273,10 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
     problems.push("Enter the production’s year, like 2026.");
   }
   const opening = s.openingDate && DATE_RE.test(s.openingDate) ? s.openingDate : null;
+  // A tickets link must be a web address; "tickets.org" gets https:// added
+  const rawTicket = (s.ticketUrl ?? "").trim();
+  const ticketUrl = rawTicket ? (/^https?:\/\//i.test(rawTicket) ? rawTicket : `https://${rawTicket}`) : "";
+  if (ticketUrl && !/^https?:\/\/[^\s/.]+\.[^\s]+$/i.test(ticketUrl)) problems.push("The tickets link should be a web address, like https://company.org/tickets.");
   const closing = s.closingDate && DATE_RE.test(s.closingDate) ? s.closingDate : null;
   if (!existing && opening && closing && closing < opening) problems.push("The closing date is before the opening date.");
 
@@ -406,7 +412,13 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
       show: show!,
       organization: organization!,
       location,
-      production: { year, opening_date: opening, closing_date: closing, display_title: displayTitle(s) },
+      production: {
+        year,
+        opening_date: opening,
+        closing_date: closing,
+        display_title: displayTitle(s),
+        ...(ticketUrl && { ticket_url: ticketUrl }),
+      },
       performances,
       people,
       credits,
@@ -562,6 +574,7 @@ export function bundleToFormState(b: Bundle, defaultYear: string, liveHasLocatio
     form.year = String(production.year);
     form.openingDate = production.opening_date ?? "";
     form.closingDate = production.closing_date ?? "";
+    form.ticketUrl = production.ticket_url ?? "";
   }
   return itemsToForm(form, b);
 }

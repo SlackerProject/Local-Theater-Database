@@ -109,12 +109,12 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const { data: p } = await supabase
     .from("productions")
     .select(
-      `id, slug, year, title_override, opening_date, closing_date, description, audition_note, audition_url,
+      `id, slug, year, title_override, opening_date, closing_date, description, audition_note, audition_url, ticket_url,
        auditions(id, starts_at, ends_at, label, place, location_id, venue:locations(slug, name)),
        color_ground, color_ground_2, color_ink, color_soft, color_accent,
        poster:media!productions_poster_fk(thumb_key, storage_key, width, height),
        show:shows(id, slug, title, subtitle, type, authors),
-       organization:organizations(slug, name, logo:media!organizations_logo_fk(thumb_key)),
+       organization:organizations(slug, name, website_url, logo:media!organizations_logo_fk(thumb_key)),
        location:locations(id, slug, name, street_address, town, state),
        performances(id, starts_at, label, is_cancelled, location_id, venue:locations(name, street_address, town, state)),
        credits(id, kind, role_name, billing_order, is_understudy, is_young_performer,
@@ -198,6 +198,8 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
   const origin = await siteOrigin();
   const now = currentTime().getTime();
   const venueAddress = p.location ? [p.location.street_address, p.location.town, p.location.state].filter(Boolean).join(", ") : null;
+  // Shown under the title: street and town (the state goes without saying)
+  const shortAddress = p.location ? [p.location.street_address, p.location.town].filter(Boolean).join(", ") : "";
   const performances: PerformanceRow[] = [...(p.performances ?? [])]
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
     .map((pf) => {
@@ -319,6 +321,43 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
                 {p.location && (
                   <Link href={`/venue/${p.location.slug}`} style={{ color: c.ink }}>
                     {p.location.name}
+                  </Link>
+                )}
+                {/* The address: where it is, and directions there */}
+                {shortAddress && (
+                  <>
+                    {" · "}
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${p.location!.name}, ${venueAddress}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Directions"
+                      style={{ color: c.soft }}
+                    >
+                      {shortAddress}
+                    </a>
+                  </>
+                )}
+              </p>
+            )}
+            {/* Tickets while it's on: the ticket link, or the company's website */}
+            {!closed && (p.ticket_url || p.organization?.website_url || user) && (
+              <p className="m-0 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                {(p.ticket_url || p.organization?.website_url) && (
+                  <a
+                    href={(p.ticket_url || p.organization!.website_url)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[17px] font-semibold"
+                    style={{ color: c.ink }}
+                  >
+                    {p.ticket_url ? "Get tickets" : "Tickets & info on the company’s website"} ↗
+                  </a>
+                )}
+                {/* Members can fill in a missing tickets link */}
+                {!p.ticket_url && user && (
+                  <Link href={`/edit/production/${p.slug}`} className="text-[15px]" style={{ color: c.soft }}>
+                    Add the ticket link
                   </Link>
                 )}
               </p>

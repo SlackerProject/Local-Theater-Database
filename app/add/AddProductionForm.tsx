@@ -667,6 +667,14 @@ export function AddProductionForm({
           <p className="m-0 text-sm text-muted" aria-live="polite">
             This production will appear as <strong className="text-ink">{title}</strong>.
           </p>
+          <SmallInput
+            label="Tickets link"
+            optional
+            type="url"
+            placeholder="https://company.org/tickets"
+            value={state.ticketUrl ?? ""}
+            onChange={(ticketUrl) => update((s) => ({ ...s, ticketUrl }))}
+          />
           </>
           )}
 

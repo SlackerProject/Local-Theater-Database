@@ -306,6 +306,47 @@ export type Database = {
           },
         ]
       }
+      bulk_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_ids: string[]
+          file_name: string
+          id: string
+          proposal_ids: string[]
+          replaced_ids: string[]
+          undone_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_ids?: string[]
+          file_name: string
+          id?: string
+          proposal_ids?: string[]
+          replaced_ids?: string[]
+          undone_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_ids?: string[]
+          file_name?: string
+          id?: string
+          proposal_ids?: string[]
+          replaced_ids?: string[]
+          undone_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_imports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_feeds: {
         Row: {
           created_at: string
@@ -1841,6 +1882,36 @@ export type Database = {
           p_poster: Json
           p_production: string
           p_uploader: string
+        }
+        Returns: undefined
+      }
+      bulk_import_add: {
+        Args: {
+          p_id: string
+          p_production: string
+          p_proposal: string
+          p_replaced: boolean
+        }
+        Returns: undefined
+      }
+      bulk_import_start: { Args: { p_file_name: string }; Returns: string }
+      bulk_import_undo: { Args: { p_id: string }; Returns: number }
+      bulk_replace_production: {
+        Args: {
+          p_bundle: Json
+          p_clear_venue: boolean
+          p_closing: string
+          p_opening: string
+          p_proposal_id: string
+        }
+        Returns: string
+      }
+      bulk_reset_production: {
+        Args: {
+          p_clear_venue: boolean
+          p_closing: string
+          p_id: string
+          p_opening: string
         }
         Returns: undefined
       }

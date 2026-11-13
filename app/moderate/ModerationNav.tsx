@@ -7,6 +7,7 @@ const TABS = [
   { href: "/moderate/changes", label: "Recent changes" },
   { href: "/moderate/bugs", label: "Feedback" },
   { href: "/moderate/stats", label: "Stats" },
+  { href: "/moderate/bulk", label: "Bulk Upload" },
 ] as const;
 
 // The moderators' tools, one tab each; the review queue shows how many

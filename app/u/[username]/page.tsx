@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SimplePoster } from "@/components/SimplePoster";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -316,7 +317,7 @@ async function Profile({ params }: Pick<PageProps<"/u/[username]">, "params">) {
                         {poster ? (
                           <img src={poster} alt={`${title} poster`} className="block h-full w-full object-contain" />
                         ) : (
-                          <span className="self-end p-2.5 text-[13px] font-extrabold leading-tight text-muted">{title}</span>
+                          <SimplePoster title={title} year={p.year} />
                         )}
                       </Link>
                     );

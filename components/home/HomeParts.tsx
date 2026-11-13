@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SimplePoster } from "@/components/SimplePoster";
 import type { Tile } from "@/lib/home";
 import { getHotProductions, hotlistUpdated } from "@/lib/hotlist";
 import { latestUpdates, postDate } from "@/lib/updates";
@@ -13,7 +14,7 @@ export function HomeTile({ t }: { t: Tile }) {
         {t.poster ? (
           <img src={t.poster} alt={`${t.showTitle} poster`} loading="lazy" className="block h-full w-full object-contain" />
         ) : (
-          <span className="self-end p-2.5 text-[13px] font-extrabold leading-[1.1] text-muted">{t.title}</span>
+          <SimplePoster title={t.showTitle} />
         )}
       </span>
       <span className="flex flex-col leading-[1.3]">
@@ -67,7 +68,7 @@ export async function HotlistBox() {
             <Link key={p.id} href={p.href} className={row}>
               <span className={rank}>{p.rank}</span>
               <span aria-hidden="true" className="flex h-[42px] w-[34px] flex-none overflow-hidden rounded-[3px] border" style={{ background: p.background, borderColor: p.borderColor }}>
-                {p.poster && <img src={p.poster} alt="" className="h-full w-full object-contain" />}
+                {p.poster ? <img src={p.poster} alt="" className="h-full w-full object-contain" /> : <SimplePoster title={p.showTitle} />}
               </span>
               <span className="flex min-w-0 flex-col leading-[1.3]">
                 <span className="truncate font-bold">{p.name}</span>

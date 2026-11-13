@@ -289,7 +289,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
                 />
               </div>
             ) : (
-              <PosterTile title={title} />
+              <PosterTile title={title} year={p.year} company={p.organization?.name} />
             )}
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-3">

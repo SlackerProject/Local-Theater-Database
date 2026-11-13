@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SimplePoster } from "@/components/SimplePoster";
 import { swatch, type ShowColors } from "@/lib/palette";
 import { localDay, localTime } from "@/lib/calendar";
 
@@ -253,8 +254,8 @@ export function GoingCard({ g }: { g: Going }) {
       {g.run.poster ? (
         <img src={g.run.poster} alt={`${g.run.showTitle} poster`} className="w-14 flex-none rounded-[4px]" />
       ) : (
-        <span aria-hidden="true" className="flex aspect-[4/5] w-14 flex-none items-center justify-center rounded-[4px] border border-rule bg-white p-1 text-center text-[10px] font-extrabold text-muted">
-          {g.run.showTitle}
+        <span aria-hidden="true" className="flex aspect-[4/5] w-14 flex-none overflow-hidden rounded-[4px]">
+          <SimplePoster title={g.run.showTitle} />
         </span>
       )}
       <span className="flex min-w-0 flex-col">

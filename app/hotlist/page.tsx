@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SimplePoster } from "@/components/SimplePoster";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getHotProductions, hotlistUpdated, type Move } from "@/lib/hotlist";
@@ -39,7 +40,7 @@ async function List() {
               {r.poster ? (
                 <img src={r.poster} alt="" className="block h-full w-full object-contain" />
               ) : (
-                <span className="self-end p-1 text-[9px] font-extrabold leading-tight text-muted">{r.showTitle}</span>
+                <SimplePoster title={r.showTitle} />
               )}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">

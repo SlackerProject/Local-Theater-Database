@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SimplePoster } from "@/components/SimplePoster";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth";
@@ -271,7 +272,7 @@ async function NextAudition({ userId }: { userId: string }) {
           {poster ? (
             <img src={poster} alt={`${title} poster`} className="h-full w-full object-contain" />
           ) : (
-            <span className="flex h-full w-full items-end bg-white p-1.5 text-[11px] font-extrabold leading-tight text-muted">{title}</span>
+            <SimplePoster title={title} year={p.year} />
           )}
         </span>
         <span className="flex min-w-0 flex-col gap-0.5">
@@ -368,7 +369,7 @@ async function FollowingThumbs({ userId }: { userId: string }) {
                       {poster ? (
                         <img src={poster} alt="" loading="lazy" className="h-full w-full object-contain" />
                       ) : (
-                        <span className="self-end p-1.5 text-[11px] font-extrabold leading-tight text-muted">{title}</span>
+                        <SimplePoster title={title} year={p.year} />
                       )}
                     </span>
                     <span className="line-clamp-2 text-[13px] font-semibold leading-tight">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SimplePoster } from "@/components/SimplePoster";
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
@@ -356,8 +357,8 @@ async function Calendar({ searchParams }: Pick<PageProps<"/calendar">, "searchPa
                   {next.run.poster ? (
                     <img src={next.run.poster} alt={`${next.run.showTitle} poster`} className="w-[84px] flex-none rounded-[4px]" />
                   ) : (
-                    <span aria-hidden="true" className="flex aspect-[4/5] w-[84px] flex-none items-center justify-center rounded-[4px] border border-rule bg-soft p-1.5 text-center text-xs font-extrabold text-muted">
-                      {next.run.showTitle}
+                    <span aria-hidden="true" className="flex aspect-[4/5] w-[84px] flex-none overflow-hidden rounded-[4px]">
+                      <SimplePoster title={next.run.showTitle} />
                     </span>
                   )}
                   <span className="flex min-w-0 flex-col gap-0.5">

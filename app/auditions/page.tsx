@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SimplePoster } from "@/components/SimplePoster";
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
@@ -83,7 +84,7 @@ async function List() {
                 {poster ? (
                   <img src={poster} alt="" className="block h-full w-full object-contain" />
                 ) : (
-                  <span className="self-end p-1 text-[9px] font-extrabold leading-tight text-muted">{title}</span>
+                  <SimplePoster title={title} />
                 )}
               </span>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">

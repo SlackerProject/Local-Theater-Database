@@ -31,7 +31,7 @@ export function PosterTile({
           <img src={posterUrl} alt={`${title} poster`} loading="lazy" className="block h-full w-full object-contain" />
         </div>
       ) : (
-        <div className="flex aspect-[4/5] w-full overflow-hidden rounded-[4px] shadow-[0_6px_16px_rgba(0,0,0,0.15)]">
+        <div className="flex aspect-[4/5] w-full overflow-hidden rounded-[4px]">
           <SimplePoster title={title} year={year} company={company} />
         </div>
       )}

@@ -520,6 +520,38 @@ export type Database = {
           },
         ]
       }
+      duplicate_dismissals: {
+        Row: {
+          a_id: string
+          b_id: string
+          dismissed_at: string
+          dismissed_by: string | null
+          entity_table: string
+        }
+        Insert: {
+          a_id: string
+          b_id: string
+          dismissed_at?: string
+          dismissed_by?: string | null
+          entity_table: string
+        }
+        Update: {
+          a_id?: string
+          b_id?: string
+          dismissed_at?: string
+          dismissed_by?: string | null
+          entity_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duplicate_dismissals_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edit_proposals: {
         Row: {
           approved_changes: Json | null
@@ -871,6 +903,50 @@ export type Database = {
           {
             foreignKeyName: "media_uploaded_by_fkey"
             columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merges: {
+        Row: {
+          entity_table: string
+          id: string
+          kept_id: string
+          merged_at: string
+          merged_by: string | null
+          removed_id: string
+          removed_row: Json
+          removed_slug: string
+          summary: Json
+        }
+        Insert: {
+          entity_table: string
+          id?: string
+          kept_id: string
+          merged_at?: string
+          merged_by?: string | null
+          removed_id: string
+          removed_row: Json
+          removed_slug: string
+          summary?: Json
+        }
+        Update: {
+          entity_table?: string
+          id?: string
+          kept_id?: string
+          merged_at?: string
+          merged_by?: string | null
+          removed_id?: string
+          removed_row?: Json
+          removed_slug?: string
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merges_merged_by_fkey"
+            columns: ["merged_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1951,6 +2027,10 @@ export type Database = {
           slug: string
         }[]
       }
+      dismiss_duplicate: {
+        Args: { p_a: string; p_b: string; p_table: string }
+        Returns: undefined
+      }
       dismiss_notification: { Args: { p_id: string }; Returns: undefined }
       edge_for: { Args: { p_ground: string }; Returns: string }
       find_people_by_names: {
@@ -2061,6 +2141,19 @@ export type Database = {
           username: string
         }[]
       }
+      merge_detail: { Args: { p_id: string; p_table: string }; Returns: string }
+      merge_entities: {
+        Args: { p_keep: string; p_remove: string; p_table: string }
+        Returns: Json
+      }
+      merge_preview: {
+        Args: { p_keep: string; p_remove: string; p_table: string }
+        Returns: Json
+      }
+      merged_into: {
+        Args: { p_slug: string; p_table: string }
+        Returns: string
+      }
       moderation_pending_count: { Args: never; Returns: number }
       moderation_stats: { Args: never; Returns: Json }
       moderator_delete: {
@@ -2069,6 +2162,7 @@ export type Database = {
       }
       my_calendar_feed: { Args: { p_reset?: boolean }; Returns: string }
       my_person_id: { Args: never; Returns: string }
+      name_match_key: { Args: { p: string }; Returns: string }
       owner_add_credit: {
         Args: {
           p_character_id: string
@@ -2108,6 +2202,21 @@ export type Database = {
         Returns: undefined
       }
       person_name_key: { Args: { p_name: string }; Returns: string }
+      potential_duplicates: {
+        Args: never
+        Returns: {
+          a_detail: string
+          a_id: string
+          a_label: string
+          a_slug: string
+          b_detail: string
+          b_id: string
+          b_label: string
+          b_slug: string
+          entity_table: string
+          reason: string
+        }[]
+      }
       production_display_title: {
         Args: { p: Database["public"]["Tables"]["productions"]["Row"] }
         Returns: string

@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
@@ -42,7 +42,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
     .eq("slug", slug)
     .maybeSingle();
 
-  if (!org) notFound();
+  if (!org) return forwardIfMerged("organizations", slug);
 
   const user = await getCurrentUser();
   const [{ data: followers }, { data: myFollow }, { count: myPendingLogos }] = await Promise.all([

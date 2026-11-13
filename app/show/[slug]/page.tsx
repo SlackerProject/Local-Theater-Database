@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { forwardIfMerged } from "@/lib/merged";
 import { createClient } from "@/lib/supabase/server";
 import { SHOW_TYPES } from "@/lib/submission";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
@@ -37,7 +37,7 @@ async function Show({ params }: Pick<PageProps<"/show/[slug]">, "params">) {
     .eq("slug", slug)
     .maybeSingle();
 
-  if (!show) notFound();
+  if (!show) return forwardIfMerged("shows", slug);
   const user = await getCurrentUser();
 
   const typeLabel = SHOW_TYPES.find((t) => t.value === show.type)?.label;

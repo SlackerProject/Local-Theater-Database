@@ -7,6 +7,7 @@ const TABS = [
   { href: "/moderate/changes", label: "Recent changes" },
   { href: "/moderate/bugs", label: "Feedback" },
   { href: "/moderate/stats", label: "Stats" },
+  { href: "/moderate/duplicates", label: "Duplicates" },
   { href: "/moderate/bulk", label: "Bulk Upload" },
 ] as const;
 

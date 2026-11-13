@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ProductionsByYear } from "@/components/ProductionsByYear";
@@ -37,7 +37,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
     .eq("slug", slug)
     .maybeSingle();
 
-  if (!venue) notFound();
+  if (!venue) return forwardIfMerged("locations", slug);
   const user = await getCurrentUser();
 
   const address = [venue.street_address, venue.town, [venue.state, venue.postal_code].filter(Boolean).join(" ")]

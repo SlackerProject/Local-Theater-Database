@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { showColors, swatch } from "@/lib/palette";
 import { getCurrentUser } from "@/lib/auth";
@@ -79,7 +79,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
     .eq("slug", slug)
     .maybeSingle();
 
-  if (!person) notFound();
+  if (!person) return forwardIfMerged("people", slug);
 
   const user = await getCurrentUser();
   const isOwner = !!user && person.verified_owner_id === user.id;

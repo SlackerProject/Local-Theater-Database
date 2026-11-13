@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { showColors } from "@/lib/palette";
 import { SHOW_TYPES } from "@/lib/submission";
@@ -124,7 +124,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
     .eq("slug", slug)
     .maybeSingle();
 
-  if (!p || !p.show) notFound();
+  if (!p || !p.show) return forwardIfMerged("productions", slug);
 
   const [{ data: others }, { data: photoRows }, user] = await Promise.all([
     supabase

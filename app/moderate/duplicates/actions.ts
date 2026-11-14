@@ -7,7 +7,7 @@ import { getCurrentUser, hasRole } from "@/lib/auth";
 // Merging duplicates and dismissing "potential duplicate" flags. Moderators
 // only; the database functions check the role again.
 
-export type MergeTable = "people" | "shows" | "organizations" | "locations" | "productions";
+import type { MergeTable } from "@/lib/merge";
 export type PageHit = { id: string; label: string; detail: string };
 
 async function moderator() {

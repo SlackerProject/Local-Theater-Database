@@ -6,8 +6,8 @@ import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "../ModerationNav";
-import { DuplicatePair, ManualMerge, NOUN } from "./MergeTools";
-import type { MergeTable } from "./actions";
+import { DuplicatePair, ManualMerge } from "./MergeTools";
+import { NOUN, type MergeTable } from "@/lib/merge";
 
 export const metadata: Metadata = { title: "Duplicates · Moderation" };
 

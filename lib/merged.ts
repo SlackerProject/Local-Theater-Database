@@ -1,8 +1,7 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-type Table = "people" | "shows" | "organizations" | "locations" | "productions";
-const PATH: Record<Table, string> = { people: "person", shows: "show", organizations: "company", locations: "venue", productions: "production" };
+import { PAGE_PATH as PATH, type MergeTable as Table } from "@/lib/merge";
 
 // A page that isn't here: if a moderator merged it into another, its old
 // address forwards there; otherwise "not found"

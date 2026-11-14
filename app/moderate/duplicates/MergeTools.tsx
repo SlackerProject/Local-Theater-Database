@@ -2,18 +2,11 @@
 
 import { useEffect, useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { dismissDuplicate, mergePages, mergePreview, searchPages, type MergeTable, type PageHit } from "./actions";
+import { dismissDuplicate, mergePages, mergePreview, searchPages, type PageHit } from "./actions";
+import { NOUN, PAGE_PATH as PATH, type MergeTable } from "@/lib/merge";
 
 export type Side = { id: string; label: string; slug?: string; detail: string };
 
-export const NOUN: Record<MergeTable, string> = {
-  people: "person",
-  shows: "show",
-  organizations: "company",
-  locations: "venue",
-  productions: "production",
-};
-const PATH: Record<MergeTable, string> = { people: "person", shows: "show", organizations: "company", locations: "venue", productions: "production" };
 
 const MOVES: Record<string, string> = {
   credits: "credit",

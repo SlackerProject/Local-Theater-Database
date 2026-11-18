@@ -583,7 +583,7 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
             {awards.length ? (
               <AwardList rows={awards} />
             ) : (
-              <p className="m-0 text-[15px] text-muted">None recorded yet. EMACT nominations and wins will appear here.</p>
+              <p className="m-0 text-[15px] text-muted">None recorded yet.</p>
             )}
           </section>
         </aside>

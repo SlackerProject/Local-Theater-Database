@@ -547,7 +547,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             <section className="flex flex-col gap-1.5">
               <h2 className="subheading">Awards</h2>
               {awards.length ? (
-                <AwardList rows={awards} showProduction />
+                <AwardList rows={awards} personSlug={person.slug} />
               ) : (
                 <p className="m-0 text-[15px] text-muted">None recorded yet.</p>
               )}

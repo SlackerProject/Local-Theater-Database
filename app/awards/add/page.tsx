@@ -61,7 +61,7 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
     ? await Promise.all([
         supabase
           .from("award_ceremony_categories")
-          .select("sort_order, category:award_categories(id, name, kind, has_nominees)")
+          .select("sort_order, category:award_categories(id, name, kind, has_nominees, consultant_choice)")
           .eq("ceremony_id", ceremony.id)
           .order("sort_order"),
         supabase

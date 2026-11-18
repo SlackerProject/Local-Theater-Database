@@ -6,7 +6,7 @@ import { getCurrentUser, hasRole } from "@/lib/auth";
 import { AWARD_SELECT, ceremonyName, productionTitle, type AwardRow } from "@/lib/awards";
 import { showColors, swatch } from "@/lib/palette";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
-import { groupAwards } from "@/components/AwardList";
+import { groupAwards, ResultMark } from "@/components/AwardList";
 
 export const metadata: Metadata = { title: "Awards" };
 
@@ -21,14 +21,6 @@ export default function AwardsPage({ searchParams }: PageProps<"/awards">) {
       </main>
       <SiteFooter />
     </>
-  );
-}
-
-function Check() {
-  return (
-    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#141414" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
   );
 }
 
@@ -51,7 +43,8 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
   // Group by awards (e.g. EMACT), then category; winners first
   const groups = new Map<string, Map<string, AwardRow[]>>();
   for (const r of rows) {
-    const body = ceremonyName(r);
+    // Consultant Choice awards get their own section after the ceremony's others
+    const body = ceremonyName(r) + (r.category?.consultant_choice ? " · Consultant Choice" : "");
     const cat = r.category?.name ?? "Other";
     const byCat = groups.get(body) ?? new Map<string, AwardRow[]>();
     byCat.set(cat, [...(byCat.get(cat) ?? []), r]);
@@ -92,7 +85,7 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
           Award nominations and wins will appear here once they’re added{canAdd ? ". Use Add awards to enter them." : "."}
         </p>
       ) : (
-        [...groups].map(([body, byCat]) => (
+        [...groups].sort(([a], [b]) => Number(a.endsWith("Consultant Choice")) - Number(b.endsWith("Consultant Choice"))).map(([body, byCat]) => (
           <section key={body} className="flex flex-col gap-8">
             <h2 className="heading">{body}</h2>
             {[...byCat]
@@ -124,9 +117,9 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
                                   </Link>
                                 )
                               )}
-                              {e.result === "won" && (
-                                <span className="inline-flex items-center gap-1 font-bold">
-                                  <Check /> Winner
+                              {e.result === "won" && !e.category?.consultant_choice && (
+                                <span className="inline-flex items-center gap-1 font-semibold text-gold-ink">
+                                  <ResultMark status="won" /> Winner
                                 </span>
                               )}
                             </span>

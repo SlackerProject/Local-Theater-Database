@@ -15,7 +15,7 @@ import {
   setWinner,
 } from "../actions";
 
-export type Category = { id: string; name: string; kind: string; has_nominees: boolean };
+export type Category = { id: string; name: string; kind: string; has_nominees: boolean; consultant_choice: boolean };
 export type Nominee = { key: string; categoryId: string; entryIds: string[]; won: boolean; label: string; detail: string; people: string[] };
 type Pick = { id: string; label: string; detail: string };
 type Credit = { id: string; person: string; role: string };
@@ -504,7 +504,7 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
   const ids = { name: useId(), kind: useId() };
   const [name, setName] = useState("");
   const [kind, setKind] = useState<string>("performer");
-  const [hasNominees, setHasNominees] = useState(true);
+  const [given, setGiven] = useState<"nominees" | "winner" | "consultant">("nominees");
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
@@ -526,7 +526,7 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
           value={kind}
           onChange={(e) => {
             setKind(e.target.value);
-            setHasNominees(e.target.value !== "person");
+            if (given !== "consultant") setGiven(e.target.value === "person" ? "winner" : "nominees");
           }}
           className={`${field} max-w-[320px]`}
         >
@@ -539,10 +539,16 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
       </div>
       <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
         <legend className={`${labelText} mb-1`}>How is it given?</legend>
-        {[true, false].map((v) => (
-          <label key={String(v)} className="flex min-h-10 cursor-pointer items-center gap-2.5">
-            <input type="radio" name={`${ids.kind}-nominees`} checked={hasNominees === v} onChange={() => setHasNominees(v)} className="h-5 w-5 accent-ink" />
-            {v ? "Nominees, then a winner" : "Just the winner (like a special honor)"}
+        {(
+          [
+            ["nominees", "Nominees, then a winner"],
+            ["winner", "Just the winner (like a special honor)"],
+            ["consultant", "Consultant Choice"],
+          ] as const
+        ).map(([v, text]) => (
+          <label key={v} className="flex min-h-10 cursor-pointer items-center gap-2.5">
+            <input type="radio" name={`${ids.kind}-nominees`} checked={given === v} onChange={() => setGiven(v)} className="h-5 w-5 accent-ink" />
+            {text}
           </label>
         ))}
       </fieldset>
@@ -553,7 +559,7 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
           onClick={() =>
             start(async () => {
               setError("");
-              const r = await addCeremonyAward(ceremonyId, name, kind, hasNominees);
+              const r = await addCeremonyAward(ceremonyId, name, kind, given === "nominees", given === "consultant");
               if (!r.ok) return setError(r.error);
               setName("");
               router.refresh();
@@ -702,8 +708,8 @@ export function SeasonEditor({
       </div>
 
       {!categories.length && <p className="m-0 text-muted">This ceremony has no awards yet. Add them below.</p>}
-      {KINDS.map(({ kind, title }) => {
-        const group = categories.filter((c) => c.kind === kind);
+      {[...KINDS, { kind: "consultant", title: "Consultant Choice" }].map(({ kind, title }) => {
+        const group = categories.filter((c) => (kind === "consultant" ? c.consultant_choice : c.kind === kind && !c.consultant_choice));
         if (!group.length) return null;
         return (
           <section key={kind} className="flex flex-col">

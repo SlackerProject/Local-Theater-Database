@@ -154,6 +154,7 @@ export type Database = {
       award_categories: {
         Row: {
           award_body_id: string
+          consultant_choice: boolean
           has_nominees: boolean
           id: string
           kind: string
@@ -163,6 +164,7 @@ export type Database = {
         }
         Insert: {
           award_body_id: string
+          consultant_choice?: boolean
           has_nominees?: boolean
           id?: string
           kind?: string
@@ -172,6 +174,7 @@ export type Database = {
         }
         Update: {
           award_body_id?: string
+          consultant_choice?: boolean
           has_nominees?: boolean
           id?: string
           kind?: string
@@ -2032,6 +2035,7 @@ export type Database = {
       add_ceremony_award: {
         Args: {
           p_ceremony: string
+          p_consultant?: boolean
           p_has_nominees?: boolean
           p_kind: string
           p_name: string

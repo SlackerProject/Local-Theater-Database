@@ -1,6 +1,6 @@
 // Award nominations and wins (DESIGN.md "Awards (EMACT)")
 
-export const AWARD_SELECT = `id, award_year, result, source_url,
+export const AWARD_SELECT = `id, nomination_id, award_year, result, source_url,
   ceremony:award_ceremonies(name, season),
   organization:organizations(slug, name),
   category:award_categories(id, name, kind, section, body:award_bodies(name)),
@@ -13,6 +13,7 @@ export type AwardRow = {
   id: string;
   award_year: number;
   result: "nominated" | "won";
+  nomination_id: string;
   source_url: string;
   ceremony: { name: string; season: string } | null;
   organization: { slug: string; name: string } | null;

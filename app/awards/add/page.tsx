@@ -27,6 +27,7 @@ export default function AddAwardsPage({ searchParams }: PageProps<"/awards/add">
 
 type EntryRow = {
   id: string;
+  nomination_id: string;
   category_id: string;
   result: "nominated" | "won";
   production: { id: string; year: number; title_override: string | null; show: { title: string } | null; organization: { name: string } | null } | null;
@@ -66,7 +67,7 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
         supabase
           .from("award_entries")
           .select(
-            `id, category_id, result,
+            `id, nomination_id, category_id, result,
              production:productions(id, year, title_override, show:shows(title), organization:organizations(name)),
              person:people(id, display_name), credit:credits(is_young_performer), organization:organizations(id, name)`,
           )
@@ -78,8 +79,7 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
   // One nominee = one production with everyone it names, or one company, or one person
   const nominees = new Map<string, Nominee>();
   for (const e of (data ?? []) as unknown as EntryRow[]) {
-    const who = e.production?.id ?? (e.organization ? `org:${e.organization.id}` : `person:${e.person?.id}`);
-    const key = `${e.category_id}:${who}`;
+    const key = e.nomination_id;
     const n = nominees.get(key) ?? {
       key,
       categoryId: e.category_id,

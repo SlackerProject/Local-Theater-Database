@@ -12,7 +12,8 @@ import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { ContributorMedal, pointsFor } from "@/components/badges/ContributorMedal";
 import { ViewTracker } from "@/components/ViewTracker";
-import { AWARD_SELECT, awardSentence, productionTitle, sortAwards, type AwardRow } from "@/lib/awards";
+import { AWARD_SELECT, sortAwards, type AwardRow } from "@/lib/awards";
+import { AwardList } from "@/components/AwardList";
 import { HeadshotUploader } from "@/components/uploads/UploadPanels";
 import type { PageLink } from "./actions";
 import {
@@ -122,8 +123,14 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
       person.verified_owner_id ? supabase.rpc("seen_count", { p_person_id: person.id }) : Promise.resolve({ data: 0 }),
     ]);
 
+  // This person's awards, with anyone else named on the same nomination
   const { data: awardRows } = await supabase.from("award_entries").select(AWARD_SELECT).eq("person_id", person.id);
-  const awards = sortAwards((awardRows ?? []) as unknown as AwardRow[]);
+  const mine = (awardRows ?? []) as unknown as AwardRow[];
+  const { data: shared } = mine.length
+    ? await supabase.from("award_entries").select(AWARD_SELECT).in("nomination_id", [...new Set(mine.map((a) => a.nomination_id))])
+    : { data: [] };
+  const others = ((shared ?? []) as unknown as AwardRow[]).filter((s) => !mine.some((m) => m.id === s.id));
+  const awards = sortAwards([...mine, ...others]);
   const ownerPoints = person.verified_owner_id ? (await pointsFor([person.verified_owner_id])).get(person.verified_owner_id) : undefined;
   const headshot = person.headshot;
   const pendingHeadshots = myUploads?.length ?? 0;
@@ -527,19 +534,7 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
             <section className="flex flex-col gap-1.5">
               <h2 className="subheading">Awards</h2>
               {awards.length ? (
-                <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[15px]">
-                  {awards.map((a) => (
-                    <li key={a.id}>
-                      <span className={a.result === "won" ? "font-bold" : ""}>{awardSentence(a)}</span>
-                      {a.production && (
-                        <>
-                          {" · "}
-                          <Link href={`/production/${a.production.slug}`}>{productionTitle(a)}</Link>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <AwardList rows={awards} showProduction />
               ) : (
                 <p className="m-0 text-[15px] text-muted">None recorded yet.</p>
               )}

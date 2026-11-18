@@ -275,6 +275,7 @@ export type Database = {
           created_by: string | null
           credit_id: string | null
           id: string
+          nomination_id: string
           organization_id: string | null
           person_id: string | null
           production_id: string | null
@@ -290,6 +291,7 @@ export type Database = {
           created_by?: string | null
           credit_id?: string | null
           id?: string
+          nomination_id?: string
           organization_id?: string | null
           person_id?: string | null
           production_id?: string | null
@@ -305,6 +307,7 @@ export type Database = {
           created_by?: string | null
           credit_id?: string | null
           id?: string
+          nomination_id?: string
           organization_id?: string | null
           person_id?: string | null
           production_id?: string | null

@@ -15,6 +15,7 @@ export type AwardInput = {
   organization_id?: string;
   result: "nominated" | "won";
   source_url: string;
+  nomination_id?: string;
 };
 
 export async function submitAward(award: AwardInput, note = ""): Promise<{ ok: true; published: boolean } | { ok: false; error: string }> {
@@ -62,7 +63,14 @@ export async function addNominee(n: {
 }): Promise<Result> {
   try {
     await moderatorClient();
-    const base: AwardInput = { ceremony_id: n.ceremony_id, category_id: n.category_id, result: n.won ? "won" : "nominated", source_url: n.source_url };
+    // Everyone added together is one nomination
+    const base: AwardInput = {
+      ceremony_id: n.ceremony_id,
+      category_id: n.category_id,
+      result: n.won ? "won" : "nominated",
+      source_url: n.source_url,
+      nomination_id: crypto.randomUUID(),
+    };
     const awards: AwardInput[] = n.organization_id
       ? [{ ...base, organization_id: n.organization_id }]
       : n.person_id

@@ -1,7 +1,9 @@
 // Award nominations and wins (DESIGN.md "Awards (EMACT)")
 
-export const AWARD_SELECT = `id, award_year, result,
-  category:award_categories(id, name, body:award_bodies(name)),
+export const AWARD_SELECT = `id, award_year, result, source_url,
+  ceremony:award_ceremonies(name, season),
+  organization:organizations(slug, name),
+  category:award_categories(id, name, kind, section, body:award_bodies(name)),
   production:productions(id, slug, year, title_override, color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
                          show:shows(title)),
   person:people(slug, display_name, is_hidden),
@@ -11,7 +13,10 @@ export type AwardRow = {
   id: string;
   award_year: number;
   result: "nominated" | "won";
-  category: { id: string; name: string; body: { name: string } | null } | null;
+  source_url: string;
+  ceremony: { name: string; season: string } | null;
+  organization: { slug: string; name: string } | null;
+  category: { id: string; name: string; kind: string; section: string | null; body: { name: string } | null } | null;
   production: {
     id: string;
     slug: string;
@@ -29,13 +34,18 @@ export type AwardRow = {
   credit: { role_name: string | null; is_young_performer: boolean; character: { name: string } | null } | null;
 };
 
-// "Won, Best Actress in a Musical, EMACT awards 2026"
-// A young performer is never named: "Young performer, nominated for Best Youth Performer"
+// The ceremony, e.g. "DASH Awards 2025–26"
+export function ceremonyName(a: AwardRow) {
+  return a.ceremony ? `${a.ceremony.name} ${a.ceremony.season}` : `${a.category?.body?.name ?? "Awards"} ${a.award_year}`;
+}
+
+// "Won, Direction Musical, DASH Awards 2025–26"
+// A young performer is never named: "Young performer, nominated for Youth Performer Musical"
 export function awardSentence(a: AwardRow) {
-  if (a.credit?.is_young_performer) {
-    return `Young performer, ${a.result === "won" ? "won" : "nominated for"} ${a.category?.name ?? "an award"} (${a.category?.body?.name ?? "EMACT"} awards ${a.award_year})`;
+  if (a.credit?.is_young_performer || a.category?.kind === "youth") {
+    return `Young performer, ${a.result === "won" ? "won" : "nominated for"} ${a.category?.name ?? "an award"} (${ceremonyName(a)})`;
   }
-  return `${a.result === "won" ? "Won" : "Nominated"}, ${a.category?.name ?? "an award"}, ${a.category?.body?.name ?? "EMACT"} awards ${a.award_year}`;
+  return `${a.result === "won" ? "Won" : "Nominated"}, ${a.category?.name ?? "an award"}, ${ceremonyName(a)}`;
 }
 
 export function productionTitle(a: AwardRow) {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, hasRole } from "@/lib/auth";
-import { AWARD_SELECT, productionTitle, type AwardRow } from "@/lib/awards";
+import { AWARD_SELECT, ceremonyName, productionTitle, type AwardRow } from "@/lib/awards";
 import { showColors, swatch } from "@/lib/palette";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 
@@ -40,7 +40,7 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
   ]);
   const years = [...new Set((yearRows ?? []).map((r) => r.award_year))];
   const year = typeof yearParam === "string" && years.includes(Number(yearParam)) ? Number(yearParam) : years[0];
-  const canAdd = hasRole(user, "trusted");
+  const canAdd = hasRole(user, "moderator");
 
   const { data } = year
     ? await supabase.from("award_entries").select(AWARD_SELECT).eq("award_year", year)
@@ -50,7 +50,7 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
   // Group by awards (e.g. EMACT), then category; winners first
   const groups = new Map<string, Map<string, AwardRow[]>>();
   for (const r of rows) {
-    const body = r.category?.body?.name ?? "Awards";
+    const body = ceremonyName(r);
     const cat = r.category?.name ?? "Other";
     const byCat = groups.get(body) ?? new Map<string, AwardRow[]>();
     byCat.set(cat, [...(byCat.get(cat) ?? []), r]);
@@ -93,7 +93,7 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
       ) : (
         [...groups].map(([body, byCat]) => (
           <section key={body} className="flex flex-col gap-8">
-            <h2 className="heading">{body} Awards</h2>
+            <h2 className="heading">{body}</h2>
             {[...byCat]
               .sort(([a], [b]) => a.localeCompare(b))
               .map(([cat, entries]) => (

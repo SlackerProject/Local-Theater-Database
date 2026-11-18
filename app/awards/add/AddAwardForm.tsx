@@ -5,106 +5,172 @@ import { useEffect, useId, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { submitAward, type AwardInput } from "../actions";
 
-type Body = { id: string; name: string };
-type Category = { id: string; name: string; award_body_id: string };
-type Production = { id: string; label: string; detail: string };
-type Credit = { id: string; person: string; role: string; kind: string };
+export type Ceremony = { id: string; label: string; source_url: string | null };
+export type Category = { id: string; name: string; section: string | null; kind: string };
+type Pick = { id: string; label: string; detail: string };
+type Credit = { id: string; person: string; role: string };
 
 const input = "field h-12 w-full max-w-[460px] px-3";
 const row = "flex flex-col gap-1.5";
 const labelText = "font-bold";
 
-// One award at a time; after saving, the awards, year and category stay so
-// a whole category's nominees can be entered quickly
-export function AddAwardForm({ bodies, categories, defaultYear, isModerator }: { bodies: Body[]; categories: Category[]; defaultYear: string; isModerator: boolean }) {
-  const [bodyId, setBodyId] = useState(bodies[0]?.id ?? "new");
-  const [newBody, setNewBody] = useState("");
-  const [year, setYear] = useState(defaultYear);
-  const [categoryQuery, setCategoryQuery] = useState("");
-  const [category, setCategory] = useState<Category | null>(null);
-  const [newCategory, setNewCategory] = useState(false);
-  const [prodQuery, setProdQuery] = useState("");
-  const [prodMatches, setProdMatches] = useState<Production[]>([]);
-  const [production, setProduction] = useState<Production | null>(null);
-  const [credits, setCredits] = useState<Credit[]>([]);
-  const [creditId, setCreditId] = useState("");
-  const [result, setResult] = useState<"nominated" | "won">("nominated");
-  const [note, setNote] = useState("");
-  const [saved, setSaved] = useState<string[]>([]);
-  const [error, setError] = useState("");
-  const [pending, start] = useTransition();
-  const ids = { body: useId(), year: useId(), cat: useId(), prod: useId(), note: useId() };
+// What each kind of category asks for
+const KIND_HINT: Record<string, string> = {
+  production: "This award goes to the production, so no one is named.",
+  ensemble: "This award goes to the whole cast, so no one is named.",
+  youth: "Young performers are never named. The award is saved to the production only.",
+  person: "Choose everyone the award names, or no one if it went to the production.",
+  honor: "A special honor for a person, with no production.",
+};
 
-  const bodyCategories = categories.filter((c) => c.award_body_id === bodyId);
-  const catMatches = categoryQuery.trim()
-    ? bodyCategories.filter((c) => c.name.toLowerCase().includes(categoryQuery.trim().toLowerCase())).slice(0, 8)
-    : bodyCategories.slice(0, 8);
-
-  // Production type-ahead
+// Type-ahead search for a production, person or company
+function Search({ label, placeholder, value, onPick, find }: { label: string; placeholder: string; value: Pick | null; onPick: (p: Pick | null) => void; find: (q: string) => Promise<Pick[]> }) {
+  const id = useId();
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<Pick[]>([]);
   useEffect(() => {
-    if (production || prodQuery.trim().length < 2) return;
+    if (value || q.trim().length < 2) return;
     let live = true;
-    const t = setTimeout(async () => {
-      const { data } = await createClient().rpc("lookup_productions", { p_query: prodQuery });
-      if (live) setProdMatches(data ?? []);
-    }, 200);
+    const t = setTimeout(() => find(q.trim()).then((h) => live && setHits(h)), 200);
     return () => {
       live = false;
       clearTimeout(t);
     };
-  }, [prodQuery, production]);
+  }, [q, value, find]);
 
-  // The production's cast and crew, for "who is being honored"
+  return (
+    <div className={row}>
+      <label htmlFor={id} className={labelText}>
+        {label}
+      </label>
+      {value ? (
+        <span>
+          <strong>{value.label}</strong> <span className="text-muted">{value.detail}</span>{" "}
+          <button type="button" onClick={() => onPick(null)} className="btn-text ml-2 text-[15px]">
+            Change
+          </button>
+        </span>
+      ) : (
+        <>
+          <input id={id} value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} className={input} autoComplete="off" />
+          {q.trim().length >= 2 && hits.length > 0 && (
+            <ul className="m-0 flex max-w-[460px] list-none flex-col border border-[#CFCFCF] p-0">
+              {hits.map((m) => (
+                <li key={m.id} className="border-b border-[#CFCFCF] last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPick(m);
+                      setQ("");
+                      setHits([]);
+                    }}
+                    className="flex w-full cursor-pointer flex-col border-0 bg-page px-3 py-2 text-left hover:bg-soft"
+                  >
+                    <span className="font-semibold">{m.label}</span>
+                    {m.detail && <span className="text-sm text-muted">{m.detail}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+const findProductions = async (q: string): Promise<Pick[]> => {
+  const { data } = await createClient().rpc("lookup_productions", { p_query: q });
+  return (data ?? []).map((d) => ({ id: d.id, label: d.label, detail: d.detail }));
+};
+const findPeople = async (q: string): Promise<Pick[]> => {
+  const { data } = await createClient().from("people").select("id, display_name").ilike("display_name", `%${q.replace(/[%_,()]/g, " ")}%`).limit(8);
+  return (data ?? []).map((d) => ({ id: d.id, label: d.display_name, detail: "" }));
+};
+const findCompanies = async (q: string): Promise<Pick[]> => {
+  const { data } = await createClient().from("organizations").select("id, name, town").ilike("name", `%${q.replace(/[%_,()]/g, " ")}%`).limit(8);
+  return (data ?? []).map((d) => ({ id: d.id, label: d.name, detail: d.town ?? "" }));
+};
+
+// One award at a time. The ceremony, category, result and source link stay
+// filled in, so a whole category can be entered one after another.
+export function AddAwardForm({ ceremonies, categories }: { ceremonies: Ceremony[]; categories: Category[] }) {
+  const [ceremonyId, setCeremonyId] = useState(ceremonies[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState("");
+  const [production, setProduction] = useState<Pick | null>(null);
+  const [credits, setCredits] = useState<Credit[]>([]);
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [person, setPerson] = useState<Pick | null>(null);
+  const [company, setCompany] = useState<Pick | null>(null);
+  const [result, setResult] = useState<"nominated" | "won">("won");
+  const [source, setSource] = useState(ceremonies[0]?.source_url ?? "");
+  const [saved, setSaved] = useState<string[]>([]);
+  const [error, setError] = useState("");
+  const [pending, start] = useTransition();
+  const ids = { cer: useId(), cat: useId(), src: useId() };
+
+  const category = categories.find((c) => c.id === categoryId) ?? null;
+  const kind = category?.kind ?? "person";
+  const sections = [...new Set(categories.map((c) => c.section ?? "Other"))];
+
+  // The production's adult cast and crew, for "who won"
   useEffect(() => {
-    if (!production) return;
+    if (!production || kind !== "person") return;
     let live = true;
     createClient()
       .from("credits")
       .select("id, kind, role_name, billing_order, is_young_performer, person:people(display_name), character:show_characters(name)")
       .eq("production_id", production.id)
+      .eq("is_young_performer", false)
       .order("kind")
       .order("billing_order")
       .then(({ data }) => {
-        if (!live) return;
-        setCredits(
-          (data ?? []).map((c) => ({ id: c.id, kind: c.kind, person: c.is_young_performer ? "Young performer" : (c.person?.display_name ?? "?"), role: c.character?.name ?? c.role_name ?? "" })),
-        );
+        if (live) setCredits((data ?? []).map((c) => ({ id: c.id, person: c.person?.display_name ?? "?", role: c.character?.name ?? c.role_name ?? "" })));
       });
     return () => {
       live = false;
     };
-  }, [production]);
+  }, [production, kind]);
+
+  function reset() {
+    setProduction(null);
+    setCredits([]);
+    setChosen([]);
+    setPerson(null);
+    setCompany(null);
+  }
 
   function submit() {
     setError("");
-    const award: AwardInput = {
-      ...(bodyId === "new" ? { new_body: newBody.trim() } : { body_id: bodyId }),
-      year: year.trim(),
-      ...(category && !newCategory ? { category_id: category.id } : { new_category: categoryQuery.trim() }),
-      production_id: production?.id ?? "",
-      ...(creditId ? { credit_id: creditId } : {}),
-      result,
-    };
-    if (bodyId === "new" && !award.new_body) return setError("Enter the name of the awards.");
-    if (!award.category_id && !award.new_category) return setError("Choose or add the category.");
-    if (!production) return setError("Choose the production.");
+    if (!ceremonyId) return setError("Choose the ceremony.");
+    if (!category) return setError("Choose the category.");
+    if (kind === "honor" && !person) return setError("Choose who received this honor.");
+    if (kind !== "honor" && !production) return setError("Choose the production.");
+    if (!/^https?:\/\/\S+\.\S+/.test(source.trim())) return setError("Add the link to the page that announced this award.");
+
+    const base: AwardInput = { ceremony_id: ceremonyId, category_id: category.id, result, source_url: source.trim() };
+    const awards: AwardInput[] =
+      kind === "honor"
+        ? [{ ...base, person_id: person!.id, ...(company && { organization_id: company.id }) }]
+        : kind === "person" && chosen.length
+          ? chosen.map((credit_id) => ({ ...base, production_id: production!.id, credit_id }))
+          : [{ ...base, production_id: production!.id }];
+
     start(async () => {
-      const r = await submitAward(award, note);
-      if (!r.ok) return setError(r.error);
-      const who = credits.find((c) => c.id === creditId)?.person;
-      setSaved((s) => [
-        `${result === "won" ? "Won" : "Nominated"}, ${category?.name ?? categoryQuery.trim()}${who ? `: ${who}` : ""}, ${production.label}${r.published ? "" : " (sent for review)"}`,
-        ...s,
-      ]);
-      // Ready for the next nominee in the same category
-      setProduction(null);
-      setProdQuery("");
-      setCredits([]);
-      setCreditId("");
-      setResult("nominated");
-      setNote("");
+      for (const a of awards) {
+        const r = await submitAward(a);
+        if (!r.ok) return setError(r.error);
+      }
+      const who =
+        kind === "honor"
+          ? person!.label
+          : [chosen.map((id) => credits.find((c) => c.id === id)?.person).filter(Boolean).join(" & "), production!.label].filter(Boolean).join(", ");
+      setSaved((s) => [`${result === "won" ? "Won" : "Nominated"}, ${category.name}: ${who}`, ...s]);
+      reset();
     });
   }
+
+  if (!ceremonies.length) return <p className="m-0 text-muted">No ceremonies yet.</p>;
 
   return (
     <div className="flex max-w-[760px] flex-col gap-6">
@@ -116,140 +182,111 @@ export function AddAwardForm({ bodies, categories, defaultYear, isModerator }: {
               <li key={i}>{s}</li>
             ))}
           </ul>
-          <Link href={`/awards?year=${year}`} className="font-semibold">
-            See the {year} awards
+          <Link href="/awards" className="font-semibold">
+            See the awards
           </Link>
         </div>
       )}
 
       <div className={row}>
-        <label htmlFor={ids.body} className={labelText}>
-          Awards
+        <label htmlFor={ids.cer} className={labelText}>
+          Ceremony
         </label>
-        <select id={ids.body} value={bodyId} onChange={(e) => { setBodyId(e.target.value); setCategory(null); }} className={`${input} max-w-[320px]`}>
-          {bodies.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
+        <select
+          id={ids.cer}
+          value={ceremonyId}
+          onChange={(e) => {
+            setCeremonyId(e.target.value);
+            const c = ceremonies.find((x) => x.id === e.target.value);
+            if (c?.source_url) setSource(c.source_url);
+          }}
+          className={`${input} max-w-[320px]`}
+        >
+          {ceremonies.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
             </option>
           ))}
-          <option value="new">Other awards…</option>
         </select>
-        {bodyId === "new" && (
-          <input aria-label="Name of the awards" value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder="e.g. DASH Awards" className={input} />
-        )}
-      </div>
-
-      <div className={row}>
-        <label htmlFor={ids.year} className={labelText}>
-          Year
-        </label>
-        <input id={ids.year} inputMode="numeric" maxLength={4} value={year} onChange={(e) => setYear(e.target.value)} className={`${input} max-w-[140px]`} />
       </div>
 
       <div className={row}>
         <label htmlFor={ids.cat} className={labelText}>
           Category
         </label>
-        {category && !newCategory ? (
-          <span>
-            <strong>{category.name}</strong>{" "}
-            <button type="button" onClick={() => setCategory(null)} className="btn-text ml-2 text-[15px]">
-              Change
-            </button>
-          </span>
-        ) : (
-          <>
-            <input
-              id={ids.cat}
-              value={categoryQuery}
-              onChange={(e) => {
-                setCategoryQuery(e.target.value);
-                setNewCategory(false);
-              }}
-              placeholder="e.g. Best Actress in a Musical"
-              className={input}
-            />
-            {!newCategory && catMatches.length > 0 && (
-              <ul className="m-0 flex max-w-[460px] list-none flex-col border border-[#CFCFCF] p-0">
-                {catMatches.map((c) => (
-                  <li key={c.id} className="border-b border-[#CFCFCF] last:border-b-0">
-                    <button type="button" onClick={() => setCategory(c)} className="w-full cursor-pointer border-0 bg-page px-3 py-2 text-left font-semibold hover:bg-soft">
-                      {c.name}
-                    </button>
-                  </li>
+        <select
+          id={ids.cat}
+          value={categoryId}
+          onChange={(e) => {
+            setCategoryId(e.target.value);
+            reset();
+          }}
+          className={input}
+        >
+          <option value="">Choose a category</option>
+          {sections.map((s) => (
+            <optgroup key={s} label={s}>
+              {categories
+                .filter((c) => (c.section ?? "Other") === s)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
-              </ul>
-            )}
-            {categoryQuery.trim().length >= 3 &&
-              !bodyCategories.some((c) => c.name.toLowerCase() === categoryQuery.trim().toLowerCase()) &&
-              (newCategory ? (
-                <span className="text-[15px]">
-                  “{categoryQuery.trim()}” will be added as a new category.
-                </span>
-              ) : (
-                <button type="button" onClick={() => setNewCategory(true)} className="btn-text self-start text-[15px]">
-                  + Add “{categoryQuery.trim()}” as a new category
-                </button>
-              ))}
-          </>
-        )}
+            </optgroup>
+          ))}
+        </select>
+        {category && <span className="text-[15px] text-muted">{KIND_HINT[kind]}</span>}
       </div>
 
-      <div className={row}>
-        <label htmlFor={ids.prod} className={labelText}>
-          Production
-        </label>
-        {production ? (
-          <span>
-            <strong>{production.label}</strong> <span className="text-muted">{production.detail}</span>{" "}
-            <button type="button" onClick={() => { setProduction(null); setCredits([]); setCreditId(""); }} className="btn-text ml-2 text-[15px]">
-              Change
-            </button>
-          </span>
-        ) : (
-          <>
-            <input id={ids.prod} value={prodQuery} onChange={(e) => setProdQuery(e.target.value)} placeholder="Start typing the show’s title" className={input} />
-            {prodQuery.trim().length >= 2 && prodMatches.length > 0 && (
-              <ul className="m-0 flex max-w-[460px] list-none flex-col border border-[#CFCFCF] p-0">
-                {prodMatches.map((m) => (
-                  <li key={m.id} className="border-b border-[#CFCFCF] last:border-b-0">
-                    <button type="button" onClick={() => setProduction(m)} className="flex w-full cursor-pointer flex-col border-0 bg-page px-3 py-2 text-left hover:bg-soft">
-                      <span className="font-semibold">{m.label}</span>
-                      <span className="text-sm text-muted">{m.detail}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-      </div>
+      {category && kind === "honor" && (
+        <>
+          <Search label="Who received it?" placeholder="Start typing their name" value={person} onPick={setPerson} find={findPeople} />
+          <Search label="Presented by (optional)" placeholder="Start typing the company’s name" value={company} onPick={setCompany} find={findCompanies} />
+        </>
+      )}
 
-      {production && (
+      {category && kind !== "honor" && (
+        <Search
+          label="Production"
+          placeholder="Start typing the show’s title"
+          value={production}
+          onPick={(p) => {
+            setProduction(p);
+            setCredits([]);
+            setChosen([]);
+          }}
+          find={findProductions}
+        />
+      )}
+
+      {production && kind === "person" && (
         <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
           <legend className={`${labelText} mb-1.5`}>
-            Who is honored? <span className="font-normal text-muted">(optional)</span>
+            Who won? <span className="font-normal text-muted">(choose everyone the award names)</span>
           </legend>
-          <label className="flex min-h-11 cursor-pointer items-center gap-2.5">
-            <input type="radio" name="credit" checked={creditId === ""} onChange={() => setCreditId("")} className="h-5 w-5 accent-ink" />
-            The production itself (e.g. Best Musical)
-          </label>
           {credits.map((c) => (
             <label key={c.id} className="flex min-h-11 cursor-pointer items-center gap-2.5">
-              <input type="radio" name="credit" checked={creditId === c.id} onChange={() => setCreditId(c.id)} className="h-5 w-5 accent-ink" />
+              <input
+                type="checkbox"
+                checked={chosen.includes(c.id)}
+                onChange={(e) => setChosen((x) => (e.target.checked ? [...x, c.id] : x.filter((y) => y !== c.id)))}
+                className="h-5 w-5 accent-ink"
+              />
               <span>
-                <strong>{c.person}</strong> — {c.role} <span className="text-sm text-muted">({c.kind === "cast" ? "cast" : "creative team"})</span>
+                <strong>{c.person}</strong>
+                {c.role && <span className="text-muted"> · {c.role}</span>}
               </span>
             </label>
           ))}
-          {credits.length === 0 && <span className="text-sm text-muted">No cast or crew listed for this production yet.</span>}
+          {credits.length === 0 && <span className="text-sm text-muted">No cast or crew listed for this production yet. Add them on the production page first.</span>}
         </fieldset>
       )}
 
       <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
         <legend className={`${labelText} mb-1.5`}>Result</legend>
         <div className="flex gap-6">
-          {(["nominated", "won"] as const).map((r) => (
+          {(["won", "nominated"] as const).map((r) => (
             <label key={r} className="flex min-h-11 cursor-pointer items-center gap-2.5">
               <input type="radio" name="result" checked={result === r} onChange={() => setResult(r)} className="h-5 w-5 accent-ink" />
               {r === "won" ? "Won" : "Nominated"}
@@ -258,20 +295,18 @@ export function AddAwardForm({ bodies, categories, defaultYear, isModerator }: {
         </div>
       </fieldset>
 
-      {!isModerator && (
-        <div className={row}>
-          <label htmlFor={ids.note} className={labelText}>
-            Notes to moderator <span className="font-normal text-muted">(optional: a link to the announcement)</span>
-          </label>
-          <textarea id={ids.note} rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="field w-full max-w-[620px] p-3" />
-        </div>
-      )}
+      <div className={row}>
+        <label htmlFor={ids.src} className={labelText}>
+          Source link
+        </label>
+        <input id={ids.src} type="url" value={source} onChange={(e) => setSource(e.target.value)} placeholder="https://www.emact.org/…" className={input} />
+        <span className="text-[15px] text-muted">The page that announced this award.</span>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" disabled={pending} onClick={submit} className="btn-primary">
-          {pending ? "Saving…" : isModerator ? "Save award" : "Send for review"}
+          {pending ? "Saving…" : "Save award"}
         </button>
-        <span className="text-sm text-muted">{isModerator ? "Moderators’ entries appear right away." : "A moderator checks each entry before it appears."}</span>
       </div>
       {error && (
         <p role="alert" className="callout m-0 font-semibold">

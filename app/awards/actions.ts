@@ -3,20 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-// Trusted editors and moderators add awards; submit_award() checks the role
-// and publishes moderators' entries at once (others go to review)
+// Moderators add awards; submit_award() checks the role and the rules
+// (a source link, no names for youth or ensemble awards, and so on)
 export type AwardInput = {
-  body_id?: string;
-  new_body?: string;
-  year: string;
-  category_id?: string;
-  new_category?: string;
-  production_id: string;
+  ceremony_id: string;
+  category_id: string;
+  production_id?: string;
   credit_id?: string;
+  person_id?: string;
+  organization_id?: string;
   result: "nominated" | "won";
+  source_url: string;
 };
 
-export async function submitAward(award: AwardInput, note: string): Promise<{ ok: true; published: boolean } | { ok: false; error: string }> {
+export async function submitAward(award: AwardInput, note = ""): Promise<{ ok: true; published: boolean } | { ok: false; error: string }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("submit_award", { p_award: award, p_note: note });
   if (error) return { ok: false, error: error.message };

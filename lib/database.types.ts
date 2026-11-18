@@ -155,17 +155,26 @@ export type Database = {
         Row: {
           award_body_id: string
           id: string
+          kind: string
           name: string
+          section: string | null
+          sort_order: number
         }
         Insert: {
           award_body_id: string
           id?: string
+          kind?: string
           name: string
+          section?: string | null
+          sort_order?: number
         }
         Update: {
           award_body_id?: string
           id?: string
+          kind?: string
           name?: string
+          section?: string | null
+          sort_order?: number
         }
         Relationships: [
           {
@@ -177,41 +186,94 @@ export type Database = {
           },
         ]
       }
+      award_ceremonies: {
+        Row: {
+          award_body_id: string
+          created_at: string
+          held_on: string | null
+          id: string
+          name: string
+          season: string
+          slug: string
+          source_url: string | null
+          year: number
+        }
+        Insert: {
+          award_body_id: string
+          created_at?: string
+          held_on?: string | null
+          id?: string
+          name: string
+          season: string
+          slug: string
+          source_url?: string | null
+          year: number
+        }
+        Update: {
+          award_body_id?: string
+          created_at?: string
+          held_on?: string | null
+          id?: string
+          name?: string
+          season?: string
+          slug?: string
+          source_url?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "award_ceremonies_award_body_id_fkey"
+            columns: ["award_body_id"]
+            isOneToOne: false
+            referencedRelation: "award_bodies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       award_entries: {
         Row: {
           award_year: number
           category_id: string
+          ceremony_id: string
           created_at: string
           created_by: string | null
           credit_id: string | null
           id: string
+          organization_id: string | null
           person_id: string | null
-          production_id: string
+          production_id: string | null
           result: Database["public"]["Enums"]["award_result"]
+          source_url: string
           updated_at: string
         }
         Insert: {
           award_year: number
           category_id: string
+          ceremony_id: string
           created_at?: string
           created_by?: string | null
           credit_id?: string | null
           id?: string
+          organization_id?: string | null
           person_id?: string | null
-          production_id: string
+          production_id?: string | null
           result: Database["public"]["Enums"]["award_result"]
+          source_url: string
           updated_at?: string
         }
         Update: {
           award_year?: number
           category_id?: string
+          ceremony_id?: string
           created_at?: string
           created_by?: string | null
           credit_id?: string | null
           id?: string
+          organization_id?: string | null
           person_id?: string | null
-          production_id?: string
+          production_id?: string | null
           result?: Database["public"]["Enums"]["award_result"]
+          source_url?: string
           updated_at?: string
         }
         Relationships: [
@@ -220,6 +282,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "award_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_entries_ceremony_id_fkey"
+            columns: ["ceremony_id"]
+            isOneToOne: false
+            referencedRelation: "award_ceremonies"
             referencedColumns: ["id"]
           },
           {
@@ -234,6 +303,13 @@ export type Database = {
             columns: ["credit_id"]
             isOneToOne: false
             referencedRelation: "credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {

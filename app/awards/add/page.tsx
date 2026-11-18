@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { currentTime } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { AddAwardForm } from "./AddAwardForm";
 
@@ -18,8 +17,8 @@ export default function AddAwardsPage() {
         <div className="flex flex-col gap-2">
           <h1 className="display text-[40px] md:text-[56px]">Add Awards</h1>
           <p className="m-0 max-w-[680px] italic text-muted">
-            Enter one nomination or win at a time. The awards, year and category stay filled in, so you can add every nominee in
-            a category one after another.
+            Enter one award at a time. The ceremony, category and source link stay filled in, so you can add a whole category
+            one after another.
           </p>
         </div>
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
@@ -34,25 +33,23 @@ export default function AddAwardsPage() {
 async function Form() {
   const user = await getCurrentUser();
   if (!user) redirect("/signin?next=/awards/add");
-  if (!hasRole(user, "trusted")) {
+  if (!hasRole(user, "moderator")) {
     return (
       <p className="m-0">
-        Awards are entered by trusted editors and moderators. Spotted a missing award? Use <strong>Edit</strong> on the production
-        page and describe it in the notes. <Link href="/awards">Back to the awards</Link>
+        Awards are entered by moderators for now. Spotted a missing award? Use <strong>Feedback</strong> to let us know, with a
+        link to where it was announced. <Link href="/awards">Back to the awards</Link>
       </p>
     );
   }
   const supabase = await createClient();
-  const [{ data: bodies }, { data: categories }] = await Promise.all([
-    supabase.from("award_bodies").select("id, name").order("name"),
-    supabase.from("award_categories").select("id, name, award_body_id").order("name"),
+  const [{ data: ceremonies }, { data: categories }] = await Promise.all([
+    supabase.from("award_ceremonies").select("id, name, season, source_url").order("year", { ascending: false }),
+    supabase.from("award_categories").select("id, name, section, kind, sort_order").order("sort_order").order("name"),
   ]);
   return (
     <AddAwardForm
-      bodies={bodies ?? []}
+      ceremonies={(ceremonies ?? []).map((c) => ({ id: c.id, label: `${c.name} ${c.season}`, source_url: c.source_url }))}
       categories={categories ?? []}
-      defaultYear={String(currentTime().getFullYear())}
-      isModerator={hasRole(user, "moderator")}
     />
   );
 }

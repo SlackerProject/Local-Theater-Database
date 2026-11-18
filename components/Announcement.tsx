@@ -20,6 +20,18 @@ export function AnnouncementText({ a }: { a: A }) {
       {a.company.label}
     </Link>
   );
+  if (a.award && a.person) {
+    return (
+      <span>
+        <Link href={a.person.href} className="font-bold">
+          {a.person.label}
+        </Link>{" "}
+        {a.award.won ? "won" : "was nominated for"} {a.award.name}
+        {a.award.ceremony && <>, {a.award.ceremony}</>}
+        {a.production.label && <> for {show}</>}
+      </span>
+    );
+  }
   if (a.kind === "auditions_announced") {
     return (
       <span>
@@ -98,6 +110,24 @@ export function AnnouncementActions({
       Remind me about auditions
     </button>
   );
+
+  if (kind === "award_nomination" || kind === "award_win") {
+    return (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Link href={productionHref} className="text-[15px] font-semibold">
+          See it
+        </Link>
+        <button type="button" disabled={pending} onClick={() => run(() => dismissNotification(id), "dismissed")} className="btn-text text-[15px]">
+          Dismiss
+        </button>
+        {error && (
+          <span role="alert" className="w-full text-sm font-semibold">
+            {error}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   if (kind === "auditions_announced") {
     return (

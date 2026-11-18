@@ -1117,6 +1117,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          award_entry_id: string | null
           bug_report_id: string | null
           created_at: string
           credit_id: string | null
@@ -1134,6 +1135,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          award_entry_id?: string | null
           bug_report_id?: string | null
           created_at?: string
           credit_id?: string | null
@@ -1151,6 +1153,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          award_entry_id?: string | null
           bug_report_id?: string | null
           created_at?: string
           credit_id?: string | null
@@ -1168,6 +1171,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_award_entry_id_fkey"
+            columns: ["award_entry_id"]
+            isOneToOne: false
+            referencedRelation: "award_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_bug_report_id_fkey"
             columns: ["bug_report_id"]

@@ -541,14 +541,17 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
         <legend className={`${labelText} mb-1`}>How is it given?</legend>
         {(
           [
-            ["nominees", "Nominees, then a winner"],
-            ["winner", "Just the winner (like a special honor)"],
-            ["consultant", "Consultant Choice"],
+            ["nominees", "Competitive Award", "Nominees + a Winner"],
+            ["winner", "Honor/Recognition Award", "Winner Only"],
+            ["consultant", "Consultant Choice", ""],
           ] as const
-        ).map(([v, text]) => (
-          <label key={v} className="flex min-h-10 cursor-pointer items-center gap-2.5">
-            <input type="radio" name={`${ids.kind}-nominees`} checked={given === v} onChange={() => setGiven(v)} className="h-5 w-5 accent-ink" />
-            {text}
+        ).map(([v, text, sub]) => (
+          <label key={v} className="flex min-h-11 cursor-pointer items-center gap-2.5 py-0.5">
+            <input type="radio" name={`${ids.kind}-nominees`} checked={given === v} onChange={() => setGiven(v)} className="h-5 w-5 shrink-0 accent-ink" />
+            <span className="flex flex-col leading-snug">
+              {text}
+              {sub && <span className="text-sm text-muted">{sub}</span>}
+            </span>
           </label>
         ))}
       </fieldset>

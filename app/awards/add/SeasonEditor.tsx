@@ -26,14 +26,13 @@ const labelText = "text-sm font-semibold";
 
 // Awards grouped by who they go to
 const KINDS = [
-  { kind: "performer", title: "Performers", hint: "An actor, with the production. Tick everyone the award names.", label: "A performer" },
-  { kind: "youth", title: "Young Performers", hint: "Young performers are never named, so just add the production.", label: "A young performer (never named)" },
-  { kind: "creative", title: "Creative Team", hint: "A director, designer, stage manager or other creative team member, with the production.", label: "A creative team member" },
-  { kind: "production", title: "Productions", hint: "The production itself, including whole-cast ensemble awards. No one is named.", label: "A production" },
-  { kind: "company", title: "Companies", hint: "A theater company.", label: "A company" },
-  { kind: "person", title: "People", hint: "A person, not for one show, like Lifetime Achievement.", label: "A person (not for one show)" },
+  { kind: "performer", title: "Performers", label: "A performer" },
+  { kind: "youth", title: "Young Performers", label: "A young performer (never named)" },
+  { kind: "creative", title: "Creative Team", label: "A creative team member" },
+  { kind: "production", title: "Productions", label: "A production" },
+  { kind: "company", title: "Companies", label: "A company" },
+  { kind: "person", title: "People", label: "A person (not for one show)" },
 ] as const;
-const kindInfo = (k: string) => KINDS.find((x) => x.kind === k) ?? KINDS[0];
 
 const clean = (q: string) => q.replace(/[%_,()]/g, " ");
 const findProductions = async (q: string): Promise<Pick[]> => {
@@ -336,9 +335,6 @@ function AwardPanel({ ceremony, category, nominees, sourceUrl }: { ceremony: { i
 
   return (
     <div className="flex flex-col gap-3 pb-4">
-      <p className="m-0 text-[15px] text-muted">
-        {kindInfo(category.kind).hint} {category.has_nominees ? "Tick Won once the winner is announced." : "This award has no nominees, just the winner."}
-      </p>
       {nominees.length > 0 && (
         <ul className="m-0 flex list-none flex-col border-t border-rule p-0">
           {nominees.map((n) => (
@@ -584,7 +580,7 @@ export function SeasonEditor({
 
       <div className="flex flex-col gap-1">
         <label htmlFor={ids.src} className={labelText}>
-          Source link <span className="font-normal text-muted">(the page announcing the nominees or winners; used for everything you add)</span>
+          Source link
         </label>
         <input id={ids.src} type="url" value={source} onChange={(e) => setSource(e.target.value)} className={field} />
       </div>

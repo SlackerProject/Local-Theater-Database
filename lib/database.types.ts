@@ -1298,7 +1298,6 @@ export type Database = {
       organizations: {
         Row: {
           audition_info_url: string | null
-          audition_style: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -1313,10 +1312,15 @@ export type Database = {
           is_nonprofit: boolean | null
           logo_media_id: string | null
           membership_url: string | null
+          musicals_per_season: number | null
           name: string
           newsletter_url: string | null
+          other_per_season: number | null
           pass_price: number | null
           pass_shows: number | null
+          plays_per_season: number | null
+          season_end_month: number | null
+          season_start_month: number | null
           short_name: string | null
           slug: string
           state: string
@@ -1331,7 +1335,6 @@ export type Database = {
         }
         Insert: {
           audition_info_url?: string | null
-          audition_style?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1346,10 +1349,15 @@ export type Database = {
           is_nonprofit?: boolean | null
           logo_media_id?: string | null
           membership_url?: string | null
+          musicals_per_season?: number | null
           name: string
           newsletter_url?: string | null
+          other_per_season?: number | null
           pass_price?: number | null
           pass_shows?: number | null
+          plays_per_season?: number | null
+          season_end_month?: number | null
+          season_start_month?: number | null
           short_name?: string | null
           slug: string
           state?: string
@@ -1364,7 +1372,6 @@ export type Database = {
         }
         Update: {
           audition_info_url?: string | null
-          audition_style?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1379,10 +1386,15 @@ export type Database = {
           is_nonprofit?: boolean | null
           logo_media_id?: string | null
           membership_url?: string | null
+          musicals_per_season?: number | null
           name?: string
           newsletter_url?: string | null
+          other_per_season?: number | null
           pass_price?: number | null
           pass_shows?: number | null
+          plays_per_season?: number | null
+          season_end_month?: number | null
+          season_start_month?: number | null
           short_name?: string | null
           slug?: string
           state?: string

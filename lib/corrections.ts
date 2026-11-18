@@ -38,6 +38,9 @@ const YES_NO = [
   { value: "true", label: "Yes" },
   { value: "false", label: "No" },
 ];
+// Months for a company's season (stored as 1–12)
+export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = MONTH_NAMES.map((m, i) => ({ value: String(i + 1), label: m }));
 // Mirrors the locations.seating_style check in the database
 export const SEATING_STYLES = ["Proscenium", "Thrust", "Black box", "In the round", "Outdoor", "Cabaret"] as const;
 
@@ -68,6 +71,11 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "is_nonprofit", label: "Nonprofit", input: "select", options: YES_NO },
     { key: "description", label: "About", input: "longtext", maxLength: 280 },
     { key: "home_location_id", label: "Primary venue", input: "venue" },
+    { key: "season_start_month", label: "Month season starts", input: "select", options: MONTHS },
+    { key: "season_end_month", label: "Month season ends", input: "select", options: MONTHS },
+    { key: "musicals_per_season", label: "Musicals each season", input: "number" },
+    { key: "plays_per_season", label: "Plays each season", input: "number" },
+    { key: "other_per_season", label: "Other shows each season", input: "number" },
     { key: "ticket_price", label: "Typical ticket price ($)", input: "number" },
     { key: "ticket_prices", label: "Ticket prices (one per line)", input: "longtext" },
     { key: "pass_price", label: "Season pass price ($)", input: "number" },

@@ -19,7 +19,7 @@ import { shortRun } from "@/lib/runDates";
 import { currentTime, localDate, localDay, localTime } from "@/lib/calendar";
 import { AWARD_SELECT, sortAwards, type AwardRow } from "@/lib/awards";
 import { AwardList } from "@/components/AwardList";
-import { ReadMore, RemindMe, WantToSee } from "./CompanyActions";
+import { RemindMe, WantToSee } from "./CompanyActions";
 
 // Browser tab and shared links: "Company · Town · Local Theater Database"
 export async function generateMetadata({
@@ -127,38 +127,30 @@ function priceLines(text: string | null) {
     });
 }
 
-// The usual season, from the last three years of opening nights:
-// "3 shows a year · Sep–May". The months run the long way round the
-// calendar, skipping the longest quiet stretch (often summer).
-function seasonOf(openings: string[], today: string): string | null {
-  const from = `${Number(today.slice(0, 4)) - 3}${today.slice(4)}`;
-  const recent = openings.filter((d) => d > from && d <= today).sort();
-  if (recent.length < 2) return null;
-  const years = Math.min(
-    3,
-    Math.max(
-      1,
-      Math.ceil((Date.parse(today) - Date.parse(recent[0])) / (365 * 864e5)),
-    ),
-  );
-  const perYear = Math.max(1, Math.round(recent.length / years));
-  const months = [
-    ...new Set(recent.map((d) => Number(d.slice(5, 7)) - 1)),
-  ].sort((a, b) => a - b);
-  let span = MONTHS[months[0]];
-  if (months.length > 1) {
-    // The biggest gap between months that have openings, going round the year
-    let gapAfter = months.length - 1;
-    let gap = months[0] + 12 - months[months.length - 1];
-    for (let i = 0; i < months.length - 1; i++) {
-      if (months[i + 1] - months[i] > gap) {
-        gap = months[i + 1] - months[i];
-        gapAfter = i;
-      }
-    }
-    span = `${MONTHS[months[(gapAfter + 1) % months.length]]}–${MONTHS[months[gapAfter]]}`;
-  }
-  return `${perYear} show${perYear === 1 ? "" : "s"} a year · ${span}`;
+// The season as the company describes it: "Sep–May · 4 shows a year",
+// then "2 musicals · 1 play · 1 other". Only what's been entered shows.
+type SeasonFacts = {
+  season_start_month: number | null;
+  season_end_month: number | null;
+  musicals_per_season: number | null;
+  plays_per_season: number | null;
+  other_per_season: number | null;
+};
+function seasonOf(o: SeasonFacts) {
+  const start = o.season_start_month ? MONTHS[o.season_start_month - 1] : null;
+  const end = o.season_end_month ? MONTHS[o.season_end_month - 1] : null;
+  const span = start && end ? (start === end ? start : `${start}–${end}`) : start ? `From ${start}` : end ? `Through ${end}` : null;
+  const counts = [o.musicals_per_season, o.plays_per_season, o.other_per_season];
+  const total = counts.some((n) => n != null) ? counts.reduce<number>((a, n) => a + (n ?? 0), 0) : null;
+  const main = [span, total ? `${total} show${total === 1 ? "" : "s"} a year` : null].filter(Boolean).join(" · ");
+  const mix = [
+    o.musicals_per_season ? `${o.musicals_per_season} musical${o.musicals_per_season === 1 ? "" : "s"}` : null,
+    o.plays_per_season ? `${o.plays_per_season} play${o.plays_per_season === 1 ? "" : "s"}` : null,
+    o.other_per_season ? `${o.other_per_season} other` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return main || mix ? { main, mix } : null;
 }
 
 async function Company({
@@ -174,7 +166,8 @@ async function Company({
     .from("organizations")
     .select(
       `id, name, town, state, website_url, founded_year, description, is_nonprofit, ticket_price, ticket_prices, pass_price, pass_shows,
-       audition_info_url, tickets_url, short_name,
+       audition_info_url, tickets_url, short_name, season_start_month, season_end_month,
+       musicals_per_season, plays_per_season, other_per_season,
        facebook_url, instagram_url, youtube_url, membership_url, volunteer_url, house_staff_url, newsletter_url, donate_url,
        home:locations!organizations_home_location_id_fkey(slug, name, town, state, postal_code, stage_name, street_address, seating_capacity,
                                                           seating_style, accessibility, chart:media!locations_seating_chart_fk(thumb_key, storage_key)),
@@ -327,10 +320,7 @@ async function Company({
     ?.replace(/^https?:\/\/(www\.)?/i, "")
     .replace(/\/$/, "");
   const socials = SOCIAL.filter((s) => org[s.key]);
-  const season = seasonOf(
-    productions.flatMap((p) => (p.opening_date ? [p.opening_date] : [])),
-    today,
-  );
+  const season = seasonOf(org);
   // Season pass savings: the shows at the usual price, less the pass
   const savings =
     org.ticket_price != null && org.pass_price != null && org.pass_shows
@@ -472,7 +462,8 @@ async function Company({
           {season && (
             <section className={box}>
               <h2 className={boxLabel}>Season</h2>
-              <span>{season}</span>
+              {season.main && <span>{season.main}</span>}
+              {season.mix && <span className="text-[14px] text-muted">{season.mix}</span>}
             </section>
           )}
         </div>
@@ -680,14 +671,11 @@ async function Company({
             signedIn={!!user}
           />
         </div>
-        {org.description &&
-          (org.description.length > 280 ? (
-            <ReadMore text={org.description} />
-          ) : (
-            <p className="m-0 max-w-[620px] whitespace-pre-line">
-              {org.description}
-            </p>
-          ))}
+        {org.description && (
+          <p className="m-0 max-w-[620px] whitespace-pre-line">
+            {org.description}
+          </p>
+        )}
       </section>
 
       {/* Two columns on a laptop; on a phone: upcoming, the side column, then awards and past */}

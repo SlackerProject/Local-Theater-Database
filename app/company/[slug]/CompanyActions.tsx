@@ -4,27 +4,6 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { setAuditionFollow, setWatch } from "@/app/follow-actions";
 
-// About: the first sentence, then "Read more" for the rest
-export function ReadMore({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  const m = text.match(/^[\s\S]+?[.!?](?=\s|$)/);
-  const first = m ? m[0] : text;
-  const more = text.slice(first.length).trim();
-  return (
-    <p className="m-0 max-w-[620px] whitespace-pre-line">
-      {open || !more ? text : first}
-      {more && !open && (
-        <>
-          {" "}
-          <button type="button" onClick={() => setOpen(true)} className="btn-text relative inline min-h-0 after:absolute after:-inset-3 after:content-['']">
-            Read more
-          </button>
-        </>
-      )}
-    </p>
-  );
-}
-
 // "Want to see": the same list and calendar as on production pages
 export function WantToSee({
   productionId,

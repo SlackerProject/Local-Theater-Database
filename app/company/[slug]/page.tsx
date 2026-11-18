@@ -87,7 +87,6 @@ const SOCIAL = [
 const INVOLVED = [
   { key: "membership_url", label: "Membership" },
   { key: "volunteer_url", label: "Volunteer" },
-  { key: "house_staff_url", label: "House staff" },
   { key: "newsletter_url", label: "Newsletter" },
   { key: "donate_url", label: "Support us" },
 ] as const;
@@ -185,7 +184,7 @@ async function Company({
       `id, name, town, state, website_url, founded_year, description, is_nonprofit, ticket_price, ticket_prices, pass_price, pass_shows,
        audition_info_url, tickets_url, short_name, season_start_month, season_end_month,
        musicals_per_season, plays_per_season, other_per_season,
-       facebook_url, instagram_url, youtube_url, membership_url, volunteer_url, house_staff_url, newsletter_url, donate_url,
+       facebook_url, instagram_url, youtube_url, membership_url, volunteer_url, newsletter_url, donate_url,
        home:locations!organizations_home_location_id_fkey(slug, name, town, state, postal_code, stage_name, street_address, seating_capacity,
                                                           seating_style, accessibility, chart:media!locations_seating_chart_fk(thumb_key, storage_key)),
        logo:media!organizations_logo_fk(thumb_key, storage_key, photographer_credit),

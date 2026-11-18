@@ -86,7 +86,6 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "youtube_url", label: "YouTube", input: "url" },
     { key: "membership_url", label: "Membership link", input: "url" },
     { key: "volunteer_url", label: "Volunteer link", input: "url" },
-    { key: "house_staff_url", label: "House staff link", input: "url" },
     { key: "newsletter_url", label: "Newsletter link", input: "url" },
     { key: "donate_url", label: "Support us link", input: "url" },
   ],

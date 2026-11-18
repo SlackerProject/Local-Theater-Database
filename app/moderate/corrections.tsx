@@ -150,11 +150,11 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
   // Readable names for picked companies, venues and people
   const proposed = c.fields ?? {};
   const orgs = await names(supabase, "organizations", [proposed.organization_id, now?.organization_id].filter((x): x is string => typeof x === "string" && !!x));
-  const venues = await names(supabase, "locations", [proposed.location_id, now?.location_id].filter((x): x is string => typeof x === "string" && !!x));
+  const venues = await names(supabase, "locations", [proposed.location_id, now?.location_id, proposed.home_location_id, now?.home_location_id].filter((x): x is string => typeof x === "string" && !!x));
   const pretty = (key: string, v: FieldValue | undefined) => {
     if (v === null || v === undefined || v === "") return "";
     if (key === "organization_id") return orgs.get(String(v)) ?? "(unknown company)";
-    if (key === "location_id") return venues.get(String(v)) ?? "(unknown venue)";
+    if (key === "location_id" || key === "home_location_id") return venues.get(String(v)) ?? "(unknown venue)";
     if (key === "type") return SHOW_TYPES.find((t) => t.value === v)?.label ?? String(v);
     if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
       return new Date(`${v}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });

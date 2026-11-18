@@ -49,6 +49,13 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "website_url", label: "Website", input: "url" },
     { key: "founded_year", label: "Founded", input: "number" },
     { key: "description", label: "About", input: "longtext" },
+    { key: "home_location_id", label: "Home venue", input: "venue" },
+    { key: "season_note", label: "Season", input: "text" },
+    { key: "access_note", label: "Access", input: "text" },
+    { key: "tickets_url", label: "Tickets link", input: "url" },
+    { key: "facebook_url", label: "Facebook", input: "url" },
+    { key: "instagram_url", label: "Instagram", input: "url" },
+    { key: "youtube_url", label: "YouTube", input: "url" },
   ],
   shows: [
     { key: "title", label: "Title", input: "text", required: true },

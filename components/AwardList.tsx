@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ceremonyName, type AwardRow } from "@/lib/awards";
+import { SeeAll } from "@/components/SeeAll";
 
 // One line per nomination or win: everyone it names is listed together
 type Person = { slug: string | null; name: string };
@@ -76,22 +77,34 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // Grouped by ceremony with its tally. Every line says Winner, Consultant Choice or Nominee
 // (symbol and word, never color alone); wins first, then Consultant Choice.
-export function AwardList({ rows, personSlug }: { rows: AwardRow[]; personSlug?: string }) {
+// A person's page shows the show and who they shared it with; a company's
+// page (withShow) shows the show and the names. With a limit, the rest wait
+// behind "See all".
+export function AwardList({ rows, personSlug, withShow = false, limit }: { rows: AwardRow[]; personSlug?: string; withShow?: boolean; limit?: number }) {
   const ceremonies = new Map<string, Line[]>();
   for (const line of groupAwards(rows)) {
     const name = ceremonyName(line.first);
     ceremonies.set(name, [...(ceremonies.get(name) ?? []), line]);
   }
+  const blocks = [...ceremonies].map(([ceremony, lines]) => ({
+    ceremony,
+    lines: [...lines].sort((a, b) => RANK[statusOf(a.first)] - RANK[statusOf(b.first)]),
+  }));
+  const total = blocks.reduce((n, b) => n + b.lines.length, 0);
+  const cut = limit && total > limit + 1 ? limit : Infinity;
+  const extra = "group-data-[collapsed=true]:hidden";
+  const hiddenKeys = new Set(blocks.flatMap((b) => b.lines).slice(cut === Infinity ? total : cut).map((l) => l.key));
 
-  return (
+  const list = (
     <div className="flex flex-col gap-5">
-      {[...ceremonies].map(([ceremony, lines]) => {
+      {blocks.map(({ ceremony, lines }) => {
         const count = (st: Status) => lines.filter((l) => statusOf(l.first) === st).length;
         const wins = count("won");
         const picks = count("consultant");
         const noms = count("nominated");
+        const blockHidden = lines.every((l) => hiddenKeys.has(l.key));
         return (
-          <div key={ceremony} className="flex flex-col gap-3">
+          <div key={ceremony} className={`flex flex-col gap-3 ${blockHidden ? extra : ""}`}>
             <div className="flex flex-col border-b border-rule pb-1.5">
               <h3 className="m-0 text-[15px] font-bold">{ceremony}</h3>
               <span className="text-[13px] text-muted">
@@ -99,41 +112,41 @@ export function AwardList({ rows, personSlug }: { rows: AwardRow[]; personSlug?:
               </span>
             </div>
             <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {[...lines]
-                .sort((a, b) => RANK[statusOf(a.first)] - RANK[statusOf(b.first)])
-                .map(({ key, first: a, people }) => {
-                  const status = statusOf(a);
-                  const others = personSlug ? people.filter((p) => p.slug !== personSlug) : people;
-                  const prod = personSlug ? a.production : null;
-                  const show = prod ? (prod.title_override ?? prod.show?.title) : null;
-                  return (
-                    <li key={key} className="flex gap-2 text-[15px] leading-snug">
-                      <ResultMark status={status} />
-                      <div className="flex min-w-0 flex-col">
-                        <AwardName name={a.category?.name ?? "Award"} />
-                        <span className="text-[14px]">
-                          <span className={LABEL_STYLE[status]}>{LABEL[status]}</span>
-                          {prod && show && (
-                            <>
-                              {" · "}
-                              <Link href={`/production/${prod.slug}`}>{show}</Link>
-                            </>
-                          )}
-                          {others.length > 0 && (
-                            <>
-                              {show ? <span className="text-muted"> with </span> : " · "}
-                              <Names people={others} />
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
+              {lines.map(({ key, first: a, people }) => {
+                const hidden = hiddenKeys.has(key);
+                const status = statusOf(a);
+                const others = personSlug ? people.filter((p) => p.slug !== personSlug) : people;
+                const prod = personSlug || withShow ? a.production : null;
+                const show = prod ? (prod.title_override ?? prod.show?.title) : null;
+                return (
+                  <li key={key} className={`flex gap-2 text-[15px] leading-snug ${hidden ? extra : ""}`}>
+                    <ResultMark status={status} />
+                    <div className="flex min-w-0 flex-col">
+                      <AwardName name={a.category?.name ?? "Award"} />
+                      <span className="text-[14px]">
+                        <span className={LABEL_STYLE[status]}>{LABEL[status]}</span>
+                        {prod && show && (
+                          <>
+                            {" · "}
+                            <Link href={`/production/${prod.slug}`}>{show}</Link>
+                          </>
+                        )}
+                        {others.length > 0 && (
+                          <>
+                            {show && personSlug ? <span className="text-muted"> with </span> : " · "}
+                            <Names people={others} />
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );
       })}
     </div>
   );
+  return cut === Infinity ? list : <SeeAll total={total}>{list}</SeeAll>;
 }

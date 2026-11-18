@@ -276,6 +276,7 @@ export type Database = {
           ceremony_id: string
           created_at: string
           created_by: string | null
+          credit_check_dismissed: boolean
           credit_id: string | null
           id: string
           nomination_id: string
@@ -292,6 +293,7 @@ export type Database = {
           ceremony_id: string
           created_at?: string
           created_by?: string | null
+          credit_check_dismissed?: boolean
           credit_id?: string | null
           id?: string
           nomination_id?: string
@@ -308,6 +310,7 @@ export type Database = {
           ceremony_id?: string
           created_at?: string
           created_by?: string | null
+          credit_check_dismissed?: boolean
           credit_id?: string | null
           id?: string
           nomination_id?: string
@@ -1217,52 +1220,73 @@ export type Database = {
       }
       organizations: {
         Row: {
+          access_note: string | null
           created_at: string
           created_by: string | null
           description: string | null
+          facebook_url: string | null
           founded_year: number | null
+          home_location_id: string | null
           id: string
+          instagram_url: string | null
           is_active: boolean
           logo_media_id: string | null
           name: string
+          season_note: string | null
           short_name: string | null
           slug: string
           state: string
+          tickets_url: string | null
           town: string | null
           updated_at: string
           website_url: string | null
+          youtube_url: string | null
         }
         Insert: {
+          access_note?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          facebook_url?: string | null
           founded_year?: number | null
+          home_location_id?: string | null
           id?: string
+          instagram_url?: string | null
           is_active?: boolean
           logo_media_id?: string | null
           name: string
+          season_note?: string | null
           short_name?: string | null
           slug: string
           state?: string
+          tickets_url?: string | null
           town?: string | null
           updated_at?: string
           website_url?: string | null
+          youtube_url?: string | null
         }
         Update: {
+          access_note?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          facebook_url?: string | null
           founded_year?: number | null
+          home_location_id?: string | null
           id?: string
+          instagram_url?: string | null
           is_active?: boolean
           logo_media_id?: string | null
           name?: string
+          season_note?: string | null
           short_name?: string | null
           slug?: string
           state?: string
+          tickets_url?: string | null
           town?: string | null
           updated_at?: string
           website_url?: string | null
+          youtube_url?: string | null
         }
         Relationships: [
           {
@@ -1270,6 +1294,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_home_location_id_fkey"
+            columns: ["home_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
@@ -2032,6 +2063,10 @@ export type Database = {
       }
     }
     Functions: {
+      add_award_credit: {
+        Args: { p_entry: string; p_role: string }
+        Returns: string
+      }
       add_ceremony_award: {
         Args: {
           p_ceremony: string
@@ -2169,6 +2204,7 @@ export type Database = {
           slug: string
         }[]
       }
+      dismiss_award_credit: { Args: { p_entry: string }; Returns: undefined }
       dismiss_duplicate: {
         Args: { p_a: string; p_b: string; p_table: string }
         Returns: undefined

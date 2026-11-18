@@ -59,6 +59,11 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   // Productions and shows edit the show's roles
   let roleShow: { id: string; title: string } | null = table === "shows" ? { id: record.id, title: name } : null;
 
+  if (table === "organizations") {
+    const { data: o } = await supabase.from("organizations").select("home:locations!organizations_home_location_id_fkey(name)").eq("id", record.id).maybeSingle();
+    if (o?.home) labels.home_location_id = o.home.name;
+  }
+
   if (table === "productions") {
     const { data: p } = await supabase
       .from("productions")

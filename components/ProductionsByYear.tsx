@@ -12,7 +12,8 @@ export type ProductionTile = {
 
 // Productions grouped by year: the year as a section heading, newest first,
 // with a poster-tile grid beneath (company and venue pages)
-export function ProductionsByYear({ productions, empty }: { productions: ProductionTile[]; empty: string }) {
+// sub: the years sit under another heading (a company's "Past"), so they're smaller
+export function ProductionsByYear({ productions, empty, sub = false }: { productions: ProductionTile[]; empty: string; sub?: boolean }) {
   if (!productions.length) {
     return (
       <section className="flex flex-col gap-2">
@@ -26,7 +27,11 @@ export function ProductionsByYear({ productions, empty }: { productions: Product
     <>
       {years.map((year) => (
         <section key={year} className="flex flex-col gap-4">
-          <h2 className="heading border-b border-rule pb-2">{year}</h2>
+          {sub ? (
+            <h3 className="subheading border-b border-rule pb-1.5">{year}</h3>
+          ) : (
+            <h2 className="heading border-b border-rule pb-2">{year}</h2>
+          )}
           <TileGrid productions={productions.filter((p) => p.year === year)} />
         </section>
       ))}

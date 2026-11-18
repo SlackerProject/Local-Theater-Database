@@ -35,9 +35,18 @@ const KINDS = [
 ] as const;
 
 const clean = (q: string) => q.replace(/[%_,()]/g, " ");
+// Matching productions by date, most recent first, so this season's are at the top
 const findProductions = async (q: string): Promise<Pick[]> => {
-  const { data } = await createClient().rpc("lookup_productions", { p_query: q });
-  return (data ?? []).map((d) => ({ id: d.id, label: d.label, detail: d.detail }));
+  const supabase = createClient();
+  const { data } = await supabase.rpc("lookup_productions", { p_query: q, max_results: 20 });
+  const hits = data ?? [];
+  const { data: dates } = hits.length
+    ? await supabase.from("productions").select("id, year, opening_date").in("id", hits.map((h) => h.id))
+    : { data: [] };
+  const when = new Map((dates ?? []).map((d) => [d.id, d.opening_date ?? `${d.year}-00-00`]));
+  return [...hits]
+    .sort((a, b) => (when.get(b.id) ?? "").localeCompare(when.get(a.id) ?? ""))
+    .map((d) => ({ id: d.id, label: d.label, detail: d.detail }));
 };
 const findPeople = async (q: string): Promise<Pick[]> => {
   const { data } = await createClient().from("people").select("id, display_name, credits(count)").ilike("display_name", `%${clean(q)}%`).limit(8);

@@ -32,7 +32,6 @@ type EntryRow = {
   production: { id: string; year: number; title_override: string | null; show: { title: string } | null; organization: { name: string } | null } | null;
   person: { id: string; display_name: string } | null;
   credit: { is_young_performer: boolean } | null;
-  presenter: { name: string } | null;
 };
 
 // A season's awards, category by category: add the nominees, then pick the winners
@@ -62,7 +61,7 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
         .select(
           `id, category_id, result,
            production:productions(id, year, title_override, show:shows(title), organization:organizations(name)),
-           person:people(id, display_name), credit:credits(is_young_performer), presenter:organizations(name)`,
+           person:people(id, display_name), credit:credits(is_young_performer)`,
         )
         .eq("ceremony_id", ceremony.id)
     : { data: [] };
@@ -79,7 +78,7 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
       label: e.production
         ? `${e.production.title_override ?? e.production.show?.title} (${e.production.year})`
         : (e.person?.display_name ?? "?"),
-      detail: e.production ? (e.production.organization?.name ?? "") : e.presenter ? `Presented by ${e.presenter.name}` : "",
+      detail: e.production?.organization?.name ?? "",
       people: [],
     };
     n.entryIds.push(e.id);

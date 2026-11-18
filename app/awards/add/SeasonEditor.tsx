@@ -30,12 +30,8 @@ const findPeople = async (q: string): Promise<Pick[]> => {
   const { data } = await createClient().from("people").select("id, display_name").ilike("display_name", `%${q.replace(/[%_,()]/g, " ")}%`).limit(8);
   return (data ?? []).map((d) => ({ id: d.id, label: d.display_name, detail: "" }));
 };
-const findCompanies = async (q: string): Promise<Pick[]> => {
-  const { data } = await createClient().from("organizations").select("id, name, town").ilike("name", `%${q.replace(/[%_,()]/g, " ")}%`).limit(8);
-  return (data ?? []).map((d) => ({ id: d.id, label: d.name, detail: d.town ?? "" }));
-};
 
-// Type-ahead search for a production, person or company
+// Type-ahead search for a production or person
 function Search({ label, placeholder, value, onPick, find }: { label: string; placeholder: string; value: Pick | null; onPick: (p: Pick | null) => void; find: (q: string) => Promise<Pick[]> }) {
   const id = useId();
   const [q, setQ] = useState("");
@@ -99,7 +95,6 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
   const [credits, setCredits] = useState<Credit[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
   const [person, setPerson] = useState<Pick | null>(null);
-  const [company, setCompany] = useState<Pick | null>(null);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   const honor = category.kind === "honor";
@@ -129,10 +124,7 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
     <div className="flex flex-col gap-3 rounded-lg border border-rule p-4">
       <span className="font-bold">Add a nominee</span>
       {honor ? (
-        <>
-          <Search label="Person" placeholder="Start typing their name" value={person} onPick={setPerson} find={findPeople} />
-          <Search label="Presented by (optional)" placeholder="Start typing the company’s name" value={company} onPick={setCompany} find={findCompanies} />
-        </>
+        <Search label="Person" placeholder="Start typing their name" value={person} onPick={setPerson} find={findPeople} />
       ) : (
         <Search
           label="Production"
@@ -178,7 +170,7 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
                 category_id: category.id,
                 source_url: sourceUrl.trim(),
                 ...(honor
-                  ? { person_id: person!.id, ...(company && { organization_id: company.id }) }
+                  ? { person_id: person!.id }
                   : { production_id: production!.id, credit_ids: chosen }),
               });
               if (!r.ok) return setError(r.error);
@@ -186,7 +178,6 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
               setCredits([]);
               setChosen([]);
               setPerson(null);
-              setCompany(null);
               onAdded();
             })
           }

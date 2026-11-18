@@ -147,6 +147,8 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
   const [newName, setNewName] = useState("");
   const [adult, setAdult] = useState(false);
   const [company, setCompany] = useState<Pick | null>(null);
+  // People named on the award who aren't in this production's credits (or on the site)
+  const [others, setOthers] = useState<{ id?: string; name: string }[]>([]);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   const { kind } = category;
@@ -171,7 +173,9 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
     };
   }, [production, namesPeople, kind]);
 
-  const ready = kind === "company" ? !!company : kind === "person" ? !!person || (!!newName && adult) : !!production;
+  const newOthers = others.filter((o) => !o.id);
+  const ready =
+    kind === "company" ? !!company : kind === "person" ? !!person || (!!newName && adult) : !!production && (!newOthers.length || adult);
   const reset = () => {
     setProduction(null);
     setCredits([]);
@@ -180,6 +184,7 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
     setNewName("");
     setAdult(false);
     setCompany(null);
+    setOthers([]);
   };
 
   const submit = () =>
@@ -191,6 +196,16 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
         if (!made.ok) return setError(made.error);
         personId = made.id;
       }
+      // Anyone else named: on the site already, or added now
+      const otherIds: string[] = [];
+      for (const o of others) {
+        if (o.id) otherIds.push(o.id);
+        else {
+          const made = await createPerson(o.name, adult);
+          if (!made.ok) return setError(made.error);
+          otherIds.push(made.id);
+        }
+      }
       const r = await addNominee({
         ceremony_id: ceremonyId,
         category_id: category.id,
@@ -200,7 +215,7 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
           ? { organization_id: company!.id }
           : kind === "person"
             ? { person_id: personId }
-            : { production_id: production!.id, credit_ids: chosen }),
+            : { production_id: production!.id, credit_ids: chosen, person_ids: otherIds }),
       });
       if (!r.ok) return setError(r.error);
       reset();
@@ -262,10 +277,28 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
               </span>
             </label>
           ))}
-          {credits.length === 0 && (
-            <span className="text-sm text-muted">
-              No {kind === "performer" ? "cast" : "creative team"} listed for this production yet. Add them on the production page first.
+          {others.map((o, i) => (
+            <span key={`${o.id ?? o.name}-${i}`} className="flex min-h-10 items-center gap-2.5">
+              <strong>{o.name}</strong>
+              {!o.id && <span className="text-sm text-muted">· new to the site</span>}
+              <button type="button" onClick={() => setOthers((x) => x.filter((_, j) => j !== i))} className="btn-text text-sm">
+                Remove
+              </button>
             </span>
+          ))}
+          <Search
+            label="Someone else"
+            placeholder="Start typing their name"
+            value={null}
+            onPick={(p) => p && setOthers((x) => (x.some((o) => o.id === p.id) ? x : [...x, { id: p.id, name: p.label }]))}
+            find={findPeople}
+            onNew={(name) => setOthers((x) => [...x, { name }])}
+          />
+          {newOthers.length > 0 && (
+            <label className="flex cursor-pointer items-center gap-2.5 text-[15px]">
+              <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} className="h-5 w-5 accent-ink" />
+              I confirm {newOthers.length === 1 ? "they’re" : "they’re all"} 18 or older
+            </label>
           )}
         </fieldset>
       )}

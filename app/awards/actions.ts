@@ -54,6 +54,7 @@ export async function addNominee(n: {
   category_id: string;
   production_id?: string;
   credit_ids?: string[];
+  person_ids?: string[];
   person_id?: string;
   organization_id?: string;
   source_url: string;
@@ -66,8 +67,11 @@ export async function addNominee(n: {
       ? [{ ...base, organization_id: n.organization_id }]
       : n.person_id
         ? [{ ...base, person_id: n.person_id }]
-        : n.credit_ids?.length
-          ? n.credit_ids.map((credit_id) => ({ ...base, production_id: n.production_id, credit_id }))
+        : n.credit_ids?.length || n.person_ids?.length
+          ? [
+              ...(n.credit_ids ?? []).map((credit_id) => ({ ...base, production_id: n.production_id, credit_id })),
+              ...(n.person_ids ?? []).map((person_id) => ({ ...base, production_id: n.production_id, person_id })),
+            ]
           : [{ ...base, production_id: n.production_id }];
     for (const a of awards) {
       const r = await submitAward(a);

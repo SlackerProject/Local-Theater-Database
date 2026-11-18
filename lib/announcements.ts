@@ -30,7 +30,7 @@ export const ANNOUNCEMENT_SELECT = `id, kind, status, created_at,
   production:productions(id, slug, year, title_override, show:shows(title), organization:organizations(slug, name)),
   person:people(slug, display_name),
   credit:credits(kind, role_name, character:show_characters(name)),
-  award:award_entries(category:award_categories(name), ceremony:award_ceremonies(name, season))`;
+  award:award_entries(category:award_categories(name), ceremony:award_ceremonies(slug, name, season))`;
 
 type Row = {
   kind: string;
@@ -44,7 +44,7 @@ type Row = {
   } | null;
   person: { slug: string; display_name: string } | null;
   credit: { kind: string; role_name: string | null; character: { name: string } | null } | null;
-  award?: { category: { name: string } | null; ceremony: { name: string; season: string } | null } | null;
+  award?: { category: { name: string } | null; ceremony: { slug: string; name: string; season: string } | null } | null;
 };
 
 // Whether to offer "Remind me about auditions": for productions that are
@@ -73,6 +73,7 @@ export function announcement(n: Row) {
           won: n.kind === "award_win",
           name: n.award.category?.name ?? "an award",
           ceremony: n.award.ceremony ? `${n.award.ceremony.name} ${n.award.ceremony.season}` : "",
+          ceremonySlug: n.award.ceremony?.slug ?? "",
         }
       : null;
   if (AWARD_KINDS.includes(n.kind) && !award) return null;

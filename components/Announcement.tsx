@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { dismissNotification, setAuditionFollow, wantToSeeFromNotification } from "@/app/follow-actions";
 import type { announcement } from "@/lib/announcements";
+import { ceremonyHref } from "@/lib/awards";
 
 type A = NonNullable<ReturnType<typeof announcement>>;
 
@@ -27,7 +28,11 @@ export function AnnouncementText({ a }: { a: A }) {
           {a.person.label}
         </Link>{" "}
         {a.award.won ? "won" : "was nominated for"} {a.award.name}
-        {a.award.ceremony && <>, {a.award.ceremony}</>}
+        {a.award.ceremony && (
+          <>
+            , <Link href={ceremonyHref(a.award.ceremonySlug)}>{a.award.ceremony}</Link>
+          </>
+        )}
         {a.production.label && <> for {show}</>}
       </span>
     );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ceremonyName, type AwardRow } from "@/lib/awards";
+import { ceremonyHref, ceremonyName, type AwardRow } from "@/lib/awards";
 import { SeeAll } from "@/components/SeeAll";
 
 // One line per nomination or win: everyone it names is listed together
@@ -21,7 +21,7 @@ export function groupAwards(rows: AwardRow[]): Line[] {
 }
 
 export type Status = "won" | "consultant" | "nominated";
-const statusOf = (a: AwardRow): Status => (a.category?.consultant_choice ? "consultant" : a.result === "won" ? "won" : "nominated");
+export const statusOf = (a: AwardRow): Status => (a.category?.consultant_choice ? "consultant" : a.result === "won" ? "won" : "nominated");
 const RANK: Record<Status, number> = { won: 0, consultant: 1, nominated: 2 };
 const LABEL: Record<Status, string> = { won: "Winner", consultant: "Consultant Choice", nominated: "Nominee" };
 const LABEL_STYLE: Record<Status, string> = {
@@ -88,6 +88,7 @@ export function AwardList({ rows, personSlug, withShow = false, limit }: { rows:
   }
   const blocks = [...ceremonies].map(([ceremony, lines]) => ({
     ceremony,
+    slug: lines[0].first.ceremony?.slug ?? null,
     lines: [...lines].sort((a, b) => RANK[statusOf(a.first)] - RANK[statusOf(b.first)]),
   }));
   const total = blocks.reduce((n, b) => n + b.lines.length, 0);
@@ -97,7 +98,7 @@ export function AwardList({ rows, personSlug, withShow = false, limit }: { rows:
 
   const list = (
     <div className="flex flex-col gap-5">
-      {blocks.map(({ ceremony, lines }) => {
+      {blocks.map(({ ceremony, slug, lines }) => {
         const count = (st: Status) => lines.filter((l) => statusOf(l.first) === st).length;
         const wins = count("won");
         const picks = count("consultant");
@@ -106,7 +107,7 @@ export function AwardList({ rows, personSlug, withShow = false, limit }: { rows:
         return (
           <div key={ceremony} className={`flex flex-col gap-3 ${blockHidden ? extra : ""}`}>
             <div className="flex flex-col border-b border-rule pb-1.5">
-              <h3 className="m-0 text-[15px] font-bold">{ceremony}</h3>
+              <h3 className="m-0 text-[15px] font-bold">{slug ? <Link href={ceremonyHref(slug)}>{ceremony}</Link> : ceremony}</h3>
               <span className="text-[13px] text-muted">
                 {[wins && plural(wins, "win"), picks && `${picks} Consultant Choice`, noms && plural(noms, "nomination")].filter(Boolean).join(" · ")}
               </span>

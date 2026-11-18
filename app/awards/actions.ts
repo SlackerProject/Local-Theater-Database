@@ -178,3 +178,49 @@ export async function removeCeremonyAward(ceremonyId: string, categoryId: string
     return failed(e);
   }
 }
+
+// Add people to an existing nomination (a design team member who wasn't on
+// the site yet, say). A nomination saved with no names loses that blank entry.
+export async function addToNomination(
+  nominationId: string,
+  people: { id?: string; name: string }[],
+  adult: boolean,
+): Promise<Result> {
+  try {
+    const supabase = await moderatorClient();
+    const { data: first } = await supabase
+      .from("award_entries")
+      .select("ceremony_id, category_id, production_id, result, source_url")
+      .eq("nomination_id", nominationId)
+      .limit(1)
+      .maybeSingle();
+    if (!first) return { ok: false, error: "That nomination no longer exists." };
+    for (const p of people) {
+      let personId = p.id;
+      if (!personId) {
+        const made = await createPerson(p.name, adult);
+        if (!made.ok) return made;
+        personId = made.id;
+      }
+      // Their credit in the production, if they have one
+      const { data: credit } = first.production_id
+        ? await supabase.from("credits").select("id").eq("production_id", first.production_id).eq("person_id", personId).limit(1).maybeSingle()
+        : { data: null };
+      const r = await submitAward({
+        ceremony_id: first.ceremony_id,
+        category_id: first.category_id,
+        ...(first.production_id && { production_id: first.production_id }),
+        ...(credit ? { credit_id: credit.id } : { person_id: personId }),
+        result: first.result,
+        source_url: first.source_url,
+        nomination_id: nominationId,
+      });
+      if (!r.ok) return r;
+    }
+    await supabase.from("award_entries").delete().eq("nomination_id", nominationId).is("person_id", null).is("credit_id", null);
+    refresh();
+    return { ok: true };
+  } catch (e) {
+    return failed(e);
+  }
+}

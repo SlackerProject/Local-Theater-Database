@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   addCeremonyAward,
+  addToNomination,
   addNominee,
   createCeremony,
   createPerson,
@@ -325,6 +326,74 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
   );
 }
 
+// Add someone to a nomination that's already saved (on the site, or new)
+function AddName({ nominationId }: { nominationId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [people, setPeople] = useState<{ id?: string; name: string }[]>([]);
+  const [adult, setAdult] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, start] = useTransition();
+  const anyNew = people.some((p) => !p.id);
+
+  if (!open)
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="btn-text text-sm">
+        Add a name
+      </button>
+    );
+  return (
+    <div className="flex w-full flex-col gap-2 rounded-md border border-rule p-3">
+      {people.map((p, i) => (
+        <span key={`${p.id ?? p.name}-${i}`} className="flex items-center gap-2.5">
+          <strong>{p.name}</strong>
+          {!p.id && <span className="text-sm text-muted">· new to the site</span>}
+          <button type="button" onClick={() => setPeople((x) => x.filter((_, j) => j !== i))} className="btn-text text-sm">
+            Remove
+          </button>
+        </span>
+      ))}
+      <Search
+        label="Person"
+        placeholder="Start typing their name"
+        value={null}
+        onPick={(p) => p && setPeople((x) => (x.some((o) => o.id === p.id) ? x : [...x, { id: p.id, name: p.label }]))}
+        find={findPeople}
+        onNew={(name) => setPeople((x) => [...x, { name }])}
+      />
+      {anyNew && (
+        <label className="flex cursor-pointer items-center gap-2.5 text-[15px]">
+          <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} className="h-5 w-5 accent-ink" />
+          I confirm they’re 18 or older
+        </label>
+      )}
+      <span className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={pending || !people.length || (anyNew && !adult)}
+          onClick={() =>
+            start(async () => {
+              setError("");
+              const r = await addToNomination(nominationId, people, adult);
+              if (!r.ok) return setError(r.error);
+              setPeople([]);
+              setOpen(false);
+              router.refresh();
+            })
+          }
+          className={`btn-primary ${small}`}
+        >
+          {pending ? "Adding…" : "Add"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className={`btn-secondary ${small}`}>
+          Cancel
+        </button>
+        {error && <span className="text-sm font-semibold text-alert">{error}</span>}
+      </span>
+    </div>
+  );
+}
+
 // "Are you sure?" in place, for removing things
 function ConfirmRemove({ label, question, onConfirm }: { label: string; question: string; onConfirm: () => Promise<Done> }) {
   const [asking, setAsking] = useState(false);
@@ -402,6 +471,7 @@ function AwardPanel({ ceremony, category, nominees, sourceUrl }: { ceremony: { i
                   n.detail && <span className="text-muted"> · {n.detail}</span>
                 )}
               </span>
+              {(category.kind === "performer" || category.kind === "creative") && <AddName nominationId={n.key} />}
               <button type="button" disabled={pending} onClick={() => act(() => removeNominee(n.entryIds))} className="btn-text text-sm">
                 Remove
               </button>

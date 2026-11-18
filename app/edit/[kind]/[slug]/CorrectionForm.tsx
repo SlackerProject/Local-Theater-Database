@@ -521,7 +521,16 @@ function FieldInputBox({
 }) {
   switch (field.input) {
     case "longtext":
-      return <textarea id={id} rows={5} value={value} onChange={(e) => onValue(e.target.value)} className="field w-full max-w-[620px] p-3" />;
+      return field.maxLength ? (
+        <span className="flex w-full max-w-[620px] flex-col gap-1">
+          <textarea id={id} rows={4} maxLength={field.maxLength} value={value} onChange={(e) => onValue(e.target.value)} className="field w-full p-3" />
+          <span className={`self-end text-sm ${value.length >= field.maxLength ? "font-semibold text-ink" : "text-muted"}`}>
+            {value.length}/{field.maxLength}
+          </span>
+        </span>
+      ) : (
+        <textarea id={id} rows={5} value={value} onChange={(e) => onValue(e.target.value)} className="field w-full max-w-[620px] p-3" />
+      );
     case "number":
       return <input id={id} type="number" inputMode="numeric" value={value} onChange={(e) => onValue(e.target.value)} className={`${input} max-w-[160px]`} />;
     case "date":

@@ -1297,6 +1297,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          audition_info_url: string | null
           audition_style: string | null
           created_at: string
           created_by: string | null
@@ -1329,6 +1330,7 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          audition_info_url?: string | null
           audition_style?: string | null
           created_at?: string
           created_by?: string | null
@@ -1361,6 +1363,7 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          audition_info_url?: string | null
           audition_style?: string | null
           created_at?: string
           created_by?: string | null

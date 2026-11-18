@@ -24,7 +24,15 @@ export const KIND_FOR_TABLE: Record<PageTable, PageKind> = {
 export type FieldInput = "text" | "longtext" | "number" | "date" | "url" | "state" | "town" | "zip" | "street" | "showType" | "company" | "venue" | "select";
 
 // options: the choices for a "select" field (filled in by the edit page)
-export type FieldDef = { key: string; label: string; input: FieldInput; hint?: string; required?: boolean; options?: { value: string; label: string }[] };
+export type FieldDef = {
+  key: string;
+  label: string;
+  input: FieldInput;
+  hint?: string;
+  required?: boolean;
+  options?: { value: string; label: string }[];
+  maxLength?: number; // a character limit, with a counter on the form
+};
 
 const YES_NO = [
   { value: "true", label: "Yes" },
@@ -58,14 +66,14 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "website_url", label: "Website", input: "url" },
     { key: "founded_year", label: "Founded", input: "number" },
     { key: "is_nonprofit", label: "Nonprofit", input: "select", options: YES_NO },
-    { key: "description", label: "About", input: "longtext" },
+    { key: "description", label: "About", input: "longtext", maxLength: 280 },
     { key: "home_location_id", label: "Primary venue", input: "venue" },
     { key: "ticket_price", label: "Typical ticket price ($)", input: "number" },
     { key: "ticket_prices", label: "Ticket prices (one per line)", input: "longtext" },
     { key: "pass_price", label: "Season pass price ($)", input: "number" },
     { key: "pass_shows", label: "Shows in the season pass", input: "number" },
     { key: "tickets_url", label: "Tickets link", input: "url" },
-    { key: "audition_style", label: "Audition style", input: "text" },
+    { key: "audition_info_url", label: "General audition details link", input: "url" },
     { key: "facebook_url", label: "Facebook", input: "url" },
     { key: "instagram_url", label: "Instagram", input: "url" },
     { key: "youtube_url", label: "YouTube", input: "url" },

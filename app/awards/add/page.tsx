@@ -6,7 +6,7 @@ import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { ModerationNav } from "@/app/moderate/ModerationNav";
-import { SeasonEditor, type Nominee } from "./SeasonEditor";
+import { SeasonEditor, type Category, type Nominee } from "./SeasonEditor";
 
 export const metadata: Metadata = { title: "Awards · Moderation" };
 
@@ -32,9 +32,11 @@ type EntryRow = {
   production: { id: string; year: number; title_override: string | null; show: { title: string } | null; organization: { name: string } | null } | null;
   person: { id: string; display_name: string } | null;
   credit: { is_young_performer: boolean } | null;
+  organization: { id: string; name: string } | null;
 };
 
-// A season's awards, category by category: add the nominees, then pick the winners
+// A ceremony's awards, one by one: add the nominees (or just the winner),
+// then pick the winners
 async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchParams">) {
   const user = await getCurrentUser();
   if (!user) redirect("/signin?next=/awards/add");
@@ -48,28 +50,36 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
   }
 
   const supabase = await createClient();
-  const [{ ceremony: wanted }, { data: ceremonies }, { data: categories }] = await Promise.all([
+  const [{ ceremony: wanted }, { data: ceremonies }] = await Promise.all([
     searchParams,
-    supabase.from("award_ceremonies").select("id, name, season, source_url").order("year", { ascending: false }),
-    supabase.from("award_categories").select("id, name, section, kind, sort_order").order("sort_order").order("name"),
+    supabase.from("award_ceremonies").select("id, name, season, source_url").order("year", { ascending: false }).order("name"),
   ]);
   const ceremony = (ceremonies ?? []).find((c) => c.id === wanted) ?? ceremonies?.[0];
 
-  const { data } = ceremony
-    ? await supabase
-        .from("award_entries")
-        .select(
-          `id, category_id, result,
-           production:productions(id, year, title_override, show:shows(title), organization:organizations(name)),
-           person:people(id, display_name), credit:credits(is_young_performer)`,
-        )
-        .eq("ceremony_id", ceremony.id)
-    : { data: [] };
+  const [{ data: links }, { data }] = ceremony
+    ? await Promise.all([
+        supabase
+          .from("award_ceremony_categories")
+          .select("sort_order, category:award_categories(id, name, kind, has_nominees)")
+          .eq("ceremony_id", ceremony.id)
+          .order("sort_order"),
+        supabase
+          .from("award_entries")
+          .select(
+            `id, category_id, result,
+             production:productions(id, year, title_override, show:shows(title), organization:organizations(name)),
+             person:people(id, display_name), credit:credits(is_young_performer), organization:organizations(id, name)`,
+          )
+          .eq("ceremony_id", ceremony.id),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const categories: Category[] = (links ?? []).flatMap((l) => (l.category ? [l.category] : []));
 
-  // One nominee = one production (or, for honors, one person), with everyone it names
+  // One nominee = one production with everyone it names, or one company, or one person
   const nominees = new Map<string, Nominee>();
   for (const e of (data ?? []) as unknown as EntryRow[]) {
-    const key = `${e.category_id}:${e.production?.id ?? `person:${e.person?.id}`}`;
+    const who = e.production?.id ?? (e.organization ? `org:${e.organization.id}` : `person:${e.person?.id}`);
+    const key = `${e.category_id}:${who}`;
     const n = nominees.get(key) ?? {
       key,
       categoryId: e.category_id,
@@ -77,7 +87,7 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
       won: false,
       label: e.production
         ? `${e.production.title_override ?? e.production.show?.title} (${e.production.year})`
-        : (e.person?.display_name ?? "?"),
+        : (e.organization?.name ?? e.person?.display_name ?? "?"),
       detail: e.production?.organization?.name ?? "",
       people: [],
     };
@@ -94,20 +104,16 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
       <div className="flex flex-col gap-2">
         <h2 className="heading">Awards</h2>
         <p className="m-0 max-w-[720px] italic text-muted">
-          Open a category, add every nominee, then tick the winner once it’s announced. Everything saves as you go.{" "}
+          Choose a ceremony, open an award, and add the nominees. Tick the winner once it’s announced. Everything saves as you go.{" "}
           <Link href="/awards">See all awards</Link>
         </p>
       </div>
-      {ceremony ? (
-        <SeasonEditor
-          ceremonies={(ceremonies ?? []).map((c) => ({ id: c.id, label: `${c.name} ${c.season}` }))}
-          ceremony={{ id: ceremony.id, label: `${ceremony.name} ${ceremony.season}`, sourceUrl: ceremony.source_url ?? "" }}
-          categories={categories ?? []}
-          nominees={[...nominees.values()]}
-        />
-      ) : (
-        <p className="m-0 text-muted">No ceremonies yet.</p>
-      )}
+      <SeasonEditor
+        ceremonies={(ceremonies ?? []).map((c) => ({ id: c.id, name: c.name, label: `${c.name} ${c.season}` }))}
+        ceremony={ceremony ? { id: ceremony.id, label: `${ceremony.name} ${ceremony.season}`, sourceUrl: ceremony.source_url ?? "" } : null}
+        categories={categories}
+        nominees={[...nominees.values()]}
+      />
     </>
   );
 }

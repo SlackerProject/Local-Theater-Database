@@ -154,6 +154,7 @@ export type Database = {
       award_categories: {
         Row: {
           award_body_id: string
+          has_nominees: boolean
           id: string
           kind: string
           name: string
@@ -162,6 +163,7 @@ export type Database = {
         }
         Insert: {
           award_body_id: string
+          has_nominees?: boolean
           id?: string
           kind?: string
           name: string
@@ -170,6 +172,7 @@ export type Database = {
         }
         Update: {
           award_body_id?: string
+          has_nominees?: boolean
           id?: string
           kind?: string
           name?: string
@@ -226,6 +229,39 @@ export type Database = {
             columns: ["award_body_id"]
             isOneToOne: false
             referencedRelation: "award_bodies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      award_ceremony_categories: {
+        Row: {
+          category_id: string
+          ceremony_id: string
+          sort_order: number
+        }
+        Insert: {
+          category_id: string
+          ceremony_id: string
+          sort_order?: number
+        }
+        Update: {
+          category_id?: string
+          ceremony_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "award_ceremony_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "award_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_ceremony_categories_ceremony_id_fkey"
+            columns: ["ceremony_id"]
+            isOneToOne: false
+            referencedRelation: "award_ceremonies"
             referencedColumns: ["id"]
           },
         ]
@@ -1990,6 +2026,15 @@ export type Database = {
       }
     }
     Functions: {
+      add_ceremony_award: {
+        Args: {
+          p_ceremony: string
+          p_has_nominees?: boolean
+          p_kind: string
+          p_name: string
+        }
+        Returns: string
+      }
       add_crew_positions: { Args: { p_names: string[] }; Returns: number }
       allow_distinct_person: { Args: { p_name: string }; Returns: undefined }
       answer_feedback: {
@@ -2092,10 +2137,24 @@ export type Database = {
       }
       correction_changes: { Args: { p_changes: Json }; Returns: Json }
       correction_fields: { Args: { p_table: string }; Returns: string[] }
+      create_award_ceremony: {
+        Args: {
+          p_copy?: boolean
+          p_name: string
+          p_season: string
+          p_source_url?: string
+        }
+        Returns: string
+      }
+      create_person_for_award: {
+        Args: { p_adult: boolean; p_name: string }
+        Returns: string
+      }
       credit_contributor: {
         Args: { p_contributor: string }
         Returns: undefined
       }
+      delete_award_ceremony: { Args: { p_id: string }; Returns: undefined }
       deletion_blockers: {
         Args: { p_id: string; p_table: string }
         Returns: {
@@ -2380,6 +2439,10 @@ export type Database = {
         Args: { p_note?: string; p_proposal_id: string }
         Returns: undefined
       }
+      remove_ceremony_award: {
+        Args: { p_category: string; p_ceremony: string }
+        Returns: undefined
+      }
       reply_to_feedback: {
         Args: { p_body: string; p_done?: boolean; p_id: string }
         Returns: undefined
@@ -2454,6 +2517,7 @@ export type Database = {
           slug: string
         }[]
       }
+      season_year: { Args: { p_season: string }; Returns: number }
       seen_count: { Args: { p_person_id: string }; Returns: number }
       send_feedback: {
         Args: {

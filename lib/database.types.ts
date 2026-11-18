@@ -1297,7 +1297,6 @@ export type Database = {
       }
       organizations: {
         Row: {
-          access_note: string | null
           audition_style: string | null
           created_at: string
           created_by: string | null
@@ -1317,7 +1316,6 @@ export type Database = {
           newsletter_url: string | null
           pass_price: number | null
           pass_shows: number | null
-          season_note: string | null
           short_name: string | null
           slug: string
           state: string
@@ -1330,7 +1328,6 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
-          access_note?: string | null
           audition_style?: string | null
           created_at?: string
           created_by?: string | null
@@ -1350,7 +1347,6 @@ export type Database = {
           newsletter_url?: string | null
           pass_price?: number | null
           pass_shows?: number | null
-          season_note?: string | null
           short_name?: string | null
           slug: string
           state?: string
@@ -1363,7 +1359,6 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
-          access_note?: string | null
           audition_style?: string | null
           created_at?: string
           created_by?: string | null
@@ -1383,7 +1378,6 @@ export type Database = {
           newsletter_url?: string | null
           pass_price?: number | null
           pass_shows?: number | null
-          season_note?: string | null
           short_name?: string | null
           slug?: string
           state?: string

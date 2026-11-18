@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_NAME } from "@/lib/brand";
 import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
@@ -72,6 +74,31 @@ function CastGrid({ people }: { people: PersonCredits<CastPerson>[] }) {
       ))}
     </ul>
   );
+}
+
+// Browser tab and shared links: "Show (Year) · Company · Local Theater
+// Database", with the poster as the preview picture
+export async function generateMetadata({ params }: PageProps<"/production/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: p } = await supabase
+    .from("productions")
+    .select("year, title_override, opening_date, closing_date, show:shows(title), organization:organizations(name), location:locations(town), poster:media!productions_poster_fk(storage_key, width, height)")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!p || !p.show) return { title: "Production" };
+  const show = `${p.title_override ?? p.show.title} (${p.year})`;
+  const title = [show, p.organization?.name].filter(Boolean).join(" · ");
+  const dates = dateRange(p.opening_date, p.closing_date);
+  const description = [p.organization?.name && `${p.organization.name} presents ${p.title_override ?? p.show.title}`, p.location?.town, dates].filter(Boolean).join(" · ") + ".";
+  const poster = mediaUrl(p.poster?.storage_key);
+  const images = poster ? [{ url: poster, width: p.poster?.width ?? undefined, height: p.poster?.height ?? undefined, alt: `Poster for ${show}` }] : undefined;
+  return {
+    title,
+    description,
+    openGraph: { type: "website", siteName: SITE_NAME, url: `/production/${slug}`, title, description, images },
+    twitter: { card: poster ? "summary_large_image" : "summary", title, description, images: poster ? [poster] : undefined },
+  };
 }
 
 export default function ProductionPage({ params }: PageProps<"/production/[slug]">) {

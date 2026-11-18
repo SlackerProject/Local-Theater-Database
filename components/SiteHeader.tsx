@@ -42,20 +42,20 @@ export function SiteHeader({ query, hideSearch = false }: { query?: string; hide
       <div className="mx-auto max-w-[1180px] px-4 py-2.5 md:px-8 md:py-3">
         <div className="flex items-center gap-7">
           {/* The region sits beside the name on desktop; phones have no room, so it starts the second row */}
-          <span className="flex min-w-0 items-center gap-2.5">
-            <Link href="/" className="link-quiet text-xl font-extrabold leading-[1.1] tracking-[-0.02em] md:whitespace-nowrap md:text-[22px] md:leading-normal">
+          <span className="flex min-w-0 items-center gap-2.5 xl:flex-none">
+            <Link href="/" className="link-quiet text-xl font-extrabold leading-[1.1] tracking-[-0.02em] xl:whitespace-nowrap xl:text-[22px] xl:leading-normal">
               {SITE_NAME}
             </Link>
-            <span className="hidden md:block">
+            <span className="hidden xl:block">
               <RegionButton />
             </span>
           </span>
-          {!hideSearch && <SearchField id="q" defaultValue={query} className="hidden h-12 max-w-[560px] flex-1 md:flex" />}
+          {!hideSearch && <SearchField id="q" defaultValue={query} className="hidden h-12 max-w-[560px] flex-1 xl:flex" />}
           <Suspense fallback={<div className="ml-auto h-11 w-11" />}>
             <UserNav />
           </Suspense>
         </div>
-        <div className="mt-2.5 flex items-center gap-2 md:hidden">
+        <div className="mt-2.5 flex items-center gap-2 xl:hidden">
           <RegionButton />
           {!hideSearch && <SearchField id="q-m" defaultValue={query} className="flex h-[46px] min-w-0 flex-1" />}
         </div>

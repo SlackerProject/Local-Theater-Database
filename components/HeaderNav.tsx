@@ -202,7 +202,7 @@ export function HeaderNav({ user }: { user: User }) {
   return (
     <>
       {/* Desktop: Shows, People, Companies, the map pin, then Sign in, or the calendar, bell and account menu */}
-      <nav aria-label="Main" className="ml-auto hidden items-center gap-6 text-[15px] font-semibold md:flex">
+      <nav aria-label="Main" className="ml-auto hidden items-center gap-6 text-[15px] font-semibold xl:flex">
         {BROWSE.map((l) => (
           <Link key={l.href} href={l.href} className="link-quiet whitespace-nowrap">
             {l.label}
@@ -249,7 +249,7 @@ export function HeaderNav({ user }: { user: User }) {
       </nav>
 
       {/* Phones: the map pin, calendar and bell (signed in), then a 44px menu button; links live in the menu */}
-      <div ref={mobileRef} className="ml-auto flex items-center md:hidden">
+      <div ref={mobileRef} className="ml-auto flex items-center xl:hidden">
         <MapLink active={path === "/map"} />
         {user ? (
           <>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
@@ -11,7 +12,19 @@ import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { LogoUploader } from "@/components/uploads/UploadPanels";
-import { SHOW_COMPANY_LOGOS } from "@/lib/brand";
+import { SHOW_COMPANY_LOGOS, SITE_NAME } from "@/lib/brand";
+import { shortRun } from "@/lib/runDates";
+
+// Browser tab and shared links: "Company · Town · Local Theater Database"
+export async function generateMetadata({ params }: PageProps<"/company/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: org } = await supabase.from("organizations").select("name, town, description").eq("slug", slug).maybeSingle();
+  if (!org) return { title: "Company" };
+  const title = [org.name, org.town].filter(Boolean).join(" · ");
+  const description = org.description || `Productions by ${org.name}${org.town ? ` in ${org.town}` : ""}.`;
+  return { title, description, openGraph: { type: "website", siteName: SITE_NAME, url: `/company/${slug}`, title, description }, twitter: { card: "summary", title, description } };
+}
 
 export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
@@ -35,7 +48,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
     .select(
       `id, name, town, state, website_url, founded_year, description,
        logo:media!organizations_logo_fk(thumb_key, storage_key, photographer_credit),
-       productions(id, slug, year, title_override, color_ground, poster:media!productions_poster_fk(thumb_key),
+       productions(id, slug, year, title_override, opening_date, closing_date, color_ground, poster:media!productions_poster_fk(thumb_key),
                    show:shows(title), location:locations(id, slug, name, town)),
        organization_locations(is_home_venue, location:locations(id, slug, name, town))`,
     )
@@ -133,7 +146,7 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
                 title: p.title_override ?? p.show!.title,
                 ground: p.color_ground,
                 posterUrl: mediaUrl(p.poster?.thumb_key),
-                caption: p.location?.name ?? "",
+                caption: shortRun(p.opening_date, p.closing_date),
               }))}
           />
         </div>

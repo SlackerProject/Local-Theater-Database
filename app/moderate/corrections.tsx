@@ -16,6 +16,9 @@ import { unlistedPositions } from "@/lib/positions";
 import { personNameKey, sameNameMatches } from "@/lib/same-name";
 import { ContributorTag, pointsFor } from "@/components/badges/ContributorMedal";
 import { QueueHeading } from "./sections";
+import { pageById, type PageHit } from "@/lib/page-search";
+import type { MergeTable } from "@/lib/merge";
+import { SameAsReview } from "./SameAsReview";
 
 const TABLES = Object.keys(KIND_FOR_TABLE) as PageTable[];
 
@@ -48,6 +51,11 @@ export async function CorrectionsSection() {
   const cards = await Promise.all((proposals ?? []).map((p) => buildCard(supabase, p, knownPositions)));
   const points = await pointsFor((proposals ?? []).map((p) => p.proposed_by));
 
+  // A sender with their own person page: worth knowing when the note is about a person
+  const senders = [...new Set((proposals ?? []).map((p) => p.proposed_by))];
+  const { data: senderRows } = senders.length ? await supabase.from("profiles").select("id, person:people!profiles_person_id_fkey(id, slug, display_name)").in("id", senders) : { data: [] };
+  const ownPage = new Map((senderRows ?? []).flatMap((s) => (s.person ? [[s.id, s.person] as const] : [])));
+
   if (!cards.length) return null;
   return (
     <section className="flex flex-col">
@@ -68,12 +76,41 @@ export async function CorrectionsSection() {
             )}{" "}
             <span className="text-muted">({c.noun})</span> <span className="text-sm text-muted">· {c.sent}</span>
           </p>
-          {c.note && (
-            <p className="m-0 border-l-2 border-rule pl-3 whitespace-pre-line text-[15px] text-muted">
-              <strong className="text-ink">Note:</strong> {c.note}
+          {c.sameAs && (
+            <p className="m-0 text-base">
+              Says{" "}
+              <a href={`/${c.sameAs.path}/${c.sameAs.a.slug}`} target="_blank" rel="noopener noreferrer" className="font-bold">
+                {c.sameAs.a.label}
+              </a>{" "}
+              and{" "}
+              <a href={`/${c.sameAs.path}/${c.sameAs.b.slug}`} target="_blank" rel="noopener noreferrer" className="font-bold">
+                {c.sameAs.b.label}
+              </a>{" "}
+              are the same {c.noun}.
             </p>
           )}
-          <CorrectionReview id={c.id} rows={c.rows} newPositions={c.newPositions} />
+          {c.note && (
+            <p className="m-0 border-l-2 border-rule pl-3 whitespace-pre-line text-[15px] text-muted">
+              <strong className="text-ink">{c.sameAs ? "Why:" : "Note:"}</strong> {c.note}
+            </p>
+          )}
+          {(() => {
+            const own = ownPage.get(c.proposedBy);
+            const involved = [c.entityId, c.sameAs?.a.id, c.sameAs?.b.id];
+            return own && c.table === "people" && !c.rows.length && !involved.includes(own.id) ? (
+              <p className="m-0 text-[15px] text-muted">
+                {c.who}’s own page:{" "}
+                <a href={`/person/${own.slug}`} target="_blank" rel="noopener noreferrer">
+                  {own.display_name}
+                </a>
+              </p>
+            ) : null;
+          })()}
+          {c.sameAs ? (
+            <SameAsReview id={c.id} table={c.table as MergeTable} a={c.sameAs.a} b={c.sameAs.b} />
+          ) : (
+            <CorrectionReview id={c.id} rows={c.rows} newPositions={c.newPositions} />
+          )}
         </article>
       ))}
     </section>
@@ -228,8 +265,19 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
     });
   }
 
+  // "Same as another page" reports
+  const sameAsId = (p.changes as { same_as?: string } | null)?.same_as;
+  let sameAs: { path: string; a: PageHit; b: PageHit } | null = null;
+  if (sameAsId && p.entity_id) {
+    const [a, b] = await Promise.all([pageById(supabase, table as MergeTable, p.entity_id), pageById(supabase, table as MergeTable, sameAsId)]);
+    if (a && b) sameAs = { path: kind, a, b };
+  }
+
   return {
     id: p.id,
+    table,
+    entityId: p.entity_id,
+    sameAs,
     who: p.proposer?.display_name ?? "Someone",
     proposedBy: p.proposed_by,
     username: p.proposer?.username ?? "",

@@ -8,7 +8,8 @@ import { getCurrentUser, hasRole } from "@/lib/auth";
 // only; the database functions check the role again.
 
 import type { MergeTable } from "@/lib/merge";
-export type PageHit = { id: string; label: string; detail: string };
+import { findPages, type PageHit } from "@/lib/page-search";
+export type { PageHit };
 
 async function moderator() {
   const user = await getCurrentUser();
@@ -55,36 +56,6 @@ export async function mergePages(table: MergeTable, keep: string, remove: string
 
 // Find a page to merge by name
 export async function searchPages(table: MergeTable, q: string): Promise<PageHit[]> {
-  const term = q.trim().replace(/[%_,()]/g, " ");
-  if (term.length < 2) return [];
   const supabase = await moderator();
-  const like = `%${term}%`;
-  if (table === "people") {
-    const { data } = await supabase.from("people").select("id, display_name, credits(count)").ilike("display_name", like).limit(10);
-    return (data ?? []).map((r) => ({ id: r.id, label: r.display_name, detail: `${r.credits?.[0]?.count ?? 0} credits` }));
-  }
-  if (table === "shows") {
-    const { data } = await supabase.from("shows").select("id, title, authors, productions(count)").ilike("title", like).limit(10);
-    return (data ?? []).map((r) => ({ id: r.id, label: r.title, detail: [`${r.productions?.[0]?.count ?? 0} productions`, r.authors].filter(Boolean).join(" · ") }));
-  }
-  if (table === "organizations") {
-    const { data } = await supabase.from("organizations").select("id, name, town, productions(count)").ilike("name", like).limit(10);
-    return (data ?? []).map((r) => ({ id: r.id, label: r.name, detail: [r.town, `${r.productions?.[0]?.count ?? 0} productions`].filter(Boolean).join(" · ") }));
-  }
-  if (table === "locations") {
-    const { data } = await supabase.from("locations").select("id, name, street_address, town").ilike("name", like).limit(10);
-    return (data ?? []).map((r) => ({ id: r.id, label: r.name, detail: [r.street_address, r.town].filter(Boolean).join(", ") }));
-  }
-  // Productions: by show title
-  const { data } = await supabase
-    .from("productions")
-    .select("id, year, title_override, show:shows!inner(title), organization:organizations(name), credits(count)")
-    .ilike("show.title", like)
-    .order("year", { ascending: false })
-    .limit(10);
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    label: `${r.title_override ?? r.show?.title} (${r.year})`,
-    detail: [r.organization?.name, `${r.credits?.[0]?.count ?? 0} credits`].filter(Boolean).join(" · "),
-  }));
+  return findPages(supabase, table, q);
 }

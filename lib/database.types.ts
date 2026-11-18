@@ -2388,6 +2388,15 @@ export type Database = {
         Args: { p_details?: Json; p_message: string; p_page_url: string }
         Returns: undefined
       }
+      report_same_page: {
+        Args: {
+          p_id: string
+          p_note?: string
+          p_other: string
+          p_table: string
+        }
+        Returns: undefined
+      }
       resolve_bug: {
         Args: { p_id: string; p_status: string }
         Returns: undefined

@@ -11,6 +11,7 @@ import { CorrectionForm, type CreditLine, type PerformanceLine, type RoleLine } 
 import type { VenueOption } from "@/components/VenueSelect";
 import { mediaUrl } from "@/lib/media";
 import { PosterUploader } from "@/components/uploads/UploadPanels";
+import { SameAsLink } from "./SameAsLink";
 
 export const metadata: Metadata = { title: "Correction" };
 
@@ -155,6 +156,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
             </>
           )}
         </p>
+        <SameAsLink table={table} id={record.id} name={name} pagePath={pagePath} />
       </div>
       {poster && (
         <section aria-labelledby="poster-h" className="flex flex-col gap-3">

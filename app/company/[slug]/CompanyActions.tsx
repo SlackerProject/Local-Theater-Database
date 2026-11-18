@@ -26,13 +26,26 @@ export function ReadMore({ text }: { text: string }) {
 }
 
 // "Want to see": the same list and calendar as on production pages
-export function WantToSee({ productionId, path, signedIn, saved }: { productionId: string; path: string; signedIn: boolean; saved: boolean }) {
+export function WantToSee({
+  productionId,
+  path,
+  signedIn,
+  saved,
+  small = false,
+}: {
+  productionId: string;
+  path: string;
+  signedIn: boolean;
+  saved: boolean;
+  small?: boolean;
+}) {
+  const size = small ? " min-h-10 px-4 text-sm" : "";
   const [on, setOn] = useState(saved);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   if (!signedIn)
     return (
-      <Link href={`/signin?next=${encodeURIComponent(path)}`} className="btn-secondary">
+      <Link href={`/signin?next=${encodeURIComponent(path)}`} className={`btn-secondary${size}`}>
         Want to see
       </Link>
     );
@@ -54,7 +67,7 @@ export function WantToSee({ productionId, path, signedIn, saved }: { productionI
             }
           });
         }}
-        className={on ? "btn-primary" : "btn-secondary"}
+        className={`${on ? "btn-primary" : "btn-secondary"}${size}`}
       >
         {on ? "✓ Want to see" : "Want to see"}
       </button>

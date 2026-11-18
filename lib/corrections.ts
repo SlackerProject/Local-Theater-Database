@@ -59,7 +59,7 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "founded_year", label: "Founded", input: "number" },
     { key: "is_nonprofit", label: "Nonprofit", input: "select", options: YES_NO },
     { key: "description", label: "About", input: "longtext" },
-    { key: "home_location_id", label: "Home venue", input: "venue" },
+    { key: "home_location_id", label: "Primary venue", input: "venue" },
     { key: "ticket_price", label: "Typical ticket price ($)", input: "number" },
     { key: "ticket_prices", label: "Ticket prices (one per line)", input: "longtext" },
     { key: "pass_price", label: "Season pass price ($)", input: "number" },

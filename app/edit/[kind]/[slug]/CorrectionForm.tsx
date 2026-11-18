@@ -536,6 +536,17 @@ function FieldInputBox({
           ))}
         </select>
       );
+    case "select":
+      return (
+        <select id={id} value={value} onChange={(e) => onValue(e.target.value)} className={`${input} max-w-[320px]`}>
+          <option value="">None</option>
+          {(field.options ?? []).map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      );
     case "company":
     case "venue":
       return (

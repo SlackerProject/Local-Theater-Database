@@ -31,13 +31,13 @@ export async function generateMetadata({ params }: PageProps<"/company/[slug]">)
   return { title, description, openGraph: { type: "website", siteName: SITE_NAME, url: `/company/${slug}`, title, description }, twitter: { card: "summary", title, description } };
 }
 
-export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
+export default function CompanyPage({ params, searchParams }: PageProps<"/company/[slug]">) {
   return (
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-12 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
-          <Company params={params} />
+          <Company params={params} searchParams={searchParams} />
         </Suspense>
       </main>
       <SiteFooter />
@@ -63,19 +63,33 @@ const SOCIAL = [
   },
 ] as const;
 
-async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">) {
-  const { slug } = await params;
+// Get involved: links only, in this order
+const INVOLVED = [
+  { key: "membership_url", label: "Membership" },
+  { key: "volunteer_url", label: "Volunteer" },
+  { key: "house_staff_url", label: "House staff" },
+  { key: "newsletter_url", label: "Newsletter" },
+  { key: "donate_url", label: "Donate" },
+] as const;
+
+// "Reservoir Stage · 888 South Main St, Mansfield"
+const stageLine = (v: { stage_name: string | null; street_address: string | null; town: string | null }) =>
+  [v.stage_name, [v.street_address, v.town].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
+
+async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]">, "params" | "searchParams">) {
+  const [{ slug }, { program: programParam }] = await Promise.all([params, searchParams]);
   const supabase = await createClient();
   const { data: org } = await supabase
     .from("organizations")
     .select(
       `id, name, town, state, website_url, founded_year, description, season_note, access_note, tickets_url,
-       facebook_url, instagram_url, youtube_url,
-       home:locations!organizations_home_location_id_fkey(slug, name, town),
+       facebook_url, instagram_url, youtube_url, membership_url, volunteer_url, house_staff_url, newsletter_url, donate_url,
+       home:locations!organizations_home_location_id_fkey(slug, name, town, stage_name, street_address),
+       programs:company_programs(id, slug, name, for_kids),
        logo:media!organizations_logo_fk(thumb_key, storage_key, photographer_credit),
-       productions(id, slug, year, title_override, opening_date, closing_date, ticket_url, is_hidden, color_ground,
+       productions(id, slug, year, title_override, opening_date, closing_date, ticket_url, is_hidden, color_ground, program_id,
                    poster:media!productions_poster_fk(thumb_key),
-                   show:shows(title), location:locations(slug, name, town),
+                   show:shows(title), location:locations(slug, name, town, stage_name, street_address),
                    auditions(id, starts_at, label, place, venue:locations(name)))`,
     )
     .eq("slug", slug)
@@ -135,6 +149,14 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
     })
     .sort((a, b) => a.next.starts_at.localeCompare(b.next.starts_at));
 
+  // Programs with productions to show (programs for kids are never listed);
+  // choosing one shows only its posters
+  const programs = (org.programs ?? [])
+    .filter((g) => !g.for_kids && productions.some((p) => p.program_id === g.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const program = programs.find((g) => g.slug === programParam) ?? null;
+  const inProgram = (p: (typeof productions)[number]) => !program || p.program_id === program.id;
+
   // Upcoming: still to close (or, with no dates, a later year); the rest is past
   const isUpcoming = (p: (typeof productions)[number]) =>
     p.closing_date || p.opening_date ? (p.closing_date ?? p.opening_date)! >= today : p.year > now.getFullYear();
@@ -148,10 +170,11 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
     caption: shortRun(p.opening_date, p.closing_date),
   });
   const upcoming = productions
-    .filter(isUpcoming)
+    .filter((p) => inProgram(p) && isUpcoming(p))
     .sort((a, b) => (a.opening_date ?? `${a.year}-12-31`).localeCompare(b.opening_date ?? `${b.year}-12-31`))
     .map(tile);
-  const past = productions.filter((p) => !isUpcoming(p)).map(tile);
+  const past = productions.filter((p) => inProgram(p) && !isUpcoming(p)).map(tile);
+  const involved = INVOLVED.filter((g) => org[g.key]);
 
   const website = org.website_url?.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
   const socials = SOCIAL.filter((s) => org[s.key]);
@@ -159,7 +182,12 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
   const facts = ([
     org.home && {
       label: "Home venue",
-      value: <Link href={`/venue/${org.home.slug}`}>{org.home.name}</Link>,
+      value: (
+        <span className="flex flex-col">
+          <Link href={`/venue/${org.home.slug}`}>{org.home.name}</Link>
+          {stageLine(org.home) && <span className="text-[14px] text-muted">{stageLine(org.home)}</span>}
+        </span>
+      ),
     },
     org.season_note && { label: "Season", value: org.season_note },
     org.access_note && { label: "Access", value: org.access_note },
@@ -244,9 +272,10 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
               </Link>
               <span className="text-[17px]">{shortRun(onStage.opening_date, onStage.closing_date)}</span>
               {onStage.location && (
-                <Link href={`/venue/${onStage.location.slug}`} className="text-muted">
-                  {[onStage.location.name, onStage.location.town].filter(Boolean).join(", ")}
-                </Link>
+                <span className="flex flex-col">
+                  <Link href={`/venue/${onStage.location.slug}`}>{onStage.location.name}</Link>
+                  <span className="text-[15px] text-muted">{stageLine(onStage.location) || onStage.location.town}</span>
+                </span>
               )}
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <WantToSee productionId={onStage.id} path={path} signedIn={!!user} saved={wantToSee.has(onStage.id)} />
@@ -303,7 +332,25 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
         </section>
       )}
 
-      {/* 7. Productions */}
+      {/* 7. Productions, with a program filter when the company has programs */}
+      {programs.length > 0 && (
+        <nav id="productions" aria-label="Programs" className="-mb-6 flex scroll-mt-24 flex-wrap gap-2">
+          {[null, ...programs].map((g) => {
+            const on = (g?.id ?? null) === (program?.id ?? null);
+            return (
+              <Link
+                key={g?.id ?? "all"}
+                href={g ? `${path}?program=${g.slug}#productions` : `${path}#productions`}
+                aria-current={on ? "true" : undefined}
+                scroll={false}
+                className={`link-quiet inline-flex min-h-10 items-center rounded-full border px-3.5 text-sm font-semibold ${on ? "border-ink bg-ink text-white" : "border-rule"}`}
+              >
+                {g ? g.name : "All productions"}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
       {upcoming.length > 0 && (
         <section className="flex flex-col gap-4">
           <h2 className="heading border-b border-rule pb-2">Upcoming</h2>
@@ -317,6 +364,20 @@ async function Company({ params }: Pick<PageProps<"/company/[slug]">, "params">)
         </section>
       ) : (
         !upcoming.length && <ProductionsByYear productions={[]} empty="This company’s productions will appear here as they’re added." />
+      )}
+
+      {/* 8. Get involved */}
+      {involved.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="heading">Get involved</h2>
+          <div className="flex flex-wrap gap-2">
+            {involved.map((g) => (
+              <a key={g.key} href={org[g.key] ?? undefined} rel="noopener noreferrer" target="_blank" className="btn-secondary">
+                {g.label}
+              </a>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* 9. Suggest an edit */}

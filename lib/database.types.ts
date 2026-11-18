@@ -494,6 +494,44 @@ export type Database = {
           },
         ]
       }
+      company_programs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          for_kids: boolean
+          id: string
+          name: string
+          organization_id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          for_kids?: boolean
+          id?: string
+          name: string
+          organization_id: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          for_kids?: boolean
+          id?: string
+          name?: string
+          organization_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_programs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credits: {
         Row: {
           added_by_owner: boolean
@@ -860,6 +898,7 @@ export type Database = {
           postal_code: string | null
           seating_capacity: number | null
           slug: string
+          stage_name: string | null
           state: string
           street_address: string | null
           town: string | null
@@ -879,6 +918,7 @@ export type Database = {
           postal_code?: string | null
           seating_capacity?: number | null
           slug: string
+          stage_name?: string | null
           state?: string
           street_address?: string | null
           town?: string | null
@@ -898,6 +938,7 @@ export type Database = {
           postal_code?: string | null
           seating_capacity?: number | null
           slug?: string
+          stage_name?: string | null
           state?: string
           street_address?: string | null
           town?: string | null
@@ -1224,14 +1265,18 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          donate_url: string | null
           facebook_url: string | null
           founded_year: number | null
           home_location_id: string | null
+          house_staff_url: string | null
           id: string
           instagram_url: string | null
           is_active: boolean
           logo_media_id: string | null
+          membership_url: string | null
           name: string
+          newsletter_url: string | null
           season_note: string | null
           short_name: string | null
           slug: string
@@ -1239,6 +1284,7 @@ export type Database = {
           tickets_url: string | null
           town: string | null
           updated_at: string
+          volunteer_url: string | null
           website_url: string | null
           youtube_url: string | null
         }
@@ -1247,14 +1293,18 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          donate_url?: string | null
           facebook_url?: string | null
           founded_year?: number | null
           home_location_id?: string | null
+          house_staff_url?: string | null
           id?: string
           instagram_url?: string | null
           is_active?: boolean
           logo_media_id?: string | null
+          membership_url?: string | null
           name: string
+          newsletter_url?: string | null
           season_note?: string | null
           short_name?: string | null
           slug: string
@@ -1262,6 +1312,7 @@ export type Database = {
           tickets_url?: string | null
           town?: string | null
           updated_at?: string
+          volunteer_url?: string | null
           website_url?: string | null
           youtube_url?: string | null
         }
@@ -1270,14 +1321,18 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          donate_url?: string | null
           facebook_url?: string | null
           founded_year?: number | null
           home_location_id?: string | null
+          house_staff_url?: string | null
           id?: string
           instagram_url?: string | null
           is_active?: boolean
           logo_media_id?: string | null
+          membership_url?: string | null
           name?: string
+          newsletter_url?: string | null
           season_note?: string | null
           short_name?: string | null
           slug?: string
@@ -1285,6 +1340,7 @@ export type Database = {
           tickets_url?: string | null
           town?: string | null
           updated_at?: string
+          volunteer_url?: string | null
           website_url?: string | null
           youtube_url?: string | null
         }
@@ -1628,6 +1684,7 @@ export type Database = {
           opening_date: string | null
           organization_id: string
           poster_media_id: string | null
+          program_id: string | null
           show_id: string
           slug: string
           ticket_url: string | null
@@ -1654,6 +1711,7 @@ export type Database = {
           opening_date?: string | null
           organization_id: string
           poster_media_id?: string | null
+          program_id?: string | null
           show_id: string
           slug: string
           ticket_url?: string | null
@@ -1680,6 +1738,7 @@ export type Database = {
           opening_date?: string | null
           organization_id?: string
           poster_media_id?: string | null
+          program_id?: string | null
           show_id?: string
           slug?: string
           ticket_url?: string | null
@@ -1714,6 +1773,13 @@ export type Database = {
             columns: ["poster_media_id"]
             isOneToOne: false
             referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "company_programs"
             referencedColumns: ["id"]
           },
           {

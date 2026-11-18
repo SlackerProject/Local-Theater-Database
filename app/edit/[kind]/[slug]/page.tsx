@@ -12,6 +12,7 @@ import type { VenueOption } from "@/components/VenueSelect";
 import { mediaUrl } from "@/lib/media";
 import { PosterUploader } from "@/components/uploads/UploadPanels";
 import { SameAsLink } from "./SameAsLink";
+import { ProgramsEditor, type Program } from "./ProgramsEditor";
 
 export const metadata: Metadata = { title: "Correction" };
 
@@ -52,6 +53,9 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   const locked: Record<string, string> = {};
   let name = String(record.display_name ?? record.name ?? record.title ?? slug);
   let credits: CreditLine[] | undefined;
+  // The company's programs, for a production's Program field (hidden when it has none)
+  let programs: { value: string; label: string }[] = [];
+  let companyPrograms: Program[] = [];
   let performances: PerformanceLine[] | undefined;
   let venues: VenueOption[] = [];
   // The poster, changed through the uploader (reviewed separately)
@@ -60,15 +64,22 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   let roleShow: { id: string; title: string } | null = table === "shows" ? { id: record.id, title: name } : null;
 
   if (table === "organizations") {
-    const { data: o } = await supabase.from("organizations").select("home:locations!organizations_home_location_id_fkey(name)").eq("id", record.id).maybeSingle();
+    const { data: o } = await supabase
+      .from("organizations")
+      .select("home:locations!organizations_home_location_id_fkey(name), company_programs(id, name, for_kids, productions(count))")
+      .eq("id", record.id)
+      .maybeSingle();
     if (o?.home) labels.home_location_id = o.home.name;
+    companyPrograms = (o?.company_programs ?? [])
+      .map((g) => ({ id: g.id, name: g.name, for_kids: g.for_kids, count: g.productions?.[0]?.count ?? 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   if (table === "productions") {
     const { data: p } = await supabase
       .from("productions")
       .select(
-        `year, title_override, show:shows(id, title), organization:organizations(name), location:locations(name),
+        `year, title_override, show:shows(id, title), organization:organizations(name, programs:company_programs(id, name)), location:locations(name),
          poster:media!productions_poster_fk(thumb_key, palette),
          credits(id, kind, role_name, billing_order, is_understudy, is_young_performer, person:people(id, display_name), character:show_characters(id, name)),
          performances(id, starts_at, label, is_cancelled, location_id)`,
@@ -83,6 +94,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
     if (p?.show) roleShow = { id: p.show.id, title: p.show.title };
     if (p?.organization) labels.organization_id = p.organization.name;
     if (p?.location) labels.location_id = p.location.name;
+    programs = (p?.organization?.programs ?? []).map((g) => ({ value: g.id, label: g.name })).sort((a, b) => a.label.localeCompare(b.label));
     credits = (p?.credits ?? [])
       .sort((a, b) => a.billing_order - b.billing_order)
       .map((c) => ({
@@ -196,7 +208,10 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         table={table}
         id={record.id}
         pagePath={pagePath}
-        fields={table === "productions" && record.opening_date ? fields.filter((f) => f.key !== "year") : fields}
+        fields={fields
+          .filter((f) => !(table === "productions" && f.key === "year" && record.opening_date))
+          .filter((f) => f.key !== "program_id" || programs.length > 0)
+          .map((f) => (f.key === "program_id" ? { ...f, options: programs } : f))}
         current={current}
         labels={labels}
         locked={locked}
@@ -207,6 +222,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         showTitle={roleShow?.title}
         isModerator={isModerator}
       />
+      {table === "organizations" && isModerator && <ProgramsEditor organizationId={record.id} slug={slug} programs={companyPrograms} />}
     </>
   );
 }

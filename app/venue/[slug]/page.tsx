@@ -42,7 +42,7 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
   const { data: venue } = await supabase
     .from("locations")
     .select(
-      `id, name, street_address, town, state, postal_code, seating_capacity, description,
+      `id, name, stage_name, street_address, town, state, postal_code, seating_capacity, description,
        productions(id, slug, year, title_override, color_ground, poster:media!productions_poster_fk(thumb_key),
                    show:shows(title), organization:organizations(id, slug, name)),
        organization_locations(organization:organizations(id, slug, name))`,
@@ -74,6 +74,12 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
           <EditButton kind="venue" slug={slug} signedIn={!!user} />
         </div>
         <p className="m-0 flex flex-wrap items-center gap-x-2 text-[17px] text-muted">
+          {venue.stage_name && (
+            <>
+              <span className="font-semibold text-ink">{venue.stage_name}</span>
+              <span aria-hidden="true">·</span>
+            </>
+          )}
           <span>{address}</span>
           <span aria-hidden="true">·</span>
           <a href={mapUrl} rel="noopener noreferrer" target="_blank" className="inline-flex min-h-11 items-center font-semibold text-ink">

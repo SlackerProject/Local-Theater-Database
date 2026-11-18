@@ -21,9 +21,10 @@ export const KIND_FOR_TABLE: Record<PageTable, PageKind> = {
   locations: "venue",
 };
 
-export type FieldInput = "text" | "longtext" | "number" | "date" | "url" | "state" | "town" | "zip" | "street" | "showType" | "company" | "venue";
+export type FieldInput = "text" | "longtext" | "number" | "date" | "url" | "state" | "town" | "zip" | "street" | "showType" | "company" | "venue" | "select";
 
-export type FieldDef = { key: string; label: string; input: FieldInput; hint?: string; required?: boolean };
+// options: the choices for a "select" field (filled in by the edit page)
+export type FieldDef = { key: string; label: string; input: FieldInput; hint?: string; required?: boolean; options?: { value: string; label: string }[] };
 
 // Mirrors correction_fields() in the database
 export const FIELDS: Record<PageTable, FieldDef[]> = {
@@ -32,6 +33,7 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "year", label: "Year", input: "number", required: true },
     { key: "organization_id", label: "Company", input: "company", required: true },
     { key: "location_id", label: "Venue", input: "venue" },
+    { key: "program_id", label: "Program", input: "select" },
     { key: "opening_date", label: "Opening date", input: "date", hint: "The production’s year is the year it opens." },
     { key: "closing_date", label: "Closing date", input: "date" },
     { key: "ticket_url", label: "Tickets link", input: "url" },
@@ -56,6 +58,11 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "facebook_url", label: "Facebook", input: "url" },
     { key: "instagram_url", label: "Instagram", input: "url" },
     { key: "youtube_url", label: "YouTube", input: "url" },
+    { key: "membership_url", label: "Membership link", input: "url" },
+    { key: "volunteer_url", label: "Volunteer link", input: "url" },
+    { key: "house_staff_url", label: "House staff link", input: "url" },
+    { key: "newsletter_url", label: "Newsletter link", input: "url" },
+    { key: "donate_url", label: "Donate link", input: "url" },
   ],
   shows: [
     { key: "title", label: "Title", input: "text", required: true },
@@ -67,6 +74,7 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
   ],
   locations: [
     { key: "name", label: "Name", input: "text", required: true },
+    { key: "stage_name", label: "Stage name", input: "text" },
     { key: "street_address", label: "Street address", input: "street", hint: "Number and street only, e.g. 2 Scout Road. The town goes below." },
     { key: "town", label: "City or town", input: "town", hint: "A Massachusetts city or town, e.g. Walpole. Villages belong to their town (East Walpole is in Walpole)." },
     { key: "state", label: "State", input: "state" },

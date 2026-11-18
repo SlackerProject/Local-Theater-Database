@@ -90,11 +90,15 @@ async function Season({ searchParams }: Pick<PageProps<"/awards/add">, "searchPa
         : (e.organization?.name ?? e.person?.display_name ?? "?"),
       detail: e.production?.organization?.name ?? "",
       people: [],
+      names: [],
     };
     n.entryIds.push(e.id);
     if (e.result === "won") n.won = true;
-    if (e.production && e.person) n.people.push(e.person.display_name);
-    else if (e.production && e.credit?.is_young_performer) n.people.push("Young performer");
+    const name = e.production && (e.person ? e.person.display_name : e.credit?.is_young_performer ? "Young performer" : null);
+    if (name) {
+      n.people.push(name);
+      n.names.push({ entryId: e.id, name });
+    }
     nominees.set(key, n);
   }
 

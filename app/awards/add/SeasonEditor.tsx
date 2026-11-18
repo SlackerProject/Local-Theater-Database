@@ -11,12 +11,22 @@ import {
   createPerson,
   deleteCeremony,
   removeCeremonyAward,
+  removeFromNomination,
   removeNominee,
   setWinner,
 } from "../actions";
 
 export type Category = { id: string; name: string; kind: string; has_nominees: boolean; consultant_choice: boolean };
-export type Nominee = { key: string; categoryId: string; entryIds: string[]; won: boolean; label: string; detail: string; people: string[] };
+export type Nominee = {
+  key: string;
+  categoryId: string;
+  entryIds: string[];
+  won: boolean;
+  label: string;
+  detail: string;
+  people: string[];
+  names: { entryId: string; name: string }[];
+};
 type Pick = { id: string; label: string; detail: string };
 type Credit = { id: string; person: string; role: string };
 type Done = { ok: true } | { ok: false; error: string };
@@ -326,8 +336,8 @@ function AddNominee({ ceremonyId, category, sourceUrl, onAdded }: { ceremonyId: 
   );
 }
 
-// Add someone to a nomination that's already saved (on the site, or new)
-function AddName({ nominationId }: { nominationId: string }) {
+// Edit the names on a saved nomination: remove any, add people (on the site, or new)
+function EditNames({ nominationId, names }: { nominationId: string; names: Nominee["names"] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [people, setPeople] = useState<{ id?: string; name: string }[]>([]);
@@ -339,11 +349,35 @@ function AddName({ nominationId }: { nominationId: string }) {
   if (!open)
     return (
       <button type="button" onClick={() => setOpen(true)} className="btn-text text-sm">
-        Add a name
+        Edit
       </button>
     );
   return (
     <div className="flex w-full flex-col gap-2 rounded-md border border-rule p-3">
+      {names.length > 0 && (
+        <ul className="m-0 flex list-none flex-col p-0">
+          {names.map((n) => (
+            <li key={n.entryId} className="flex min-h-10 items-center gap-2.5">
+              <strong>{n.name}</strong>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    setError("");
+                    const r = await removeFromNomination(n.entryId);
+                    if (!r.ok) return setError(r.error);
+                    router.refresh();
+                  })
+                }
+                className="btn-text text-sm"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {people.map((p, i) => (
         <span key={`${p.id ?? p.name}-${i}`} className="flex items-center gap-2.5">
           <strong>{p.name}</strong>
@@ -377,16 +411,22 @@ function AddName({ nominationId }: { nominationId: string }) {
               const r = await addToNomination(nominationId, people, adult);
               if (!r.ok) return setError(r.error);
               setPeople([]);
-              setOpen(false);
               router.refresh();
             })
           }
           className={`btn-primary ${small}`}
         >
-          {pending ? "Adding…" : "Add"}
+          {pending ? "Saving…" : "Add"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className={`btn-secondary ${small}`}>
-          Cancel
+        <button
+          type="button"
+          onClick={() => {
+            setPeople([]);
+            setOpen(false);
+          }}
+          className={`btn-secondary ${small}`}
+        >
+          Done
         </button>
         {error && <span className="text-sm font-semibold text-alert">{error}</span>}
       </span>
@@ -471,7 +511,7 @@ function AwardPanel({ ceremony, category, nominees, sourceUrl }: { ceremony: { i
                   n.detail && <span className="text-muted"> · {n.detail}</span>
                 )}
               </span>
-              {(category.kind === "performer" || category.kind === "creative") && <AddName nominationId={n.key} />}
+              {(category.kind === "performer" || category.kind === "creative") && <EditNames nominationId={n.key} names={n.names} />}
               <button type="button" disabled={pending} onClick={() => act(() => removeNominee(n.entryIds))} className="btn-text text-sm">
                 Remove
               </button>

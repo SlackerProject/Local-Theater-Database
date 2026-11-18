@@ -117,6 +117,38 @@ export async function removeNominee(entryIds: string[]): Promise<Result> {
   }
 }
 
+// Take one name off a nomination. The last name leaves the nomination
+// standing for its show, with no one named yet.
+export async function removeFromNomination(entryId: string): Promise<Result> {
+  try {
+    const supabase = await moderatorClient();
+    const { data: e } = await supabase
+      .from("award_entries")
+      .select("nomination_id, ceremony_id, category_id, production_id, result, source_url")
+      .eq("id", entryId)
+      .maybeSingle();
+    if (!e) return { ok: false, error: "That name is already off this nomination." };
+    const { error } = await supabase.from("award_entries").delete().eq("id", entryId);
+    if (error) return { ok: false, error: error.message };
+    const { count } = await supabase.from("award_entries").select("id", { count: "exact", head: true }).eq("nomination_id", e.nomination_id);
+    if (!count && e.production_id) {
+      const r = await submitAward({
+        ceremony_id: e.ceremony_id,
+        category_id: e.category_id,
+        production_id: e.production_id,
+        result: e.result,
+        source_url: e.source_url,
+        nomination_id: e.nomination_id,
+      });
+      if (!r.ok) return r;
+    }
+    refresh();
+    return { ok: true };
+  } catch (e) {
+    return failed(e);
+  }
+}
+
 // Someone who isn't on the site yet (confirmed 18 or older)
 export async function createPerson(name: string, adult: boolean): Promise<Result<{ id: string }>> {
   try {

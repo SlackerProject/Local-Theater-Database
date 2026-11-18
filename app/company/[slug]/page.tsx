@@ -69,11 +69,28 @@ const INVOLVED = [
   { key: "volunteer_url", label: "Volunteer" },
   { key: "house_staff_url", label: "House staff" },
   { key: "newsletter_url", label: "Newsletter" },
-  { key: "donate_url", label: "Donate" },
+  { key: "donate_url", label: "Support us" },
 ] as const;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const money = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
+
+// "$30 Musicals" or "Musicals: $30" -> { label: "Musicals", price: "$30" };
+// anything else stays as typed
+function priceLines(text: string | null) {
+  return (text ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      const front = l.match(/^\$\s*(\d+(?:\.\d{2})?)\s*[-–:·]?\s*(.+)$/);
+      if (front) return { label: front[2], price: `$${front[1]}` };
+      const back = l.match(/^(.+?)\s*[-–:·]?\s*\$\s*(\d+(?:\.\d{2})?)$/);
+      if (back) return { label: back[1], price: `$${back[2]}` };
+      return { label: l, price: "" };
+    });
+}
+
 
 // The usual season, from the last three years of opening nights:
 // "3 shows a year · Sep–May". The months run the long way round the
@@ -111,7 +128,7 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
   const { data: org } = await supabase
     .from("organizations")
     .select(
-      `id, name, town, state, website_url, founded_year, description, is_nonprofit, ticket_price, pass_price, pass_shows,
+      `id, name, town, state, website_url, founded_year, description, is_nonprofit, ticket_price, ticket_prices, pass_price, pass_shows,
        audition_style, tickets_url,
        facebook_url, instagram_url, youtube_url, membership_url, volunteer_url, house_staff_url, newsletter_url, donate_url,
        home:locations!organizations_home_location_id_fkey(slug, name, town, stage_name, street_address, seating_capacity, seating_style,
@@ -216,6 +233,7 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
   // Season pass savings: the shows at the usual price, less the pass
   const savings = org.ticket_price != null && org.pass_price != null && org.pass_shows ? Number(org.ticket_price) * org.pass_shows - Number(org.pass_price) : 0;
   const home = org.home;
+  const prices = priceLines(org.ticket_prices);
   const seating = home ? [home.seating_capacity && `${home.seating_capacity.toLocaleString("en-US")} seats`, home.seating_style].filter(Boolean).join(" · ") : "";
   type Fact = { label: string; value: React.ReactNode };
   const facts = ([
@@ -234,11 +252,23 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
         </span>
       ),
     },
-        (org.ticket_price != null || org.pass_price != null) && {
+        (org.ticket_price != null || org.pass_price != null || prices.length > 0) && {
       label: "Tickets",
       value: (
         <span className="flex flex-col">
-          {org.ticket_price != null && <span>~{money(Number(org.ticket_price))}</span>}
+          {/* The company's own price list, or else the one typical price */}
+          {prices.length > 0 ? (
+            <span className="flex flex-col">
+              {prices.map((p, i) => (
+                <span key={i} className="flex items-baseline justify-between gap-3">
+                  <span>{p.label}</span>
+                  {p.price && <span className="font-semibold tabular-nums">{p.price}</span>}
+                </span>
+              ))}
+            </span>
+          ) : (
+            org.ticket_price != null && <span>~{money(Number(org.ticket_price))}</span>
+          )}
           {org.pass_price != null && (
             <span className="text-[14px] text-muted">
               Season pass {money(Number(org.pass_price))}

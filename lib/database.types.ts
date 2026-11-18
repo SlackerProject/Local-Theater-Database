@@ -1320,6 +1320,7 @@ export type Database = {
           slug: string
           state: string
           ticket_price: number | null
+          ticket_prices: string | null
           tickets_url: string | null
           town: string | null
           updated_at: string
@@ -1351,6 +1352,7 @@ export type Database = {
           slug: string
           state?: string
           ticket_price?: number | null
+          ticket_prices?: string | null
           tickets_url?: string | null
           town?: string | null
           updated_at?: string
@@ -1382,6 +1384,7 @@ export type Database = {
           slug?: string
           state?: string
           ticket_price?: number | null
+          ticket_prices?: string | null
           tickets_url?: string | null
           town?: string | null
           updated_at?: string

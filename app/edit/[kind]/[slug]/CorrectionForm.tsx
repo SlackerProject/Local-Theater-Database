@@ -407,7 +407,17 @@ function FieldRow({
   const inputId = `f-${field.key}`;
 
   function done() {
-    const raw = draft.trim().replace(/\s+/g, " ");
+    // Multi-line boxes keep their line breaks (one ticket price per line,
+    // paragraphs in an About); everything else is one tidy line
+    const raw =
+      field.input === "longtext"
+        ? draft
+            .split("\n")
+            .map((l) => l.trim().replace(/\s+/g, " "))
+            .join("\n")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim()
+        : draft.trim().replace(/\s+/g, " ");
     let v: FieldValue = raw === "" ? null : raw;
     setProblem("");
     if (field.input === "number" && raw !== "") v = Number(raw);

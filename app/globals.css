@@ -11,6 +11,9 @@
   --color-field: #cfcfcf;
   /* The one alarm color: moderators' "decisions waiting" badge */
   --color-alert: #c8102e;
+  /* Award wins only: the star (bright) and the "Winner" label (dark enough to read) */
+  --color-gold: #c9a227;
+  --color-gold-ink: #7a5c00;
   --font-sans: var(--font-schibsted-grotesk);
 }
 

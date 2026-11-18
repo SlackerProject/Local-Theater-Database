@@ -384,10 +384,14 @@ function AwardPanel({ ceremony, category, nominees, sourceUrl }: { ceremony: { i
                   Won
                 </label>
               )}
+              {/* Awards naming people lead with the people; the show comes second */}
               <span className="min-w-0 flex-1">
-                <strong>{n.label}</strong>
-                {n.detail && <span className="text-muted"> · {n.detail}</span>}
-                {n.people.length > 0 && <span className="block text-sm">{n.people.join(" & ")}</span>}
+                <strong>{n.people.length ? n.people.join(" & ") : n.label}</strong>
+                {n.people.length ? (
+                  <span className="block text-sm text-muted">{[n.label, n.detail].filter(Boolean).join(" · ")}</span>
+                ) : (
+                  n.detail && <span className="text-muted"> · {n.detail}</span>
+                )}
               </span>
               <button type="button" disabled={pending} onClick={() => act(() => removeNominee(n.entryIds))} className="btn-text text-sm">
                 Remove
@@ -647,7 +651,7 @@ export function SeasonEditor({
                           : !c.has_nominees
                             ? mine.map((w) => w.label).join(", ")
                             : winners.length
-                              ? `Won: ${winners.map((w) => w.label).join(", ")}`
+                              ? `Won: ${winners.map((w) => (w.people.length ? w.people.join(" & ") : w.label)).join(", ")}`
                               : `${mine.length} nominee${mine.length === 1 ? "" : "s"} · winner not picked`}
                         <span aria-hidden="true"> {isOpen ? "▴" : "▾"}</span>
                       </span>

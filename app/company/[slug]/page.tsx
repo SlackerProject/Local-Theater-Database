@@ -51,16 +51,13 @@ export async function generateMetadata({
   };
 }
 
-export default function CompanyPage({
-  params,
-  searchParams,
-}: PageProps<"/company/[slug]">) {
+export default function CompanyPage({ params }: PageProps<"/company/[slug]">) {
   return (
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-12 px-4 pb-16 pt-8 md:px-8 md:pt-12">
         <Suspense fallback={<p className="text-muted">Loading…</p>}>
-          <Company params={params} searchParams={searchParams} />
+          <Company params={params} />
         </Suspense>
       </main>
       <SiteFooter />
@@ -139,13 +136,37 @@ type SeasonFacts = {
 function seasonOf(o: SeasonFacts) {
   const start = o.season_start_month ? MONTHS[o.season_start_month - 1] : null;
   const end = o.season_end_month ? MONTHS[o.season_end_month - 1] : null;
-  const span = start && end ? (start === end ? start : `${start}–${end}`) : start ? `From ${start}` : end ? `Through ${end}` : null;
-  const counts = [o.musicals_per_season, o.plays_per_season, o.other_per_season];
-  const total = counts.some((n) => n != null) ? counts.reduce<number>((a, n) => a + (n ?? 0), 0) : null;
-  const main = [span, total ? `${total} show${total === 1 ? "" : "s"} a year` : null].filter(Boolean).join(" · ");
+  const span =
+    start && end
+      ? start === end
+        ? start
+        : `${start}–${end}`
+      : start
+        ? `From ${start}`
+        : end
+          ? `Through ${end}`
+          : null;
+  const counts = [
+    o.musicals_per_season,
+    o.plays_per_season,
+    o.other_per_season,
+  ];
+  const total = counts.some((n) => n != null)
+    ? counts.reduce<number>((a, n) => a + (n ?? 0), 0)
+    : null;
+  const main = [
+    span,
+    total ? `${total} show${total === 1 ? "" : "s"} a year` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const mix = [
-    o.musicals_per_season ? `${o.musicals_per_season} musical${o.musicals_per_season === 1 ? "" : "s"}` : null,
-    o.plays_per_season ? `${o.plays_per_season} play${o.plays_per_season === 1 ? "" : "s"}` : null,
+    o.musicals_per_season
+      ? `${o.musicals_per_season} musical${o.musicals_per_season === 1 ? "" : "s"}`
+      : null,
+    o.plays_per_season
+      ? `${o.plays_per_season} play${o.plays_per_season === 1 ? "" : "s"}`
+      : null,
     o.other_per_season ? `${o.other_per_season} other` : null,
   ]
     .filter(Boolean)
@@ -155,12 +176,8 @@ function seasonOf(o: SeasonFacts) {
 
 async function Company({
   params,
-  searchParams,
-}: Pick<PageProps<"/company/[slug]">, "params" | "searchParams">) {
-  const [{ slug }, { program: programParam }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+}: Pick<PageProps<"/company/[slug]">, "params">) {
+  const { slug } = await params;
   const supabase = await createClient();
   const { data: org } = await supabase
     .from("organizations")
@@ -171,9 +188,8 @@ async function Company({
        facebook_url, instagram_url, youtube_url, membership_url, volunteer_url, house_staff_url, newsletter_url, donate_url,
        home:locations!organizations_home_location_id_fkey(slug, name, town, state, postal_code, stage_name, street_address, seating_capacity,
                                                           seating_style, accessibility, chart:media!locations_seating_chart_fk(thumb_key, storage_key)),
-       programs:company_programs(id, slug, name, for_kids),
        logo:media!organizations_logo_fk(thumb_key, storage_key, photographer_credit),
-       productions(id, slug, year, title_override, opening_date, closing_date, ticket_url, is_hidden, color_ground, program_id,
+       productions(id, slug, year, title_override, opening_date, closing_date, ticket_url, is_hidden, color_ground,
                    poster:media!productions_poster_fk(thumb_key),
                    show:shows(title), location:locations(slug, name, town, stage_name, street_address),
                    auditions(id, starts_at, label, place, venue:locations(name)))`,
@@ -274,17 +290,6 @@ async function Company({
     })
     .sort((a, b) => a.next.starts_at.localeCompare(b.next.starts_at));
 
-  // Programs with productions to show (programs for kids are never listed);
-  // choosing one shows only its posters
-  const programs = (org.programs ?? [])
-    .filter(
-      (g) => !g.for_kids && productions.some((p) => p.program_id === g.id),
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const program = programs.find((g) => g.slug === programParam) ?? null;
-  const inProgram = (p: (typeof productions)[number]) =>
-    !program || p.program_id === program.id;
-
   // Upcoming: still to close (or, with no dates, a later year); the rest is past
   const isUpcoming = (p: (typeof productions)[number]) =>
     p.closing_date || p.opening_date
@@ -300,14 +305,14 @@ async function Company({
     caption: shortRun(p.opening_date, p.closing_date),
   });
   const upcoming = productions
-    .filter((p) => inProgram(p) && isUpcoming(p))
+    .filter(isUpcoming)
     .sort((a, b) =>
       (a.opening_date ?? `${a.year}-12-31`).localeCompare(
         b.opening_date ?? `${b.year}-12-31`,
       ),
     );
   const past = productions
-    .filter((p) => inProgram(p) && !isUpcoming(p))
+    .filter((p) => !isUpcoming(p))
     .sort((a, b) =>
       (b.opening_date ?? `${b.year}-00`).localeCompare(
         a.opening_date ?? `${a.year}-00`,
@@ -350,7 +355,7 @@ async function Company({
     "m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted";
   const PAST_SHOWN = 10;
 
-  // The side column: venue, tickets, season, auditions, programs, get involved
+  // The side column: venue, tickets, season, auditions, get involved
   const aside = (
     <aside className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
       {venue && (
@@ -463,7 +468,9 @@ async function Company({
             <section className={box}>
               <h2 className={boxLabel}>Season</h2>
               {season.main && <span>{season.main}</span>}
-              {season.mix && <span className="text-[14px] text-muted">{season.mix}</span>}
+              {season.mix && (
+                <span className="text-[14px] text-muted">{season.mix}</span>
+              )}
             </section>
           )}
         </div>
@@ -519,21 +526,6 @@ async function Company({
         </section>
       )}
 
-      {programs.length > 0 && (
-        <section className="flex flex-col gap-1.5">
-          <h2 className={boxLabel}>Programs</h2>
-          {programs.map((g) => (
-            <Link
-              key={g.id}
-              href={`${path}?program=${g.slug}#productions`}
-              scroll={false}
-            >
-              {g.name}
-            </Link>
-          ))}
-        </section>
-      )}
-
       {involved.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className={boxLabel}>Get involved</h2>
@@ -557,8 +549,8 @@ async function Company({
 
   return (
     <>
-      {/* Header: name, facts, buttons, and the About line */}
-      <section className="flex flex-col gap-3">
+      {/* The name and location, across the top */}
+      <section className="-mb-6 flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-4 md:gap-5">
             <CompanyLogo
@@ -594,120 +586,98 @@ async function Company({
               .join(" · ")}
           </p>
         )}
-        {(org.website_url || socials.length > 0) && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {org.website_url && (
-              <a
-                href={org.website_url}
-                rel="noopener noreferrer"
-                target="_blank"
-                className="inline-flex min-h-10 items-center gap-1.5 font-semibold"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden
-                  className="size-[18px] fill-none stroke-current"
-                  strokeWidth="1.8"
-                >
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" />
-                </svg>
-                {website}
-              </a>
-            )}
-            {socials.map((s) => (
-              <a
-                key={s.key}
-                href={org[s.key] ?? undefined}
-                rel="noopener noreferrer"
-                target="_blank"
-                aria-label={s.label}
-                title={s.label}
-                className="link-quiet inline-flex size-10 items-center justify-center"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden
-                  className="size-5 fill-ink"
-                >
-                  <path d={s.path} />
-                </svg>
-              </a>
-            ))}
-          </div>
-        )}
-        {SHOW_COMPANY_LOGOS && (
-          <div className="flex flex-col gap-1">
-            {user ? (
-              <LogoUploader organizationId={org.id} hasLogo={!!org.logo} />
-            ) : (
-              !org.logo && (
-                <Link
-                  href={`/signin?next=${encodeURIComponent(path)}`}
-                  className="self-start text-[15px] font-semibold"
-                >
-                  Sign in to add a logo
-                </Link>
-              )
-            )}
-            {!!myPendingLogos && (
-              <span className="text-sm text-muted">
-                Your logo is waiting for a moderator.
-              </span>
-            )}
-            {org.logo?.photographer_credit && (
-              <span className="text-xs text-muted">
-                Logo: {org.logo.photographer_credit}
-              </span>
-            )}
-          </div>
-        )}
-        <div>
-          <FollowButton
-            target={{ organizationId: org.id }}
-            following={!!myFollow}
-            count={followers ?? 0}
-            path={path}
-            signedIn={!!user}
-          />
-        </div>
-        {org.description && (
-          <p className="m-0 max-w-[620px] whitespace-pre-line">
-            {org.description}
-          </p>
-        )}
       </section>
 
-      {/* Two columns on a laptop; on a phone: upcoming, the side column, then awards and past */}
+      {/* Two columns on a laptop, the side column starting just under the
+          name; on a phone: upcoming, the side column, then awards and past */}
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr]">
-        <div className="flex min-w-0 flex-col gap-4 lg:col-start-1">
-          {/* Program filter */}
-          {programs.length > 0 && (
-            <nav
-              id="productions"
-              aria-label="Programs"
-              className="flex scroll-mt-24 flex-wrap gap-2"
-            >
-              {[null, ...programs].map((g) => {
-                const on = (g?.id ?? null) === (program?.id ?? null);
-                return (
-                  <Link
-                    key={g?.id ?? "all"}
-                    href={
-                      g
-                        ? `${path}?program=${g.slug}#productions`
-                        : `${path}#productions`
-                    }
-                    aria-current={on ? "true" : undefined}
-                    scroll={false}
-                    className={`link-quiet inline-flex min-h-10 items-center rounded-full border px-3.5 text-sm font-semibold ${on ? "border-ink bg-ink text-white" : "border-rule"}`}
+        <div className="flex min-w-0 flex-col gap-10 lg:col-start-1">
+          {/* Website, Follow and the About line */}
+          <section className="flex flex-col gap-3">
+            {(org.website_url || socials.length > 0) && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {org.website_url && (
+                  <a
+                    href={org.website_url}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    className="inline-flex min-h-10 items-center gap-1.5 font-semibold"
                   >
-                    {g ? g.name : "All productions"}
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                      className="size-[18px] fill-none stroke-current"
+                      strokeWidth="1.8"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" />
+                    </svg>
+                    {website}
+                  </a>
+                )}
+                {socials.map((s) => (
+                  <a
+                    key={s.key}
+                    href={org[s.key] ?? undefined}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    aria-label={s.label}
+                    title={s.label}
+                    className="link-quiet inline-flex size-10 items-center justify-center"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                      className="size-5 fill-ink"
+                    >
+                      <path d={s.path} />
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            )}
+            {SHOW_COMPANY_LOGOS && (
+              <div className="flex flex-col gap-1">
+                {user ? (
+                  <LogoUploader organizationId={org.id} hasLogo={!!org.logo} />
+                ) : (
+                  !org.logo && (
+                    <Link
+                      href={`/signin?next=${encodeURIComponent(path)}`}
+                      className="self-start text-[15px] font-semibold"
+                    >
+                      Sign in to add a logo
+                    </Link>
+                  )
+                )}
+                {!!myPendingLogos && (
+                  <span className="text-sm text-muted">
+                    Your logo is waiting for a moderator.
+                  </span>
+                )}
+                {org.logo?.photographer_credit && (
+                  <span className="text-xs text-muted">
+                    Logo: {org.logo.photographer_credit}
+                  </span>
+                )}
+              </div>
+            )}
+            <div>
+              <FollowButton
+                target={{ organizationId: org.id }}
+                following={!!myFollow}
+                count={followers ?? 0}
+                path={path}
+                signedIn={!!user}
+              />
+            </div>
+            {org.description && (
+              <p className="m-0 max-w-[620px] whitespace-pre-line">
+                {org.description}
+              </p>
+            )}
+          </section>
+
           {/* Upcoming, each with Want to see and Tickets */}
           {upcoming.length > 0 && (
             <section className="flex flex-col gap-3">

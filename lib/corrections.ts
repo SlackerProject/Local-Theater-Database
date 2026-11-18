@@ -51,7 +51,6 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "year", label: "Year", input: "number", required: true },
     { key: "organization_id", label: "Company", input: "company", required: true },
     { key: "location_id", label: "Venue", input: "venue" },
-    { key: "program_id", label: "Program", input: "select" },
     { key: "opening_date", label: "Opening date", input: "date", hint: "The production’s year is the year it opens." },
     { key: "closing_date", label: "Closing date", input: "date" },
     { key: "ticket_url", label: "Tickets link", input: "url" },

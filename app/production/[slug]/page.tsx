@@ -144,7 +144,6 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
        show:shows(id, slug, title, subtitle, type, authors),
        organization:organizations(slug, name, website_url, logo:media!organizations_logo_fk(thumb_key)),
        location:locations(id, slug, name, stage_name, street_address, town, state),
-       program:company_programs(slug, name, for_kids),
        performances(id, starts_at, label, is_cancelled, location_id, venue:locations(name, street_address, town, state)),
        credits(id, kind, role_name, billing_order, is_understudy, is_young_performer,
                person:people(slug, display_name, headshot:media!people_headshot_fk(thumb_key)),
@@ -326,23 +325,10 @@ async function Production({ params }: Pick<PageProps<"/production/[slug]">, "par
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {p.organization ? (
-                <span className="flex flex-wrap items-center gap-x-2">
-                  <Link href={`/company/${p.organization.slug}`} className="flex items-center gap-2.5 font-semibold underline" style={{ color: c.ink }}>
-                    {p.organization.logo?.thumb_key && <CompanyLogo thumbKey={p.organization.logo.thumb_key} name={p.organization.name} size={40} />}
-                    {p.organization.name}
-                  </Link>
-                  {/* Its program, if any (programs for kids aren't shown) */}
-                  {p.program && !p.program.for_kids && (
-                    <>
-                      <span aria-hidden="true" style={{ color: c.soft }}>
-                        ·
-                      </span>
-                      <Link href={`/company/${p.organization.slug}?program=${p.program.slug}#productions`} style={{ color: c.soft }}>
-                        {p.program.name}
-                      </Link>
-                    </>
-                  )}
-                </span>
+                <Link href={`/company/${p.organization.slug}`} className="flex items-center gap-2.5 font-semibold underline" style={{ color: c.ink }}>
+                  {p.organization.logo?.thumb_key && <CompanyLogo thumbKey={p.organization.logo.thumb_key} name={p.organization.name} size={40} />}
+                  {p.organization.name}
+                </Link>
               ) : (
                 <span />
               )}

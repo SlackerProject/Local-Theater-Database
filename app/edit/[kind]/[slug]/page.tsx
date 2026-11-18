@@ -4,15 +4,24 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { FIELDS, KINDS, type FieldValue, type PageKind } from "@/lib/corrections";
+import {
+  FIELDS,
+  KINDS,
+  type FieldValue,
+  type PageKind,
+} from "@/lib/corrections";
 import { localDate, localHHMM } from "@/lib/calendar";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
-import { CorrectionForm, type CreditLine, type PerformanceLine, type RoleLine } from "./CorrectionForm";
+import {
+  CorrectionForm,
+  type CreditLine,
+  type PerformanceLine,
+  type RoleLine,
+} from "./CorrectionForm";
 import type { VenueOption } from "@/components/VenueSelect";
 import { mediaUrl } from "@/lib/media";
 import { PosterUploader } from "@/components/uploads/UploadPanels";
 import { SameAsLink } from "./SameAsLink";
-import { ProgramsEditor, type Program } from "./ProgramsEditor";
 
 export const metadata: Metadata = { title: "Correction" };
 
@@ -30,7 +39,9 @@ export default function EditPage({ params }: PageProps<"/edit/[kind]/[slug]">) {
   );
 }
 
-async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">) {
+async function Edit({
+  params,
+}: Pick<PageProps<"/edit/[kind]/[slug]">, "params">) {
   const { kind, slug } = await params;
   if (!(kind in KINDS)) notFound();
   const pageKind = kind as PageKind;
@@ -38,12 +49,17 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   const pagePath = `/${pageKind}/${slug}`;
 
   const user = await getCurrentUser();
-  if (!user) redirect(`/signin?next=${encodeURIComponent(`/edit/${pageKind}/${slug}`)}`);
+  if (!user)
+    redirect(`/signin?next=${encodeURIComponent(`/edit/${pageKind}/${slug}`)}`);
   const supabase = await createClient();
 
   const fields = FIELDS[table];
   const columns = ["id", ...fields.map((f) => f.key)].join(", ");
-  const { data: row } = await supabase.from(table).select(columns).eq("slug", slug).maybeSingle();
+  const { data: row } = await supabase
+    .from(table)
+    .select(columns)
+    .eq("slug", slug)
+    .maybeSingle();
   if (!row) notFound();
   const record = row as unknown as Record<string, FieldValue> & { id: string };
 
@@ -53,33 +69,28 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
   const locked: Record<string, string> = {};
   let name = String(record.display_name ?? record.name ?? record.title ?? slug);
   let credits: CreditLine[] | undefined;
-  // The company's programs, for a production's Program field (hidden when it has none)
-  let programs: { value: string; label: string }[] = [];
-  let companyPrograms: Program[] = [];
   let performances: PerformanceLine[] | undefined;
   let venues: VenueOption[] = [];
   // The poster, changed through the uploader (reviewed separately)
   let poster: { thumb: string | null; ground: string | null } | undefined;
   // Productions and shows edit the show's roles
-  let roleShow: { id: string; title: string } | null = table === "shows" ? { id: record.id, title: name } : null;
+  let roleShow: { id: string; title: string } | null =
+    table === "shows" ? { id: record.id, title: name } : null;
 
   if (table === "organizations") {
     const { data: o } = await supabase
       .from("organizations")
-      .select("home:locations!organizations_home_location_id_fkey(name), company_programs(id, name, for_kids, productions(count))")
+      .select("home:locations!organizations_home_location_id_fkey(name)")
       .eq("id", record.id)
       .maybeSingle();
     if (o?.home) labels.home_location_id = o.home.name;
-    companyPrograms = (o?.company_programs ?? [])
-      .map((g) => ({ id: g.id, name: g.name, for_kids: g.for_kids, count: g.productions?.[0]?.count ?? 0 }))
-      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   if (table === "productions") {
     const { data: p } = await supabase
       .from("productions")
       .select(
-        `year, title_override, show:shows(id, title), organization:organizations(name, programs:company_programs(id, name)), location:locations(name),
+        `year, title_override, show:shows(id, title), organization:organizations(name), location:locations(name),
          poster:media!productions_poster_fk(thumb_key, palette),
          credits(id, kind, role_name, billing_order, is_understudy, is_young_performer, person:people(id, display_name), character:show_characters(id, name)),
          performances(id, starts_at, label, is_cancelled, location_id)`,
@@ -89,18 +100,20 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
     name = `${p?.title_override ?? p?.show?.title} (${p?.year})`;
     poster = {
       thumb: mediaUrl(p?.poster?.thumb_key),
-      ground: (p?.poster?.palette as { ground?: string } | null)?.ground ?? null,
+      ground:
+        (p?.poster?.palette as { ground?: string } | null)?.ground ?? null,
     };
     if (p?.show) roleShow = { id: p.show.id, title: p.show.title };
     if (p?.organization) labels.organization_id = p.organization.name;
     if (p?.location) labels.location_id = p.location.name;
-    programs = (p?.organization?.programs ?? []).map((g) => ({ value: g.id, label: g.name })).sort((a, b) => a.label.localeCompare(b.label));
     credits = (p?.credits ?? [])
       .sort((a, b) => a.billing_order - b.billing_order)
       .map((c) => ({
         id: c.id,
         kind: c.kind,
-        person: c.is_young_performer ? "Young performer" : (c.person?.display_name ?? "Unknown"),
+        person: c.is_young_performer
+          ? "Young performer"
+          : (c.person?.display_name ?? "Unknown"),
         role: c.character?.name ?? c.role_name ?? "",
         characterId: c.character?.id ?? null,
         personId: c.person?.id ?? "",
@@ -118,24 +131,33 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         locationId: pf.location_id ?? "",
       }));
     // For performances at a different venue (touring shows)
-    const { data: venueRows } = await supabase.from("locations").select("id, name, town").order("name");
+    const { data: venueRows } = await supabase
+      .from("locations")
+      .select("id, name, town")
+      .order("name");
     venues = venueRows ?? [];
   }
 
   if (table === "people") {
-    const { data: pe } = await supabase.from("people").select("verified_owner_id").eq("id", record.id).single();
+    const { data: pe } = await supabase
+      .from("people")
+      .select("verified_owner_id")
+      .eq("id", record.id)
+      .single();
     if (pe?.verified_owner_id === user.id) {
       return (
         <section className="flex flex-col gap-3">
           <h1 className="heading">This Is Your Page</h1>
           <p className="m-0">
-            Edit your bio, links and credits with the controls on <Link href={pagePath}>your page</Link>. Name changes go
-            through “Suggest a name change” there.
+            Edit your bio, links and credits with the controls on{" "}
+            <Link href={pagePath}>your page</Link>. Name changes go through
+            “Suggest a name change” there.
           </p>
         </section>
       );
     }
-    if (pe?.verified_owner_id) locked.bio = "Verified people write their own bio.";
+    if (pe?.verified_owner_id)
+      locked.bio = "Verified people write their own bio.";
   }
 
   let roles: RoleLine[] | undefined;
@@ -146,7 +168,11 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
       .eq("show_id", roleShow.id)
       .order("sort_order")
       .order("name");
-    roles = (chars ?? []).map((ch) => ({ id: ch.id, name: ch.name, inUse: (ch.credits?.[0]?.count ?? 0) > 0 }));
+    roles = (chars ?? []).map((ch) => ({
+      id: ch.id,
+      name: ch.name,
+      inUse: (ch.credits?.[0]?.count ?? 0) > 0,
+    }));
   }
 
   const isModerator = hasRole(user, "moderator");
@@ -163,17 +189,25 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         <p className="m-0 max-w-[760px] text-[15px]">
           {isModerator ? (
             <>
-              Make your changes, then click <strong>Save changes</strong>. As a moderator, your changes go live right away.
+              Make your changes, then click <strong>Save changes</strong>. As a
+              moderator, your changes go live right away.
             </>
           ) : (
             <>
-              Make your changes, then click <strong>Submit correction</strong>. A moderator reviews every correction before it
-              goes live. Use the <strong>Notes to moderator</strong> box to say where the information comes from (a program,
-              the company’s website, a cast list).
+              Make your changes, then click <strong>Submit correction</strong>.
+              A moderator reviews every correction before it goes live. Use the{" "}
+              <strong>Notes to moderator</strong> box to say where the
+              information comes from (a program, the company’s website, a cast
+              list).
             </>
           )}
         </p>
-        <SameAsLink table={table} id={record.id} name={name} pagePath={pagePath} />
+        <SameAsLink
+          table={table}
+          id={record.id}
+          name={name}
+          pagePath={pagePath}
+        />
       </div>
       {poster && (
         <section aria-labelledby="poster-h" className="flex flex-col gap-3">
@@ -184,8 +218,15 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
           </div>
           <div className="flex flex-wrap items-start gap-5">
             {poster.thumb ? (
-              <div className="flex aspect-[2/3] w-[120px] flex-none items-center overflow-hidden rounded-[4px] border border-rule" style={{ background: poster.ground ?? "#F5F5F4" }}>
-                <img src={poster.thumb} alt={`Current poster for ${name}`} className="h-full w-full object-contain" />
+              <div
+                className="flex aspect-[2/3] w-[120px] flex-none items-center overflow-hidden rounded-[4px] border border-rule"
+                style={{ background: poster.ground ?? "#F5F5F4" }}
+              >
+                <img
+                  src={poster.thumb}
+                  alt={`Current poster for ${name}`}
+                  className="h-full w-full object-contain"
+                />
               </div>
             ) : (
               <div className="flex aspect-[2/3] w-[120px] flex-none items-center justify-center rounded-[4px] border border-dashed border-[#CFCFCF] text-center text-sm text-muted">
@@ -197,9 +238,13 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
                 {poster.thumb
                   ? "Wrong or out-of-date poster? Upload the right one. A moderator approves it, then it replaces this one."
                   : "Add the production’s poster. A moderator approves it, then it appears on the page."}{" "}
-                This is separate from <strong className="text-ink">Submit correction</strong> below.
+                This is separate from{" "}
+                <strong className="text-ink">Submit correction</strong> below.
               </p>
-              <PosterUploader productionId={record.id} hasPoster={!!poster.thumb} />
+              <PosterUploader
+                productionId={record.id}
+                hasPoster={!!poster.thumb}
+              />
             </div>
           </div>
         </section>
@@ -208,10 +253,14 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         table={table}
         id={record.id}
         pagePath={pagePath}
-        fields={fields
-          .filter((f) => !(table === "productions" && f.key === "year" && record.opening_date))
-          .filter((f) => f.key !== "program_id" || programs.length > 0)
-          .map((f) => (f.key === "program_id" ? { ...f, options: programs } : f))}
+        fields={fields.filter(
+          (f) =>
+            !(
+              table === "productions" &&
+              f.key === "year" &&
+              record.opening_date
+            ),
+        )}
         current={current}
         labels={labels}
         locked={locked}
@@ -222,7 +271,6 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         showTitle={roleShow?.title}
         isModerator={isModerator}
       />
-      {table === "organizations" && isModerator && <ProgramsEditor organizationId={record.id} slug={slug} programs={companyPrograms} />}
     </>
   );
 }

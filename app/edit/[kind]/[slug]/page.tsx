@@ -189,7 +189,7 @@ async function Edit({ params }: Pick<PageProps<"/edit/[kind]/[slug]">, "params">
         table={table}
         id={record.id}
         pagePath={pagePath}
-        fields={fields}
+        fields={table === "productions" && record.opening_date ? fields.filter((f) => f.key !== "year") : fields}
         current={current}
         labels={labels}
         locked={locked}

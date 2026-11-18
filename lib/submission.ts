@@ -190,10 +190,21 @@ export function showTitle(s: FormState) {
   return s.show.choice.kind === "existing" ? s.show.choice.match.label : clean(s.show.query);
 }
 
+// A production's year is the year it opens: the opening date, else the first
+// performance. Only without any dates does the typed year count.
+export function datedYear(s: FormState): string | null {
+  const first = [s.openingDate, ...s.performances.map((p) => p.date)].filter((d) => DATE_RE.test(d)).sort()[0];
+  return first ? first.slice(0, 4) : null;
+}
+export function productionYear(s: FormState): string {
+  return datedYear(s) ?? s.year.trim();
+}
+
 export function displayTitle(s: FormState) {
   if (s.existingProduction) return s.existingProduction.label;
   const title = showTitle(s) || "Untitled";
-  return /^\d{4}$/.test(s.year.trim()) ? `${title} (${s.year.trim()})` : title;
+  const year = productionYear(s);
+  return /^\d{4}$/.test(year) ? `${title} (${year})` : title;
 }
 
 // Returns a list of problems (empty = ready to submit) and the bundle.
@@ -268,9 +279,10 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   }
 
   // When
-  const year = Number(s.year.trim());
-  if (!existing && (!/^\d{4}$/.test(s.year.trim()) || year < 1800 || year > 2100)) {
-    problems.push("Enter the production’s year, like 2026.");
+  const yearText = productionYear(s);
+  const year = Number(yearText);
+  if (!existing && (!/^\d{4}$/.test(yearText) || year < 1800 || year > 2100)) {
+    problems.push(datedYear(s) ? "Check the dates: the year should look like 2026." : "Enter the opening date, or the year if you don’t know the dates.");
   }
   const opening = s.openingDate && DATE_RE.test(s.openingDate) ? s.openingDate : null;
   // A tickets link must be a web address; "tickets.org" gets https:// added
@@ -284,6 +296,10 @@ export function buildBundle(s: FormState): { problems: string[]; bundle: Bundle 
   for (const p of s.performances) {
     if (!DATE_RE.test(p.date) || !TIME_RE.test(p.time)) {
       problems.push("Every performance needs a date and a time.");
+      break;
+    }
+    if (p.date < "1800" || p.date > "2100") {
+      problems.push(`Check the year on the performance dated ${p.date}.`);
       break;
     }
     performances.push({

@@ -12,6 +12,7 @@ import {
   newId,
   personNameKey,
   summarize,
+  datedYear,
   type CreditRow,
   type FormState,
   type Match,
@@ -630,19 +631,6 @@ export function AddProductionForm({
           <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
             <div className="flex min-w-0 flex-col gap-1">
-              <label htmlFor="f-year" className="font-semibold">Year</label>
-              <input
-                id="f-year"
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                required
-                value={state.year}
-                onChange={(e) => update((s) => ({ ...s, year: e.target.value.replace(/\D/g, "") }))}
-                className={largeField}
-              />
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
               <label htmlFor="f-open" className="font-semibold">Opening</label>
               <input
                 id="f-open"
@@ -663,6 +651,23 @@ export function AddProductionForm({
                 className={largeField}
               />
             </div>
+            {/* The year comes from the dates; only asked for when there are none */}
+            {!datedYear(state) && (
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor="f-year" className="font-semibold">
+                  Year <span className="font-normal text-muted">(if you don’t know the dates)</span>
+                </label>
+                <input
+                  id="f-year"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={state.year}
+                  onChange={(e) => update((s) => ({ ...s, year: e.target.value.replace(/\D/g, "") }))}
+                  className={largeField}
+                />
+              </div>
+            )}
           </div>
           <p className="m-0 text-sm text-muted" aria-live="polite">
             This production will appear as <strong className="text-ink">{title}</strong>.

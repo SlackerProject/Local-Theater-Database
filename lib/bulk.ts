@@ -27,7 +27,7 @@ export const PRODUCTION_COLUMNS: ColumnSpec[] = [
   { key: "show", header: "Show title", required: true, help: "The show’s title only, without the year or company.", example: "Into the Woods", aliases: ["show", "title"] },
   { key: "showType", header: "Show type", required: false, help: "Musical, Play, Opera, Revue or Other.", example: "Musical", aliases: ["type"] },
   { key: "authors", header: "Authors", required: false, help: "Who wrote it, as on the program.", example: "Music and lyrics by Stephen Sondheim; book by James Lapine" },
-  { key: "year", header: "Year", required: true, help: "The year it opened, four digits.", example: "2019" },
+  { key: "year", header: "Year", required: false, help: "Only if the dates aren’t known. Otherwise the year comes from the opening date.", example: "2019" },
   { key: "company", header: "Company", required: true, help: "The theater company’s full name.", example: "The Footlight Club", aliases: ["theater company", "organization"] },
   { key: "companyTown", header: "Company town", required: false, help: "The company’s home town in Massachusetts (only needed if the company is new to the site).", example: "Boston" },
   { key: "venue", header: "Venue", required: false, help: "Where it was performed, the venue’s name.", example: "Eliot Hall", aliases: ["location", "theater"] },
@@ -64,7 +64,7 @@ PRODUCTIONS: one row per production.
 - Show title: the title only (no year, no company). Use the show's standard title, e.g. "Into the Woods".
 - Show type: exactly Musical, Play, Opera, Revue or Other.
 - Authors: optional.
-- Year: four digits, the year it opened.
+- Year: four digits. Only needed when the opening date isn't known; otherwise the opening date's year is used.
 - Company: the company's full official name, spelled the same way on every row.
 - Company town, Venue, Venue address, Venue town: towns must be Massachusetts cities or towns.
 - Opening date / Closing date: YYYY-MM-DD.
@@ -240,14 +240,15 @@ export function parseBulk(productionRows: Cell[][] | null, creditRows: Cell[][] 
       const yearText = text(get("year"));
       const opening = parseDate(get("opening"));
       const closing = parseDate(get("closing"));
-      let year = /^\d{4}$/.test(yearText) ? Number(yearText) : null;
-      if (!yearText && opening) year = Number(opening.slice(0, 4));
+      // The year it opens: the opening date, else the first performance, else the Year column
+      const firstDate = opening || parsePerformances(get("performances")).list.map((p) => p.date).sort()[0];
+      const year = firstDate ? Number(firstDate.slice(0, 4)) : /^\d{4}$/.test(yearText) ? Number(yearText) : null;
       const showType = parseShowType(get("showType"));
       const perf = parsePerformances(get("performances"));
 
       if (!show) problem("Missing the show title.");
       if (!company) problem("Missing the company.");
-      if (!year) problem(yearText ? `“${yearText}” isn’t a year. Use four digits, like 2019.` : "Missing the year.");
+      if (!year) problem(yearText ? `“${yearText}” isn’t a year. Use four digits, like 2019.` : "Missing the opening date (or the year, if the dates aren’t known).");
       else if (year < 1850 || year > maxYear) problem(`${year} doesn’t look right for the year.`);
       if (opening === undefined) problem(`The opening date “${text(get("opening"))}” isn’t a date. Use YYYY-MM-DD.`);
       if (closing === undefined) problem(`The closing date “${text(get("closing"))}” isn’t a date. Use YYYY-MM-DD.`);

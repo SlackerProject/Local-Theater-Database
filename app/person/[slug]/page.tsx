@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
@@ -27,6 +29,17 @@ import {
   RestorePageButton,
   SuggestCorrection,
 } from "./OwnerControls";
+
+// Browser tab and shared links: "Name · Local Theater Database"
+export async function generateMetadata({ params }: PageProps<"/person/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: p } = await supabase.from("people").select("display_name, is_hidden").eq("slug", slug).maybeSingle();
+  if (!p || p.is_hidden) return { title: "Person" };
+  const title = p.display_name;
+  const description = `${p.display_name}'s community theater credits.`;
+  return { title, description, openGraph: { type: "website", siteName: SITE_NAME, url: `/person/${slug}`, title, description }, twitter: { card: "summary", title, description } };
+}
 
 export default function PersonPage({ params, searchParams }: PageProps<"/person/[slug]">) {
   return (

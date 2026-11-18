@@ -6,6 +6,7 @@ import { getCurrentUser, hasRole } from "@/lib/auth";
 import { AWARD_SELECT, ceremonyName, productionTitle, type AwardRow } from "@/lib/awards";
 import { showColors, swatch } from "@/lib/palette";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { groupAwards } from "@/components/AwardList";
 
 export const metadata: Metadata = { title: "Awards" };
 
@@ -100,22 +101,22 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
                 <section key={cat} className="flex flex-col">
                   <h3 className="subheading mb-1">{cat}</h3>
                   <ul className="m-0 list-none border-t border-rule p-0">
-                    {[...entries]
-                      .sort((a, b) => Number(b.result === "won") - Number(a.result === "won"))
-                      .map((e) => {
+                    {groupAwards([...entries].sort((a, b) => Number(b.result === "won") - Number(a.result === "won")))
+                      .map(({ key, first: e, people }) => {
                         const sw = e.production ? swatch(showColors(e.production)) : null;
-                        const role = e.credit?.character?.name ?? e.credit?.role_name;
-                        const person = e.person && !e.person.is_hidden ? e.person : null;
-                        const young = !!e.credit?.is_young_performer;
                         return (
-                          <li key={e.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-3">
+                          <li key={key} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-3">
+                            {/* One line per nomination: everyone it names together */}
                             <span className="flex flex-wrap items-center gap-x-2">
-                              {young ? (
-                                <span className="font-bold">Young performer</span>
-                              ) : person ? (
-                                <Link href={`/person/${person.slug}`} className="font-bold">
-                                  {person.display_name}
-                                </Link>
+                              {people.length ? (
+                                <em className="font-bold">
+                                  {people.map((p, i) => (
+                                    <span key={`${p.slug ?? p.name}-${i}`}>
+                                      {i > 0 && (i === people.length - 1 ? " & " : ", ")}
+                                      {p.slug ? <Link href={`/person/${p.slug}`}>{p.name}</Link> : p.name}
+                                    </span>
+                                  ))}
+                                </em>
                               ) : (
                                 e.production && (
                                   <Link href={`/production/${e.production.slug}`} className="font-bold">
@@ -128,9 +129,8 @@ async function Awards({ searchParams }: Pick<PageProps<"/awards">, "searchParams
                                   <Check /> Winner
                                 </span>
                               )}
-                              {person && role && <span className="text-muted">as {role}</span>}
                             </span>
-                            {(person || young) && e.production && sw && (
+                            {people.length > 0 && e.production && sw && (
                               <Link href={`/production/${e.production.slug}`} className="link-quiet inline-flex items-center gap-2">
                                 <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border" style={{ background: sw.background, borderColor: sw.borderColor }} />
                                 {productionTitle(e)}

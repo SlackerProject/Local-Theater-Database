@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/brand";
 import Link from "next/link";
 import { forwardIfMerged } from "@/lib/merged";
 import { Suspense } from "react";
@@ -8,6 +10,17 @@ import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
+
+// Browser tab and shared links: "Venue · Town · Local Theater Database"
+export async function generateMetadata({ params }: PageProps<"/venue/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: v } = await supabase.from("locations").select("name, town").eq("slug", slug).maybeSingle();
+  if (!v) return { title: "Venue" };
+  const title = [v.name, v.town].filter(Boolean).join(" · ");
+  const description = `Productions at ${v.name}${v.town ? ` in ${v.town}` : ""}.`;
+  return { title, description, openGraph: { type: "website", siteName: SITE_NAME, url: `/venue/${slug}`, title, description }, twitter: { card: "summary", title, description } };
+}
 
 export default function VenuePage({ params }: PageProps<"/venue/[slug]">) {
   return (

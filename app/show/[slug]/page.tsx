@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/brand";
 import { Suspense } from "react";
 import { forwardIfMerged } from "@/lib/merged";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +11,17 @@ import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { ViewTracker } from "@/components/ViewTracker";
 import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
+
+// Browser tab and shared links: "Show · Local Theater Database"
+export async function generateMetadata({ params }: PageProps<"/show/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: s } = await supabase.from("shows").select("title, authors").eq("slug", slug).maybeSingle();
+  if (!s) return { title: "Show" };
+  const title = s.title;
+  const description = [s.title, s.authors].filter(Boolean).join(", ") + ": productions by local community theaters.";
+  return { title, description, openGraph: { type: "website", siteName: SITE_NAME, url: `/show/${slug}`, title, description }, twitter: { card: "summary", title, description } };
+}
 
 export default function ShowPage({ params }: PageProps<"/show/[slug]">) {
   return (

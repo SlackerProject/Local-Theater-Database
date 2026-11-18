@@ -10,6 +10,7 @@ import { ModeratorDeleteSection } from "@/components/ModeratorDeleteSection";
 import { EditButton, SuggestEdit } from "@/components/SuggestEdit";
 import { getCurrentUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
+import { SeatingChartUploader } from "@/components/uploads/UploadPanels";
 
 // Browser tab and shared links: "Venue · Town · Local Theater Database"
 export async function generateMetadata({ params }: PageProps<"/venue/[slug]">): Promise<Metadata> {
@@ -42,7 +43,8 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
   const { data: venue } = await supabase
     .from("locations")
     .select(
-      `id, name, stage_name, street_address, town, state, postal_code, seating_capacity, description,
+      `id, name, stage_name, street_address, town, state, postal_code, seating_capacity, seating_style, accessibility, description,
+       chart:media!locations_seating_chart_fk(storage_key, thumb_key, photographer_credit),
        productions(id, slug, year, title_override, color_ground, poster:media!productions_poster_fk(thumb_key),
                    show:shows(title), organization:organizations(id, slug, name)),
        organization_locations(organization:organizations(id, slug, name))`,
@@ -85,15 +87,49 @@ async function Venue({ params }: Pick<PageProps<"/venue/[slug]">, "params">) {
           <a href={mapUrl} rel="noopener noreferrer" target="_blank" className="inline-flex min-h-11 items-center font-semibold text-ink">
             Map
           </a>
-          {venue.seating_capacity && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>{venue.seating_capacity.toLocaleString("en-US")} seats</span>
-            </>
-          )}
         </p>
         {venue.description && <p className="m-0 max-w-[620px]">{venue.description}</p>}
       </section>
+
+      {/* Seating: seats, style, access, and the chart */}
+      {(venue.seating_capacity || venue.seating_style || venue.accessibility || venue.chart || user) && (
+        <section className="flex flex-col gap-3">
+          <h2 className="heading">Seating</h2>
+          {(venue.seating_capacity || venue.seating_style || venue.accessibility) && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                venue.seating_capacity && { label: "Seats", value: venue.seating_capacity.toLocaleString("en-US") },
+                venue.seating_style && { label: "Style", value: venue.seating_style },
+                venue.accessibility && { label: "Access", value: venue.accessibility },
+              ]
+                .filter((x): x is { label: string; value: string } => !!x)
+                .map((x) => (
+                  <div key={x.label} className="flex flex-col gap-1 rounded-lg bg-soft p-4">
+                    <span className="text-[12px] font-bold uppercase tracking-[0.06em] text-muted">{x.label}</span>
+                    <span className="text-[16px]">{x.value}</span>
+                  </div>
+                ))}
+            </div>
+          )}
+          {venue.chart && (
+            <figure id="seating-chart" className="m-0 flex max-w-[720px] scroll-mt-24 flex-col gap-1.5">
+              <a href={mediaUrl(venue.chart.storage_key)!} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-rule bg-white">
+                <img src={mediaUrl(venue.chart.thumb_key ?? venue.chart.storage_key)!} alt={`Seating chart for ${venue.name}`} className="h-auto w-full" />
+              </a>
+              {venue.chart.photographer_credit && <figcaption className="text-xs text-muted">Chart: {venue.chart.photographer_credit}</figcaption>}
+            </figure>
+          )}
+          {user ? (
+            <SeatingChartUploader locationId={venue.id} hasChart={!!venue.chart} />
+          ) : (
+            !venue.chart && (
+              <Link href={`/signin?next=${encodeURIComponent(`/venue/${slug}`)}`} className="self-start text-[15px] font-semibold">
+                Sign in to add a seating chart
+              </Link>
+            )
+          )}
+        </section>
+      )}
 
       <div className="flex flex-wrap items-start gap-12">
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-10">

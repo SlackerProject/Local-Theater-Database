@@ -159,6 +159,7 @@ async function buildCard(supabase: Supabase, p: Proposal, knownPositions: string
     if (key === "organization_id") return orgs.get(String(v)) ?? "(unknown company)";
     if (key === "location_id" || key === "home_location_id") return venues.get(String(v)) ?? "(unknown venue)";
     if (key === "program_id") return programs.get(String(v)) ?? "(removed program)";
+    if (key === "is_nonprofit") return String(v) === "true" ? "Yes" : "No";
     if (key === "type") return SHOW_TYPES.find((t) => t.value === v)?.label ?? String(v);
     if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
       return new Date(`${v}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });

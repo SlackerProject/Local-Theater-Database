@@ -26,6 +26,13 @@ export type FieldInput = "text" | "longtext" | "number" | "date" | "url" | "stat
 // options: the choices for a "select" field (filled in by the edit page)
 export type FieldDef = { key: string; label: string; input: FieldInput; hint?: string; required?: boolean; options?: { value: string; label: string }[] };
 
+const YES_NO = [
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+];
+// Mirrors the locations.seating_style check in the database
+export const SEATING_STYLES = ["Proscenium", "Thrust", "Black box", "In the round", "Outdoor", "Cabaret"] as const;
+
 // Mirrors correction_fields() in the database
 export const FIELDS: Record<PageTable, FieldDef[]> = {
   productions: [
@@ -50,11 +57,14 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "state", label: "State", input: "state" },
     { key: "website_url", label: "Website", input: "url" },
     { key: "founded_year", label: "Founded", input: "number" },
+    { key: "is_nonprofit", label: "Nonprofit", input: "select", options: YES_NO },
     { key: "description", label: "About", input: "longtext" },
     { key: "home_location_id", label: "Home venue", input: "venue" },
-    { key: "season_note", label: "Season", input: "text" },
-    { key: "access_note", label: "Access", input: "text" },
+    { key: "ticket_price", label: "Typical ticket price ($)", input: "number" },
+    { key: "pass_price", label: "Season pass price ($)", input: "number" },
+    { key: "pass_shows", label: "Shows in the season pass", input: "number" },
     { key: "tickets_url", label: "Tickets link", input: "url" },
+    { key: "audition_style", label: "Audition style", input: "text" },
     { key: "facebook_url", label: "Facebook", input: "url" },
     { key: "instagram_url", label: "Instagram", input: "url" },
     { key: "youtube_url", label: "YouTube", input: "url" },
@@ -80,6 +90,8 @@ export const FIELDS: Record<PageTable, FieldDef[]> = {
     { key: "state", label: "State", input: "state" },
     { key: "postal_code", label: "ZIP code", input: "zip", hint: "5 digits, e.g. 02081." },
     { key: "seating_capacity", label: "Seats", input: "number" },
+    { key: "seating_style", label: "Seating style", input: "select", options: SEATING_STYLES.map((s) => ({ value: s, label: s })) },
+    { key: "accessibility", label: "Accessibility", input: "text" },
     { key: "description", label: "About", input: "longtext" },
   ],
 };

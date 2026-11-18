@@ -885,6 +885,7 @@ export type Database = {
       }
       locations: {
         Row: {
+          accessibility: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -897,6 +898,8 @@ export type Database = {
           pin_by_hand: boolean
           postal_code: string | null
           seating_capacity: number | null
+          seating_chart_media_id: string | null
+          seating_style: string | null
           slug: string
           stage_name: string | null
           state: string
@@ -905,6 +908,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accessibility?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -917,6 +921,8 @@ export type Database = {
           pin_by_hand?: boolean
           postal_code?: string | null
           seating_capacity?: number | null
+          seating_chart_media_id?: string | null
+          seating_style?: string | null
           slug: string
           stage_name?: string | null
           state?: string
@@ -925,6 +931,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accessibility?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -937,6 +944,8 @@ export type Database = {
           pin_by_hand?: boolean
           postal_code?: string | null
           seating_capacity?: number | null
+          seating_chart_media_id?: string | null
+          seating_style?: string | null
           slug?: string
           stage_name?: string | null
           state?: string
@@ -950,6 +959,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "locations_seating_chart_fk"
+            columns: ["seating_chart_media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
             referencedColumns: ["id"]
           },
         ]
@@ -974,6 +990,7 @@ export type Database = {
           height: number | null
           id: string
           kind: Database["public"]["Enums"]["media_kind"]
+          location_id: string | null
           organization_id: string | null
           palette: Json | null
           person_id: string | null
@@ -996,6 +1013,7 @@ export type Database = {
           height?: number | null
           id?: string
           kind: Database["public"]["Enums"]["media_kind"]
+          location_id?: string | null
           organization_id?: string | null
           palette?: Json | null
           person_id?: string | null
@@ -1018,6 +1036,7 @@ export type Database = {
           height?: number | null
           id?: string
           kind?: Database["public"]["Enums"]["media_kind"]
+          location_id?: string | null
           organization_id?: string | null
           palette?: Json | null
           person_id?: string | null
@@ -1034,6 +1053,13 @@ export type Database = {
           width?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "media_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "media_organization_id_fkey"
             columns: ["organization_id"]
@@ -1272,6 +1298,7 @@ export type Database = {
       organizations: {
         Row: {
           access_note: string | null
+          audition_style: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -1283,14 +1310,18 @@ export type Database = {
           id: string
           instagram_url: string | null
           is_active: boolean
+          is_nonprofit: boolean | null
           logo_media_id: string | null
           membership_url: string | null
           name: string
           newsletter_url: string | null
+          pass_price: number | null
+          pass_shows: number | null
           season_note: string | null
           short_name: string | null
           slug: string
           state: string
+          ticket_price: number | null
           tickets_url: string | null
           town: string | null
           updated_at: string
@@ -1300,6 +1331,7 @@ export type Database = {
         }
         Insert: {
           access_note?: string | null
+          audition_style?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1311,14 +1343,18 @@ export type Database = {
           id?: string
           instagram_url?: string | null
           is_active?: boolean
+          is_nonprofit?: boolean | null
           logo_media_id?: string | null
           membership_url?: string | null
           name: string
           newsletter_url?: string | null
+          pass_price?: number | null
+          pass_shows?: number | null
           season_note?: string | null
           short_name?: string | null
           slug: string
           state?: string
+          ticket_price?: number | null
           tickets_url?: string | null
           town?: string | null
           updated_at?: string
@@ -1328,6 +1364,7 @@ export type Database = {
         }
         Update: {
           access_note?: string | null
+          audition_style?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1339,14 +1376,18 @@ export type Database = {
           id?: string
           instagram_url?: string | null
           is_active?: boolean
+          is_nonprofit?: boolean | null
           logo_media_id?: string | null
           membership_url?: string | null
           name?: string
           newsletter_url?: string | null
+          pass_price?: number | null
+          pass_shows?: number | null
           season_note?: string | null
           short_name?: string | null
           slug?: string
           state?: string
+          ticket_price?: number | null
           tickets_url?: string | null
           town?: string | null
           updated_at?: string
@@ -2731,7 +2772,12 @@ export type Database = {
       award_result: "nominated" | "won"
       claim_status: "pending" | "verified" | "rejected"
       credit_kind: "cast" | "crew"
-      media_kind: "production_photo" | "poster" | "headshot" | "logo"
+      media_kind:
+        | "production_photo"
+        | "poster"
+        | "headshot"
+        | "logo"
+        | "seating_chart"
       moderation_status: "pending" | "approved" | "rejected"
       show_type: "musical" | "play" | "opera" | "revue" | "other"
       user_role: "member" | "trusted" | "moderator" | "admin"
@@ -2869,7 +2915,13 @@ export const Constants = {
       award_result: ["nominated", "won"],
       claim_status: ["pending", "verified", "rejected"],
       credit_kind: ["cast", "crew"],
-      media_kind: ["production_photo", "poster", "headshot", "logo"],
+      media_kind: [
+        "production_photo",
+        "poster",
+        "headshot",
+        "logo",
+        "seating_chart",
+      ],
       moderation_status: ["pending", "approved", "rejected"],
       show_type: ["musical", "play", "opera", "revue", "other"],
       user_role: ["member", "trusted", "moderator", "admin"],

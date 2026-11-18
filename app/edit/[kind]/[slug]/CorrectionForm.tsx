@@ -396,7 +396,14 @@ function FieldRow({
   const [draft, setDraft] = useState<string>(value === null ? "" : String(value));
   const [draftLabel, setDraftLabel] = useState<string | undefined>(display);
   const [problem, setProblem] = useState("");
-  const shown = show(value, field.input === "showType" ? SHOW_TYPES.find((t) => t.value === value)?.label : display);
+  const shown = show(
+    value,
+    field.input === "showType"
+      ? SHOW_TYPES.find((t) => t.value === value)?.label
+      : field.input === "select" && value !== null
+        ? (field.options?.find((o) => o.value === String(value))?.label ?? display)
+        : display,
+  );
   const inputId = `f-${field.key}`;
 
   function done() {

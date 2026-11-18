@@ -62,7 +62,8 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
          uploader:profiles!media_uploaded_by_fkey(username, display_name),
          production:productions!media_production_id_fkey(id, slug, year, title_override, show:shows(title), poster:media!productions_poster_fk(id, thumb_key, storage_key)),
          person:people!media_person_id_fkey(id, slug, display_name),
-         organization:organizations!media_organization_id_fkey(id, slug, name)`,
+         organization:organizations!media_organization_id_fkey(id, slug, name),
+         location:locations!media_location_id_fkey(id, slug, name)`,
       )
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
@@ -109,7 +110,9 @@ async function Queue({ searchParams }: Pick<PageProps<"/moderate">, "searchParam
         ? { key: `person:${m.person.id}`, label: m.person.display_name, href: `/person/${m.person.slug}` }
         : m.organization
           ? { key: `company:${m.organization.id}`, label: m.organization.name, href: `/company/${m.organization.slug}` }
-        : null;
+          : m.location
+            ? { key: `venue:${m.location.id}`, label: m.location.name, href: `/venue/${m.location.slug}` }
+            : null;
     if (!target) continue;
     const group = groups.get(target.key) ?? { ...target, items: [] };
     group.items.push({

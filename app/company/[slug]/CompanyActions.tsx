@@ -16,7 +16,7 @@ export function ReadMore({ text }: { text: string }) {
       {more && !open && (
         <>
           {" "}
-          <button type="button" onClick={() => setOpen(true)} className="btn-text">
+          <button type="button" onClick={() => setOpen(true)} className="btn-text relative inline min-h-0 after:absolute after:-inset-3 after:content-['']">
             Read more
           </button>
         </>

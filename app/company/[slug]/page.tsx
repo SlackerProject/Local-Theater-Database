@@ -72,6 +72,35 @@ const INVOLVED = [
   { key: "donate_url", label: "Donate" },
 ] as const;
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const money = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
+
+// The usual season, from the last three years of opening nights:
+// "3 shows a year · Sep–May". The months run the long way round the
+// calendar, skipping the longest quiet stretch (often summer).
+function seasonOf(openings: string[], today: string): string | null {
+  const from = `${Number(today.slice(0, 4)) - 3}${today.slice(4)}`;
+  const recent = openings.filter((d) => d > from && d <= today).sort();
+  if (recent.length < 2) return null;
+  const years = Math.min(3, Math.max(1, Math.ceil((Date.parse(today) - Date.parse(recent[0])) / (365 * 864e5))));
+  const perYear = Math.max(1, Math.round(recent.length / years));
+  const months = [...new Set(recent.map((d) => Number(d.slice(5, 7)) - 1))].sort((a, b) => a - b);
+  let span = MONTHS[months[0]];
+  if (months.length > 1) {
+    // The biggest gap between months that have openings, going round the year
+    let gapAfter = months.length - 1;
+    let gap = months[0] + 12 - months[months.length - 1];
+    for (let i = 0; i < months.length - 1; i++) {
+      if (months[i + 1] - months[i] > gap) {
+        gap = months[i + 1] - months[i];
+        gapAfter = i;
+      }
+    }
+    span = `${MONTHS[months[(gapAfter + 1) % months.length]]}–${MONTHS[months[gapAfter]]}`;
+  }
+  return `${perYear} show${perYear === 1 ? "" : "s"} a year · ${span}`;
+}
+
 // "Reservoir Stage · 888 South Main St, Mansfield"
 const stageLine = (v: { stage_name: string | null; street_address: string | null; town: string | null }) =>
   [v.stage_name, [v.street_address, v.town].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
@@ -82,9 +111,11 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
   const { data: org } = await supabase
     .from("organizations")
     .select(
-      `id, name, town, state, website_url, founded_year, description, season_note, access_note, tickets_url,
+      `id, name, town, state, website_url, founded_year, description, is_nonprofit, ticket_price, pass_price, pass_shows,
+       audition_style, tickets_url,
        facebook_url, instagram_url, youtube_url, membership_url, volunteer_url, house_staff_url, newsletter_url, donate_url,
-       home:locations!organizations_home_location_id_fkey(slug, name, town, stage_name, street_address),
+       home:locations!organizations_home_location_id_fkey(slug, name, town, stage_name, street_address, seating_capacity, seating_style,
+                                                          accessibility, chart:media!locations_seating_chart_fk(id)),
        programs:company_programs(id, slug, name, for_kids),
        logo:media!organizations_logo_fk(thumb_key, storage_key, photographer_credit),
        productions(id, slug, year, title_override, opening_date, closing_date, ticket_url, is_hidden, color_ground, program_id,
@@ -178,20 +209,49 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
 
   const website = org.website_url?.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
   const socials = SOCIAL.filter((s) => org[s.key]);
+  const season = seasonOf(
+    productions.flatMap((p) => (p.opening_date ? [p.opening_date] : [])),
+    today,
+  );
+  // Season pass savings: the shows at the usual price, less the pass
+  const savings = org.ticket_price != null && org.pass_price != null && org.pass_shows ? Number(org.ticket_price) * org.pass_shows - Number(org.pass_price) : 0;
+  const home = org.home;
+  const seating = home ? [home.seating_capacity && `${home.seating_capacity.toLocaleString("en-US")} seats`, home.seating_style].filter(Boolean).join(" · ") : "";
   type Fact = { label: string; value: React.ReactNode };
   const facts = ([
-    org.home && {
+    home && {
       label: "Home venue",
       value: (
         <span className="flex flex-col">
-          <Link href={`/venue/${org.home.slug}`}>{org.home.name}</Link>
-          {stageLine(org.home) && <span className="text-[14px] text-muted">{stageLine(org.home)}</span>}
+          <Link href={`/venue/${home.slug}`}>{home.name}</Link>
+          {seating && <span className="text-[14px]">{seating}</span>}
+          {stageLine(home) && <span className="text-[14px] text-muted">{stageLine(home)}</span>}
+          {home.chart && (
+            <Link href={`/venue/${home.slug}#seating-chart`} className="text-[14px] font-semibold">
+              Seating chart
+            </Link>
+          )}
         </span>
       ),
     },
-    org.season_note && { label: "Season", value: org.season_note },
-    org.access_note && { label: "Access", value: org.access_note },
-  ] as (Fact | null | "")[]).filter((f): f is Fact => !!f);
+        (org.ticket_price != null || org.pass_price != null) && {
+      label: "Tickets",
+      value: (
+        <span className="flex flex-col">
+          {org.ticket_price != null && <span>~{money(Number(org.ticket_price))}</span>}
+          {org.pass_price != null && (
+            <span className="text-[14px] text-muted">
+              Season pass {money(Number(org.pass_price))}
+              {org.pass_shows ? ` for ${org.pass_shows} show${org.pass_shows === 1 ? "" : "s"}` : ""}
+              {savings > 0 && ` · save ~${money(Math.round(savings))}`}
+            </span>
+          )}
+        </span>
+      ),
+    },
+    season && { label: "Season", value: season },
+    org.home?.accessibility && { label: "Access", value: org.home.accessibility },
+  ] as (Fact | null | "" | false)[]).filter((f): f is Fact => !!f);
 
   return (
     <>
@@ -205,9 +265,9 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
           </div>
           <EditButton kind="company" slug={slug} signedIn={!!user} />
         </div>
-        {(org.town || org.founded_year) && (
+        {(org.town || org.founded_year || org.is_nonprofit) && (
           <p className="m-0 text-[17px] text-muted">
-            {[org.town && `${org.town}, ${org.state}`, org.founded_year && `Founded ${org.founded_year}`].filter(Boolean).join(" · ")}
+            {[org.town && `${org.town}, ${org.state}`, org.founded_year && `Est. ${org.founded_year}`, org.is_nonprofit && "Nonprofit"].filter(Boolean).join(" · ")}
           </p>
         )}
         {SHOW_COMPANY_LOGOS && (
@@ -258,63 +318,64 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
         </section>
       )}
 
-      {/* 3. On stage now */}
-      {onStage && (
-        <section className="flex flex-col gap-4">
-          <h2 className="heading">{running ? "On stage now" : "Coming up"}</h2>
-          <div className="flex flex-wrap items-start gap-6">
-            <div className="w-[160px] shrink-0">
-              <PosterTile href={`/production/${onStage.slug}`} title={title(onStage)} ground={onStage.color_ground} posterUrl={mediaUrl(onStage.poster?.thumb_key)} year={onStage.year} company={org.name} />
-            </div>
-            <div className="flex min-w-0 flex-col gap-2">
-              <Link href={`/production/${onStage.slug}`} className="text-[24px] font-bold leading-tight">
-                {title(onStage)}
-              </Link>
-              <span className="text-[17px]">{shortRun(onStage.opening_date, onStage.closing_date)}</span>
-              {onStage.location && (
-                <span className="flex flex-col">
-                  <Link href={`/venue/${onStage.location.slug}`}>{onStage.location.name}</Link>
-                  <span className="text-[15px] text-muted">{stageLine(onStage.location) || onStage.location.town}</span>
-                </span>
-              )}
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <WantToSee productionId={onStage.id} path={path} signedIn={!!user} saved={wantToSee.has(onStage.id)} />
-                {(onStage.ticket_url ?? org.tickets_url) && (
-                  <a href={onStage.ticket_url ?? org.tickets_url ?? undefined} rel="noopener noreferrer" target="_blank" className="btn-primary">
-                    Tickets
-                  </a>
-                )}
+      {/* 3. Now playing and Auditions open: two cards, side by side on a laptop */}
+      {(onStage || auditions.length > 0) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {onStage && (
+            <section className="flex gap-4 rounded-lg border border-rule p-4">
+              <div className="w-[96px] shrink-0">
+                <PosterTile href={`/production/${onStage.slug}`} title={title(onStage)} ground={onStage.color_ground} posterUrl={mediaUrl(onStage.poster?.thumb_key)} year={onStage.year} company={org.name} />
               </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 4. Auditions */}
-      {auditions.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="heading">Auditions</h2>
-          <ul className="m-0 list-none border-t border-rule p-0">
-            {auditions.map(({ p, next: a, more }) => (
-              <li key={p.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-3">
-                <span className="flex flex-col">
-                  <Link href={`/production/${p.slug}`} className="font-bold">
-                    {title(p)}
+              <div className="flex min-w-0 flex-col gap-1">
+                <h2 className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">{running ? "Now playing" : "Coming up"}</h2>
+                <Link href={`/production/${onStage.slug}`} className="text-[20px] font-bold leading-tight">
+                  {title(onStage)}
+                </Link>
+                <span>{shortRun(onStage.opening_date, onStage.closing_date)}</span>
+                {onStage.location && (
+                  <Link href={`/venue/${onStage.location.slug}`} className="text-[15px] text-muted">
+                    {onStage.location.name}
+                    {onStage.location.stage_name && ` · ${onStage.location.stage_name}`}
                   </Link>
-                  <span className="text-[15px] text-muted">
-                    {[a.label, `${localDay(a.starts_at)}, ${localTime(a.starts_at)}`, a.venue?.name ?? a.place, more > 0 && `+${more} more`].filter(Boolean).join(" · ")}
-                  </span>
-                </span>
-                <RemindMe productionId={p.id} path={path} signedIn={!!user} following={reminded.has(p.id)} />
-              </li>
-            ))}
-          </ul>
-        </section>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <WantToSee productionId={onStage.id} path={path} signedIn={!!user} saved={wantToSee.has(onStage.id)} />
+                  {(onStage.ticket_url ?? org.tickets_url) && (
+                    <a href={onStage.ticket_url ?? org.tickets_url ?? undefined} rel="noopener noreferrer" target="_blank" className="btn-primary">
+                      Tickets
+                    </a>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+          {auditions.length > 0 && (
+            <section className="flex flex-col gap-2 rounded-lg border border-rule p-4">
+              <h2 className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">Auditions open</h2>
+              <ul className="m-0 flex list-none flex-col gap-3 p-0">
+                {auditions.map(({ p, next: a, more }) => (
+                  <li key={p.id} className="flex flex-col">
+                    <Link href={`/production/${p.slug}`} className="text-[18px] font-bold leading-tight">
+                      {title(p)}
+                    </Link>
+                    <span className="text-[15px] text-muted">
+                      {[a.label, `${localDay(a.starts_at)}, ${localTime(a.starts_at)}`, a.venue?.name ?? a.place, more > 0 && `+${more} more`].filter(Boolean).join(" · ")}
+                    </span>
+                    <span className="self-start">
+                      <RemindMe productionId={p.id} path={path} signedIn={!!user} following={reminded.has(p.id)} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {org.audition_style && <p className="m-0 border-t border-rule pt-2 text-[14px] text-muted">{org.audition_style}</p>}
+            </section>
+          )}
+        </div>
       )}
 
-      {/* 5. Quick facts */}
+      {/* 4. Quick facts */}
       {facts.length > 0 && (
-        <section className="grid gap-3 sm:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {facts.map((f) => (
             <div key={f.label} className="flex flex-col gap-1 rounded-lg bg-soft p-4">
               <span className="text-[12px] font-bold uppercase tracking-[0.06em] text-muted">{f.label}</span>
@@ -366,18 +427,36 @@ async function Company({ params, searchParams }: Pick<PageProps<"/company/[slug]
         !upcoming.length && <ProductionsByYear productions={[]} empty="This company’s productions will appear here as they’re added." />
       )}
 
-      {/* 8. Get involved */}
-      {involved.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="heading">Get involved</h2>
-          <div className="flex flex-wrap gap-2">
-            {involved.map((g) => (
-              <a key={g.key} href={org[g.key] ?? undefined} rel="noopener noreferrer" target="_blank" className="btn-secondary">
-                {g.label}
-              </a>
-            ))}
-          </div>
-        </section>
+      {/* 8. Programs and Get involved, side by side */}
+      {(programs.length > 0 || involved.length > 0) && (
+        <div className="grid gap-8 md:grid-cols-2">
+          {programs.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="heading">Programs</h2>
+              <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                {programs.map((g) => (
+                  <li key={g.id}>
+                    <Link href={`${path}?program=${g.slug}#productions`} scroll={false}>
+                      {g.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {involved.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="heading">Get involved</h2>
+              <div className="flex flex-wrap gap-2">
+                {involved.map((g) => (
+                  <a key={g.key} href={org[g.key] ?? undefined} rel="noopener noreferrer" target="_blank" className="btn-secondary">
+                    {g.label}
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
       )}
 
       {/* 9. Suggest an edit */}

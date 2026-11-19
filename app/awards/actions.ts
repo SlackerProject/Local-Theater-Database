@@ -187,10 +187,17 @@ export async function deleteCeremony(id: string): Promise<Result> {
 }
 
 // The awards a ceremony gives
-export async function addCeremonyAward(ceremonyId: string, name: string, kind: string, hasNominees: boolean, consultant = false): Promise<Result> {
+export async function addCeremonyAward(
+  ceremonyId: string,
+  name: string,
+  kind: string,
+  hasNominees: boolean,
+  consultant = false,
+  wholeCast = false,
+): Promise<Result> {
   try {
     const supabase = await moderatorClient();
-    const { error } = await supabase.rpc("add_ceremony_award", { p_ceremony: ceremonyId, p_name: name, p_kind: kind, p_has_nominees: hasNominees, p_consultant: consultant });
+    const { error } = await supabase.rpc("add_ceremony_award", { p_ceremony: ceremonyId, p_name: name, p_kind: kind, p_has_nominees: hasNominees, p_consultant: consultant, p_whole_cast: wholeCast });
     if (error) return { ok: false, error: error.message };
     refresh();
     return { ok: true };

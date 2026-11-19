@@ -161,6 +161,7 @@ export type Database = {
           name: string
           section: string | null
           sort_order: number
+          whole_cast: boolean
         }
         Insert: {
           award_body_id: string
@@ -171,6 +172,7 @@ export type Database = {
           name: string
           section?: string | null
           sort_order?: number
+          whole_cast?: boolean
         }
         Update: {
           award_body_id?: string
@@ -181,6 +183,7 @@ export type Database = {
           name?: string
           section?: string | null
           sort_order?: number
+          whole_cast?: boolean
         }
         Relationships: [
           {
@@ -2203,6 +2206,7 @@ export type Database = {
           p_has_nominees?: boolean
           p_kind: string
           p_name: string
+          p_whole_cast?: boolean
         }
         Returns: string
       }

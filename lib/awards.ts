@@ -3,7 +3,7 @@
 export const AWARD_SELECT = `id, nomination_id, award_year, result, source_url,
   ceremony:award_ceremonies(slug, name, season),
   organization:organizations(slug, name),
-  category:award_categories(id, name, kind, section, consultant_choice, body:award_bodies(name)),
+  category:award_categories(id, name, kind, section, consultant_choice, whole_cast, body:award_bodies(name)),
   production:productions(id, slug, year, title_override, color_ground, color_ground_2, color_ink, color_soft, color_accent, color_edge,
                          show:shows(title)),
   person:people(slug, display_name, is_hidden),
@@ -17,7 +17,7 @@ export type AwardRow = {
   source_url: string;
   ceremony: { slug: string; name: string; season: string } | null;
   organization: { slug: string; name: string } | null;
-  category: { id: string; name: string; kind: string; section: string | null; consultant_choice: boolean; body: { name: string } | null } | null;
+  category: { id: string; name: string; kind: string; section: string | null; consultant_choice: boolean; whole_cast: boolean; body: { name: string } | null } | null;
   production: {
     id: string;
     slug: string;

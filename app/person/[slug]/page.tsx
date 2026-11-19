@@ -143,7 +143,22 @@ async function Person({ params, searchParams }: Pick<PageProps<"/person/[slug]">
     ? await supabase.from("award_entries").select(AWARD_SELECT).in("nomination_id", [...new Set(mine.map((a) => a.nomination_id))])
     : { data: [] };
   const others = ((shared ?? []) as unknown as AwardRow[]).filter((s) => !mine.some((m) => m.id === s.id));
-  const awards = sortAwards([...mine, ...others]);
+  // Awards the whole cast shares (Outstanding Ensemble), for shows they were in the cast of
+  const [{ data: castCredits }, { data: castCats }] = await Promise.all([
+    supabase.from("credits").select("production_id").eq("person_id", person.id).eq("kind", "cast"),
+    supabase.from("award_categories").select("id").eq("whole_cast", true),
+  ]);
+  const castShows = [...new Set((castCredits ?? []).map((c) => c.production_id))];
+  const { data: castRows } =
+    castShows.length && castCats?.length
+      ? await supabase
+          .from("award_entries")
+          .select(AWARD_SELECT)
+          .in("production_id", castShows)
+          .in("category_id", castCats.map((k) => k.id))
+      : { data: [] };
+  const ensemble = ((castRows ?? []) as unknown as AwardRow[]).filter((r) => ![...mine, ...others].some((m) => m.id === r.id));
+  const awards = sortAwards([...mine, ...others, ...ensemble]);
   const ownerPoints = person.verified_owner_id ? (await pointsFor([person.verified_owner_id])).get(person.verified_owner_id) : undefined;
   const headshot = person.headshot;
   const pendingHeadshots = myUploads?.length ?? 0;

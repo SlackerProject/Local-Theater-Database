@@ -545,6 +545,7 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
   const [name, setName] = useState("");
   const [kind, setKind] = useState<string>("performer");
   const [given, setGiven] = useState<"nominees" | "winner" | "consultant">("nominees");
+  const [wholeCast, setWholeCast] = useState(false);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
@@ -595,6 +596,12 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
           </label>
         ))}
       </fieldset>
+      {kind === "production" && (
+        <label className="flex min-h-10 cursor-pointer items-center gap-2.5 text-[15px]">
+          <input type="checkbox" checked={wholeCast} onChange={(e) => setWholeCast(e.target.checked)} className="h-5 w-5 accent-ink" />
+          Shared by the whole cast
+        </label>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -602,7 +609,7 @@ function AddAward({ ceremonyId }: { ceremonyId: string }) {
           onClick={() =>
             start(async () => {
               setError("");
-              const r = await addCeremonyAward(ceremonyId, name, kind, given === "nominees", given === "consultant");
+              const r = await addCeremonyAward(ceremonyId, name, kind, given === "nominees", given === "consultant", kind === "production" && wholeCast);
               if (!r.ok) return setError(r.error);
               setName("");
               router.refresh();

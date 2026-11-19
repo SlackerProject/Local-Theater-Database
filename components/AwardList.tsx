@@ -197,6 +197,10 @@ export function AwardList({
                           <Link href={`/production/${prod.slug}`}>{show}</Link>
                         </>
                       )}
+                      {/* An ensemble award on a cast member's page */}
+                      {personSlug && a.category?.whole_cast && (
+                        <span className="text-muted"> · with the cast</span>
+                      )}
                       {others.length > 0 && (
                         <>
                           {show && personSlug ? (
